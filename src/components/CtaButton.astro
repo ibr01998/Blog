@@ -1,0 +1,21 @@
+---
+interface Props {
+	href: string;
+	title: string;
+	subtitle?: string;
+  variant?: 'primary' | 'secondary';
+}
+
+const { href, title, subtitle, variant = 'primary' } = Astro.props;
+
+const baseStyles = "group relative flex flex-col items-center justify-center w-full sm:w-auto px-8 py-4 text-center font-bold transition-all duration-200 rounded-lg shadow-lg hover:shadow-xl hover:-translate-y-0.5";
+const variants = {
+  primary: "bg-yellow-500 hover:bg-yellow-400 text-gray-900",
+  secondary: "bg-gray-800 hover:bg-gray-700 text-white border border-gray-700"
+};
+---
+
+<a href={href} class={`${baseStyles} ${variants[variant]}`} target="_blank" rel="nofollow noopener noreferrer">
+	<span class="text-lg">{title}</span>
+	{subtitle && <span class="text-xs opacity-75 font-normal">{subtitle}</span>}
+</a>

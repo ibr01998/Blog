@@ -1,0 +1,84 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import CtaButton from '../components/CtaButton.astro';
+import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('blog')).sort(
+	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+);
+---
+
+<!doctype html>
+<html lang="nl" class="h-full bg-gray-950 text-gray-100 antialiased">
+	<head>
+		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+	</head>
+	<body class="flex flex-col min-h-screen">
+		<Header />
+		<main class="flex-grow">
+      <!-- Hero Section -->
+      <section class="relative py-20 md:py-32 px-4 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-b from-gray-900 to-gray-950 z-0"></div>
+        <div class="container mx-auto relative z-10 text-center max-w-4xl">
+          <h1 class="text-4xl md:text-6xl font-extrabold text-white mb-6 leading-tight tracking-tight">
+            De <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600">Ultieme Gids</span> voor <br class="hidden md:block" />High-Leverage Crypto Trading.
+          </h1>
+          <p class="text-xl md:text-2xl text-gray-400 mb-10 max-w-2xl mx-auto">
+            Ontdek de beste exchanges, ontsnap aan de beperkingen en maximaliseer je winst met 100x leverage. Zonder KYC gedoe.
+          </p>
+          <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <CtaButton href="/blog/100x-leverage-nederland" title="Lees de Gids: 100x Leverage" subtitle="Start direct met traden" />
+            <CtaButton href="/go/bitmex" title="Direct naar BitMEX" variant="secondary" />
+          </div>
+        </div>
+      </section>
+
+      <!-- Featured Articles -->
+      <section class="py-16 px-4 bg-gray-950">
+        <div class="container mx-auto max-w-5xl">
+          <h2 class="text-3xl font-bold text-white mb-10 text-center">Nieuwste Inzichten & Strategieën</h2>
+          <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {
+              posts.map((post) => (
+                <article class="bg-gray-900 rounded-xl overflow-hidden shadow-lg border border-gray-800 hover:border-yellow-500/50 transition-all duration-300 group">
+                  <a href={`/blog/${post.slug}/`} class="block h-full">
+                    <img width={720} height={360} src={post.data.heroImage || "/blog-placeholder-1.jpg"} alt="" class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <div class="p-6">
+                      <h4 class="text-xl font-bold text-white mb-2 group-hover:text-yellow-400 transition-colors">
+                        {post.data.title}
+                      </h4>
+                      <p class="text-gray-400 text-sm mb-4 line-clamp-3">
+                        {post.data.description}
+                      </p>
+                      <span class="text-yellow-500 text-sm font-semibold flex items-center gap-1">
+                        Lees Artikel 
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </span>
+                    </div>
+                  </a>
+                </article>
+              ))
+            }
+          </div>
+        </div>
+      </section>
+
+      <!-- Trust/Social Proof Section (Optional for conversion optimization) -->
+      <section class="py-16 px-4 border-t border-gray-900 bg-gray-900/50">
+        <div class="container mx-auto text-center max-w-3xl">
+          <h3 class="text-2xl font-bold text-white mb-4">Waarom Crypto Leverage NL?</h3>
+          <p class="text-gray-400">
+            Wij testen elk platform persoonlijk met echt geld. Geen theoretische reviews, maar echte ervaringen van Nederlandse traders voor Nederlandse traders. Wij zoeken de mazen in de wet en de beste deals.
+          </p>
+        </div>
+      </section>
+
+		</main>
+		<Footer />
+	</body>
+</html>

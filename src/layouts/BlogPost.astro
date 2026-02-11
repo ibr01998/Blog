@@ -1,0 +1,109 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import CtaButton from '../components/CtaButton.astro';
+
+// This layout will be used by the markdown/MDX files directly or wrapped
+interface Props {
+	title: string;
+	description: string;
+  pubDate?: Date;
+  updatedDate?: Date;
+  heroImage?: string;
+  affiliateLink?: string;
+  affiliateText?: string;
+}
+
+const { title, description, pubDate, updatedDate, heroImage, affiliateLink, affiliateText } = Astro.props;
+---
+
+<!doctype html>
+<html lang="nl" class="h-full bg-gray-950 text-gray-100 antialiased">
+	<head>
+		<BaseHead title={title} description={description} image={heroImage} />
+    <style>
+      /* Custom typography for blog posts */
+      .prose {
+        max-width: 65ch;
+      }
+      .prose h2 {
+        color: #f3f4f6;
+        margin-top: 2em;
+        margin-bottom: 1em;
+        font-size: 1.5rem;
+        font-weight: 700;
+      }
+      .prose h3 {
+        color: #e5e7eb;
+        margin-top: 1.5em;
+        margin-bottom: 0.75em;
+        font-size: 1.25rem;
+        font-weight: 600;
+      }
+      .prose p {
+        margin-bottom: 1.25em;
+        line-height: 1.75;
+        color: #d1d5db;
+      }
+      .prose ul, .prose ol {
+        margin-bottom: 1.25em;
+        padding-left: 1.5em;
+        color: #d1d5db;
+      }
+      .prose ul {
+        list-style-type: disc;
+      }
+      .prose li {
+        margin-bottom: 0.5em;
+      }
+      .prose strong {
+        color: #fff;
+        font-weight: 700;
+      }
+      .prose a {
+        color: #facc15;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+      .prose blockquote {
+        border-left: 4px solid #facc15;
+        padding-left: 1em;
+        font-style: italic;
+        color: #9ca3af;
+      }
+    </style>
+	</head>
+	<body class="flex flex-col min-h-screen">
+		<Header />
+		<main class="flex-grow container mx-auto px-4 py-8 md:py-12 max-w-4xl">
+			<article class="mx-auto">
+        <div class="mb-8 text-center">
+          <h1 class="text-3xl md:text-5xl font-extrabold text-white mb-4 leading-tight">{title}</h1>
+          <p class="text-xl text-gray-400 mb-6">{description}</p>
+          {pubDate && <div class="text-sm text-gray-500 mb-6">Laatst bijgewerkt: {pubDate}</div>}
+          
+          {affiliateLink && (
+            <div class="my-8 flex justify-center">
+               <CtaButton href={affiliateLink} title={affiliateText || "Start Nu met Handelen"} subtitle="Krijg 10% Korting op Fees" /> 
+            </div>
+          )}
+        </div>
+
+        {heroImage && <img width={1020} height={510} src={heroImage} alt="" class="rounded-xl shadow-2xl mb-12 w-full object-cover" />}
+
+				<div class="prose prose-invert prose-lg mx-auto">
+					<slot />
+				</div>
+        
+        <div class="mt-16 p-6 bg-gray-900 rounded-xl border border-gray-800 text-center">
+          <h3 class="text-xl font-bold text-white mb-2">Klaar om te beginnen?</h3>
+          <p class="text-gray-400 mb-6">Meld je aan via onze link en ontvang exclusieve voordelen.</p>
+          <CtaButton href={affiliateLink || "/go/bitmex"} title="Maak Gratis Account Aan" variant="primary" />
+        </div>
+			</article>
+		</main>
+		<Footer />
+	</body>
+</html>
