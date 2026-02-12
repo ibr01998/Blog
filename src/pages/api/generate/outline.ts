@@ -6,6 +6,7 @@
  */
 import type { APIRoute } from 'astro';
 import { openai } from '@ai-sdk/openai';
+import { google } from '@ai-sdk/google';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { db, Platform, inArray } from 'astro:db';
@@ -43,6 +44,7 @@ export const POST: APIRoute = async ({ request }) => {
             tone = 'neutral',
             monetization_priority = 'revenue_share',
             include_faq = true,
+            model_provider = 'openai',
         } = body;
 
         if (!target_keyword) {
@@ -149,7 +151,7 @@ ${include_faq ? 'Voeg een FAQ sectie toe.' : ''}
 BESCHIKBARE BLOK-TYPES: Gebruik logische IDs zoals 'intro', 'platform_binance_overzicht', 'vergelijkingstabel', 'conclusie'. Je mag zelf IDs bedenken die passen bij de sectie.`;
 
         const result = await generateObject({
-            model: openai('gpt-4o'), // Switch to gpt-4o for reliable structured output
+            model: model_provider === 'gemini' ? google('gemini-2.5-flash') : openai('gpt-4o'),
             schema: outlineSchema,
             system: systemPrompt,
             prompt: userPrompt,

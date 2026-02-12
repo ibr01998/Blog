@@ -126,6 +126,53 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
               <span class="text-gray-300">Genereer FAQ sectie?</span>
             </label>
           </div>
+
+          <!-- AI Model Selector -->
+          <div class="col-span-2 mt-6">
+            <label class="block text-sm font-medium text-gray-400 mb-3">AI Model voor Tekst</label>
+            <div class="grid grid-cols-2 gap-4">
+              <label class="relative flex flex-col items-center p-4 rounded-lg border-2 border-yellow-500 bg-yellow-500/10 cursor-pointer transition-all group" id="model-openai-label">
+                <input type="radio" name="model_provider" value="openai" checked class="absolute opacity-0 w-full h-full cursor-pointer" />
+                <span class="text-2xl mb-1">⚡</span>
+                <span class="font-semibold text-yellow-400 text-sm">OpenAI GPT-5 mini</span>
+                <span class="text-xs text-gray-500 mt-1">Snel & betrouwbaar</span>
+              </label>
+              <label class="relative flex flex-col items-center p-4 rounded-lg border-2 border-gray-700 bg-gray-950 cursor-pointer hover:border-gray-500 transition-all group" id="model-gemini-label">
+                <input type="radio" name="model_provider" value="gemini" class="absolute opacity-0 w-full h-full cursor-pointer" />
+                <span class="text-2xl mb-1">🌟</span>
+                <span class="font-semibold text-gray-300 text-sm">Google Gemini 2.5 Flash</span>
+                <span class="text-xs text-gray-500 mt-1">Nieuwste Google AI</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- AI Hero Image Settings -->
+          <div class="col-span-2 mt-6">
+            <div class="flex items-center gap-3 mb-4">
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" id="generate_hero_image" checked class="w-5 h-5 rounded border-gray-700 bg-gray-950 text-yellow-500 focus:ring-yellow-500/50" />
+                <span class="text-sm font-medium text-gray-400">Genereer AI Hero Afbeelding</span>
+              </label>
+            </div>
+            <div id="image-config" class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Afbeelding Provider</label>
+                <select id="image_provider" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:ring-2 focus:ring-yellow-500/50 outline-none">
+                  <option value="google">🌟 Google Imagen 4 ($0.02)</option>
+                  <option value="openai">⚡ OpenAI DALL-E 3 ($0.04)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Afbeelding Stijl</label>
+                <select id="image_style" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:ring-2 focus:ring-yellow-500/50 outline-none">
+                  <option value="futuristic">🔮 Futuristisch</option>
+                  <option value="abstract">🎨 Abstract</option>
+                  <option value="illustration">✏️ Illustratie</option>
+                  <option value="photorealistic">📸 Fotorealistisch</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="mt-8 flex justify-end">
@@ -216,6 +263,14 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
              <span>•</span>
              <span id="final-readingtime">0 min leestijd</span>
            </div>
+        </div>
+
+        <!-- Hero image preview -->
+        <div id="hero-image-section" class="mb-8">
+          <h3 class="text-sm font-medium text-gray-400 mb-3">Hero Afbeelding</h3>
+          <div id="hero-image-preview" class="bg-gray-950 rounded-xl border border-gray-800 p-4 flex items-center justify-center min-h-[200px]">
+            <p class="text-gray-500 text-sm" id="hero-image-status">Wordt gegenereerd bij publicatie...</p>
+          </div>
         </div>
 
         <div class="flex justify-end gap-4">
@@ -313,6 +368,10 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
         target_audience: document.getElementById('target_audience').value,
         article_angle: document.getElementById('article_angle').value,
         custom_instructions: document.getElementById('custom_instructions').value,
+        model_provider: document.querySelector('input[name="model_provider"]:checked')?.value || 'openai',
+        generate_hero_image: document.getElementById('generate_hero_image').checked,
+        image_provider: document.getElementById('image_provider').value,
+        image_style: document.getElementById('image_style').value,
         platforms
       };
 
@@ -325,7 +384,10 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
       try {
         const res = await fetch('/api/generate/outline', {
           method: 'POST',
-          body: JSON.stringify(state.config)
+          body: JSON.stringify({
+            ...state.config,
+            model_provider: state.config.model_provider
+          })
         });
         const data = await res.json();
         
@@ -469,7 +531,8 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
                platforms: state.config.platforms,
                previous_blocks: state.generatedBlocks.map(b => ({ block_id: b.block_id, content: b.content })),
                tone: state.config.tone,
-               target_keyword: state.config.target_keyword
+               target_keyword: state.config.target_keyword,
+               model_provider: state.config.model_provider
              })
           });
           
@@ -529,11 +592,51 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
       btn.innerText = 'Bezig met opslaan...';
 
       try {
+        // Step 1: Generate hero image if enabled
+        let heroImage = `https://placehold.co/1200x630/111827/EAB308?text=${encodeURIComponent(state.outline.title.substring(0, 40))}`;
+
+        if (state.config.generate_hero_image) {
+          btn.innerText = '🎨 Afbeelding genereren...';
+          const statusEl = document.getElementById('hero-image-status');
+          if (statusEl) statusEl.innerText = 'AI genereert je hero afbeelding...';
+
+          try {
+            const imgRes = await fetch('/api/generate/image', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                title: state.outline.title,
+                keyword: state.config.target_keyword,
+                slug: state.outline.slug,
+                provider: state.config.image_provider,
+                style: state.config.image_style,
+              })
+            });
+            const imgData = await imgRes.json();
+            if (imgData.success && imgData.imageUrl) {
+              heroImage = imgData.imageUrl;
+              // Show preview
+              const previewEl = document.getElementById('hero-image-preview');
+              if (previewEl) {
+                previewEl.innerHTML = `<img src="${imgData.imageUrl}" alt="Hero" class="rounded-lg max-h-[300px] object-cover w-full" />`;
+              }
+            } else {
+              console.warn('Image generation failed, using placeholder:', imgData.error);
+              if (statusEl) statusEl.innerText = '⚠️ Afbeelding gefaald, placeholder gebruikt.';
+            }
+          } catch (imgErr) {
+            console.warn('Image generation error:', imgErr);
+          }
+
+          btn.innerText = '📝 Artikel opslaan...';
+        }
+
+        // Step 2: Save the article
         const payload = {
           title: state.outline.title,
           description: state.outline.meta_description,
           slug: state.outline.slug,
-          heroImage: `https://placehold.co/1200x630/111827/EAB308?text=${encodeURIComponent(state.outline.title.substring(0, 40))}`,
+          heroImage,
           pubDate: new Date().toISOString(),
           target_keyword: state.config.target_keyword,
           seo_title: state.outline.seo_title,
@@ -557,6 +660,40 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
         btn.disabled = false;
         btn.innerText = 'PUBLICEREN';
       }
+    });
+
+    // --- AI Model Selector Toggle ---
+    document.querySelectorAll('input[name="model_provider"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        const openaiLabel = document.getElementById('model-openai-label');
+        const geminiLabel = document.getElementById('model-gemini-label');
+        if (radio.value === 'openai') {
+          openaiLabel.classList.add('border-yellow-500', 'bg-yellow-500/10');
+          openaiLabel.classList.remove('border-gray-700', 'bg-gray-950');
+          openaiLabel.querySelector('.font-semibold').classList.add('text-yellow-400');
+          openaiLabel.querySelector('.font-semibold').classList.remove('text-gray-300');
+          geminiLabel.classList.remove('border-yellow-500', 'bg-yellow-500/10');
+          geminiLabel.classList.add('border-gray-700', 'bg-gray-950');
+          geminiLabel.querySelector('.font-semibold').classList.remove('text-yellow-400');
+          geminiLabel.querySelector('.font-semibold').classList.add('text-gray-300');
+        } else {
+          geminiLabel.classList.add('border-yellow-500', 'bg-yellow-500/10');
+          geminiLabel.classList.remove('border-gray-700', 'bg-gray-950');
+          geminiLabel.querySelector('.font-semibold').classList.add('text-yellow-400');
+          geminiLabel.querySelector('.font-semibold').classList.remove('text-gray-300');
+          openaiLabel.classList.remove('border-yellow-500', 'bg-yellow-500/10');
+          openaiLabel.classList.add('border-gray-700', 'bg-gray-950');
+          openaiLabel.querySelector('.font-semibold').classList.remove('text-yellow-400');
+          openaiLabel.querySelector('.font-semibold').classList.add('text-gray-300');
+        }
+      });
+    });
+
+    // --- Hero Image Toggle ---
+    document.getElementById('generate_hero_image').addEventListener('change', (e) => {
+      const imageConfig = document.getElementById('image-config');
+      imageConfig.style.opacity = e.target.checked ? '1' : '0.4';
+      imageConfig.style.pointerEvents = e.target.checked ? 'auto' : 'none';
     });
 
     // --- Platform Management ---

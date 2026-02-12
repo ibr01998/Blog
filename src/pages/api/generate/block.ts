@@ -5,6 +5,7 @@
  */
 import type { APIRoute } from 'astro';
 import { openai } from '@ai-sdk/openai';
+import { google } from '@ai-sdk/google';
 import { generateText } from 'ai';
 import { db, Platform, inArray } from 'astro:db';
 import { getActiveAffiliates } from '../../../data/affiliates';
@@ -21,6 +22,7 @@ export const POST: APIRoute = async ({ request }) => {
             previous_blocks = [],
             tone = 'neutral',
             target_keyword = '',
+            model_provider = 'openai',
         } = body;
 
         if (!block_id || !outline) {
@@ -129,7 +131,7 @@ ${contextSummary}
 Schrijf nu het blok "${block_label}". Begin direct met de tekst, geen heading.`;
 
         const result = await generateText({
-            model: openai('gpt-5-mini'),
+            model: model_provider === 'gemini' ? google('gemini-2.5-flash') : openai('gpt-5-mini'),
             system: systemPrompt,
             prompt: userPrompt,
             maxTokens: 800,
