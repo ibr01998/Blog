@@ -41,7 +41,28 @@ export const POST: APIRoute = async ({ request }) => {
         const section = outline.sections?.find((s: any) => s.block_id === block_id);
         const heading = section?.heading || block_label;
 
-        const systemPrompt = `Je bent een ervaren redacteur voor ShortNews, een Nederlands crypto-affiliate website.
+        // Special handling for TLDR blocks
+        const isTldr = block_id === 'tldr';
+
+        // Determine if this block should get an image (after ~2nd content block)
+        const contentBlockIndex = previous_blocks.filter((b: any) => b.block_id !== 'tldr').length;
+        const shouldInjectImage = contentBlockIndex === 2; // After 2nd real content block
+
+        const systemPrompt = isTldr
+            ? `Je bent een ervaren redacteur voor ShortNews, een Nederlands crypto-affiliate website.
+Je schrijft een TLDR (samenvatting) voor bovenaan het artikel "${outline.title}".
+
+REGELS:
+- Schrijf in het Nederlands
+- Maak een beknopte samenvatting in 3-5 bullet points
+- Elke bullet bevat een kernpunt van het artikel
+- Verwerk de platformnamen NATUURLIJK in de tekst, met een link waar het logisch past
+  Voorbeeld: "**BitMEX** biedt de [laagste maker-fees](/go/bitmex) in de markt"
+- Houd het onder 80 woorden
+- Gebruik markdown bold (**) voor platformnamen en kernwoorden
+- GEEN inleiding, begin direct met de bullets
+- Format: een korte ongenummerde lijst`
+            : `Je bent een ervaren redacteur voor ShortNews, een Nederlands crypto-affiliate website.
 Je schrijft NU één blok van een artikel. Dit blok heet: "${block_label}".
 
 SCHRIJFREGELS:
@@ -63,8 +84,16 @@ FORMAT:
 - Gebruik markdown formatting
 - Als dit blok een vergelijkingstabel bevat, gebruik markdown tabel syntax
 - Houd het blok tussen 100-250 woorden
-- Als er een affiliate CTA logisch past, gebruik dan een contextual anchor: bijvoorbeeld [Bekijk Platform](/go/slug) — NIET "klik hier"
-- Maximaal 1 affiliate link per blok`;
+${shouldInjectImage ? `- Voeg ergens halverwege het blok een afbeelding toe in markdown: ![${target_keyword} illustratie](https://placehold.co/800x400/1a1a2e/eab308?text=${encodeURIComponent(target_keyword)})` : ''}
+
+AFFILIATE LINKS — BELANGRIJK:
+- Voeg ALLEEN een affiliate link toe als het ECHT logisch past in de context
+- Bijvoorbeeld: na een directe aanbeveling, of wanneer je een platform specifiek bespreekt als oplossing
+- De meeste blokken hebben GEEN affiliate link nodig — dat is prima
+- Als je er een toevoegt, gebruik een contextual anchor: bijvoorbeeld [Bekijk BitMEX](/go/bitmex)
+- NOOIT "klik hier" of geforceerde doorverwijzingen
+- NOOIT meer dan 1 link per blok
+- Het is BETER om geen link te plaatsen dan een geforceerde link`;
 
         const contextSummary = previous_blocks.length > 0
             ? `\n\nEERDER GESCHREVEN BLOKKEN (vermijd herhaling):\n${previous_blocks.map((b: any) => `[${b.block_id}]: ${b.content.substring(0, 200)}...`).join('\n')}`

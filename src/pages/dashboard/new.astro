@@ -67,46 +67,22 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
             </select>
           </div>
 
-          <!-- Target Audience -->
-          <div>
-            <label class="block text-sm font-medium text-gray-400 mb-2">Doelgroep</label>
-            <input type="text" id="target_audience" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-yellow-500/50 outline-none" placeholder="bv. Ervaren crypto traders, beginners..." />
-          </div>
-
-          <!-- Article Angle -->
-          <div>
-            <label class="block text-sm font-medium text-gray-400 mb-2">Artikel Invalshoek</label>
-            <input type="text" id="article_angle" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-yellow-500/50 outline-none" placeholder="bv. Eerlijke vergelijking op basis van fees" />
-          </div>
-
           <!-- Platforms -->
           <div class="col-span-2">
             <label class="block text-sm font-medium text-gray-400 mb-3">Welke platformen bespreken?</label>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4" id="platform-list">
               {platforms.map(p => (
-                <div class="relative group" data-platform-id={p.id}>
-                  <label class="flex items-center justify-center p-4 rounded-lg border border-gray-700 bg-gray-950 cursor-pointer hover:border-gray-500 transition-all has-[:checked]:border-yellow-500 has-[:checked]:bg-yellow-500/10 min-h-[64px]">
-                    <input type="checkbox" name="platforms" value={p.id} class="absolute opacity-0 w-full h-full cursor-pointer" />
-                    <span class="font-semibold text-gray-300 has-[:checked]:text-yellow-500 text-center">{p.name}</span>
-                  </label>
-                  <div class="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button type="button" class="edit-platform-btn p-1 bg-gray-800 rounded hover:text-yellow-500 text-xs" data-platform={JSON.stringify(p)}>✎</button>
-                    <button type="button" class="delete-platform-btn p-1 bg-gray-800 rounded hover:text-red-500 text-xs" data-id={p.id}>✕</button>
-                  </div>
-                </div>
+                <label class="relative flex items-center justify-center p-4 rounded-lg border border-gray-700 bg-gray-950 cursor-pointer hover:border-gray-500 transition-all group has-[:checked]:border-yellow-500 has-[:checked]:bg-yellow-500/10">
+                  <input type="checkbox" name="platforms" value={p.id} class="absolute opacity-0 w-full h-full cursor-pointer" />
+                  <span class="font-semibold text-gray-300 group-hover:text-white has-[:checked]:text-yellow-500">{p.name}</span>
+                </label>
               ))}
               
               <!-- Add New Button -->
-              <button type="button" id="add-platform-btn" class="flex items-center justify-center p-4 rounded-lg border border-dashed border-gray-700 bg-gray-900/50 hover:bg-gray-800 hover:border-yellow-500 hover:text-yellow-500 text-gray-400 transition-all min-h-[64px]">
+              <button type="button" id="add-platform-btn" class="flex items-center justify-center p-4 rounded-lg border border-dashed border-gray-700 bg-gray-900/50 hover:bg-gray-800 hover:border-yellow-500 hover:text-yellow-500 text-gray-400 transition-all">
                 <span class="text-2xl font-bold">+</span>
               </button>
             </div>
-          </div>
-
-          <!-- Custom Instructions -->
-          <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-400 mb-2">Specifieke AI Instructies (optioneel)</label>
-            <textarea id="custom_instructions" rows="3" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-yellow-500/50 outline-none" placeholder="bv. Focus extra op de veiligheidsaspecten van BitMEX of gebruik een humoristische toon."></textarea>
           </div>
 
           <!-- Tone -->
@@ -140,8 +116,8 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
     <!-- Step 2: Outline Editor -->
     <section id="step-2" class="wizard-step hidden">
       <div class="bg-gray-900 rounded-xl border border-gray-800 p-6 sm:p-8">
-        <h2 class="text-xl font-bold text-white mb-2">Outline Controleren & Aanpassen</h2>
-        <p class="text-gray-400 mb-6 text-sm">Controleer de structuur voordat we gaan schrijven. Je kunt secties aanpassen, herorderen of verwijderen.</p>
+        <h2 class="text-xl font-bold text-white mb-2">Outline Controleren</h2>
+        <p class="text-gray-400 mb-6 text-sm">Controleer de structuur voordat we gaan schrijven. Je kunt secties aanpassen of verwijderen.</p>
 
         <div class="space-y-6 mb-8">
           <!-- Metadata preview -->
@@ -160,10 +136,6 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
           <div id="outline-sections" class="space-y-3">
             <!-- Injected via JS -->
           </div>
-
-          <button id="add-section-btn" class="w-full py-3 border-2 border-dashed border-gray-800 rounded-lg text-gray-500 hover:border-gray-700 hover:text-gray-300 transition-all font-medium">
-            +Sectie Toevoegen
-          </button>
         </div>
 
         <div class="flex justify-between">
@@ -224,33 +196,32 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
           </button>
         </div>
       </div>
-    </section>
 
-  <!-- Add/Edit Platform Modal -->
-  <dialog id="platform-modal" class="bg-gray-900 text-white p-6 rounded-xl border border-gray-800 backdrop:bg-black/80 w-full max-w-md">
-    <h3 class="text-xl font-bold mb-4" id="modal-title">Nieuw Platform Toevoegen</h3>
-    <form method="dialog" id="platform-form" class="space-y-4">
-      <input type="hidden" name="id" id="platform-id-input" />
+  <!-- Add Platform Modal -->
+  <dialog id="add-platform-modal" class="bg-gray-900 text-white p-6 rounded-xl border border-gray-800 backdrop:bg-black/80 w-full max-w-md">
+    <h3 class="text-xl font-bold mb-4">Nieuw Platform Toevoegen</h3>
+    <form method="dialog" id="add-platform-form" class="space-y-4">
       <div>
         <label class="block text-sm text-gray-400 mb-1">Naam</label>
-        <input type="text" name="name" id="platform-name-input" required class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 focus:ring-yellow-500" placeholder="bv. Coinbase" />
+        <input type="text" name="name" required class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 focus:ring-yellow-500" placeholder="bv. Coinbase" />
       </div>
       <div>
         <label class="block text-sm text-gray-400 mb-1">Slug (ID)</label>
-        <input type="text" name="slug" id="platform-slug-input" required pattern="[a-z0-9-]+" class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 focus:ring-yellow-500" placeholder="bv. coinbase" />
+        <input type="text" name="slug" required pattern="[a-z0-9-]+" class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 focus:ring-yellow-500" placeholder="bv. coinbase" />
         <p class="text-xs text-gray-500 mt-1">Kleine letters, geen spaties.</p>
       </div>
       <div>
         <label class="block text-sm text-gray-400 mb-1">Affiliate Link</label>
-        <input type="url" name="affiliateLink" id="platform-link-input" class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 focus:ring-yellow-500" placeholder="https://..." />
+        <input type="url" name="affiliateLink" class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 focus:ring-yellow-500" placeholder="https://..." />
       </div>
 
        <div class="flex justify-end gap-3 mt-6">
         <button value="cancel" class="px-4 py-2 text-gray-400 hover:text-white">Annuleren</button>
-        <button type="submit" id="modal-submit-btn" class="bg-yellow-500 text-gray-900 font-bold px-4 py-2 rounded hover:bg-yellow-400">Toevoegen</button>
+        <button type="submit" class="bg-yellow-500 text-gray-900 font-bold px-4 py-2 rounded hover:bg-yellow-400">Toevoegen</button>
       </div>
     </form>
   </dialog>
+    </section>
 
   </div>
 
@@ -294,7 +265,6 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
            label.classList.remove('text-white');
         }
       });
-      window.scrollTo(0, 0);
     }
 
     // --- Step 1: Generate Outline ---
@@ -310,9 +280,6 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
         monetization_priority: document.getElementById('monetization_priority').value,
         tone: document.getElementById('tone').value,
         include_faq: document.getElementById('include_faq').checked,
-        target_audience: document.getElementById('target_audience').value,
-        article_angle: document.getElementById('article_angle').value,
-        custom_instructions: document.getElementById('custom_instructions').value,
         platforms
       };
 
@@ -351,86 +318,24 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
       container.innerHTML = '';
 
       outline.sections.forEach((section, idx) => {
-        appendSection(section);
+        const div = document.createElement('div');
+        div.className = 'p-4 bg-gray-950 rounded-lg border border-gray-800 flex gap-4 group';
+        div.innerHTML = `
+          <div class="text-xs font-mono text-gray-600 pt-1">${idx + 1}</div>
+          <div class="flex-1">
+            <input class="w-full bg-transparent font-semibold text-gray-200 focus:text-white border-none p-0 focus:ring-0 mb-1" value="${section.heading}" />
+            <p class="text-xs text-gray-500">${section.summary}</p>
+          </div>
+          <div class="text-xs text-gray-600 flex items-center gap-2">
+            <span class="bg-gray-900 px-2 py-1 rounded border border-gray-800">${section.block_id}</span>
+          </div>
+        `;
+        container.appendChild(div);
       });
     }
-
-    function appendSection(section) {
-      const container = document.getElementById('outline-sections');
-      const div = document.createElement('div');
-      div.className = 'p-4 bg-gray-950 rounded-lg border border-gray-800 flex gap-4 group transition-all outline-item';
-      div.dataset.blockId = section.block_id;
-      div.innerHTML = `
-        <div class="flex flex-col gap-2 items-center text-gray-600 pt-1">
-          <button class="move-up-btn hover:text-white" title="Omhoog">▲</button>
-          <div class="text-xs font-mono sequence-number">${container.children.length + 1}</div>
-          <button class="move-down-btn hover:text-white" title="Omlaag">▼</button>
-        </div>
-        <div class="flex-1 space-y-2">
-          <input class="w-full bg-transparent font-semibold text-gray-200 focus:text-white border-b border-transparent focus:border-gray-700 p-0 focus:ring-0 mb-1 section-heading" value="${section.heading}" placeholder="Heading" />
-          <textarea class="w-full bg-transparent text-sm text-gray-400 focus:text-gray-300 border-none p-0 focus:ring-0 resize-none section-summary" rows="2" placeholder="Wat moet hier besproken worden?">${section.summary}</textarea>
-        </div>
-        <div class="flex flex-col items-end justify-between">
-          <button class="remove-section-btn text-gray-700 hover:text-red-500 transition-colors" title="Verwijder">✕</button>
-          <span class="text-[10px] uppercase font-mono text-gray-800 bg-gray-900 px-1.5 py-0.5 rounded border border-gray-800">${section.block_id}</span>
-        </div>
-      `;
-      container.appendChild(div);
-      attachOutlineEventListeners(div);
-    }
-
-    function attachOutlineEventListeners(el) {
-      el.querySelector('.move-up-btn').addEventListener('click', () => swapNodes(el, 'up'));
-      el.querySelector('.move-down-btn').addEventListener('click', () => swapNodes(el, 'down'));
-      el.querySelector('.remove-section-btn').addEventListener('click', () => {
-        el.remove();
-        updateSequenceNumbers();
-      });
-    }
-
-    function swapNodes(node, direction) {
-      const container = document.getElementById('outline-sections');
-      if (direction === 'up') {
-        if (node.previousElementSibling) {
-          container.insertBefore(node, node.previousElementSibling);
-        }
-      } else {
-        if (node.nextElementSibling) {
-          container.insertBefore(node.nextElementSibling, node);
-        }
-      }
-      updateSequenceNumbers();
-    }
-
-    function updateSequenceNumbers() {
-      const items = document.querySelectorAll('.outline-item');
-      items.forEach((item, idx) => {
-        item.querySelector('.sequence-number').innerText = idx + 1;
-      });
-    }
-
-    document.getElementById('add-section-btn').addEventListener('click', () => {
-      appendSection({
-        heading: 'Nieuwe Sectie',
-        summary: 'Beschrijf de inhoud...',
-        block_id: 'custom_' + Math.random().toString(36).substring(7)
-      });
-      updateSequenceNumbers();
-    });
 
     // --- Step 2: Start Writing ---
     document.getElementById('start-writing-btn').addEventListener('click', async () => {
-      // Sync DOM back to state.outline
-      const items = document.querySelectorAll('.outline-item');
-      state.outline.sections = Array.from(items).map(item => ({
-        heading: item.querySelector('.section-heading').value,
-        summary: item.querySelector('.section-summary').value,
-        block_id: item.dataset.blockId,
-        level: 'h2' // default
-      }));
-      state.outline.seo_title = document.getElementById('seo_title').value;
-      state.outline.slug = document.getElementById('slug').value;
-
       setStep(3);
       await generateAllBlocks();
     });
@@ -467,7 +372,7 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
                block_description: section.summary,
                outline: state.outline,
                platforms: state.config.platforms,
-               previous_blocks: state.generatedBlocks.map(b => ({ block_id: b.block_id, content: b.content })),
+               previous_blocks: state.generatedBlocks.map(b => ({ block_id: b.block_id, content: b.content })), // context
                tone: state.config.tone,
                target_keyword: state.config.target_keyword
              })
@@ -512,7 +417,7 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
       document.getElementById('final-title').innerText = state.outline.title;
       document.getElementById('final-description').innerText = state.outline.meta_description;
        
-      const totalWords = state.generatedBlocks.reduce((acc, b) => acc + b.content.split(/\s+/).length, 0);
+      const totalWords = state.generatedBlocks.reduce((acc, b) => acc + b.content.split(' ').length, 0);
       document.getElementById('final-wordcount').innerText = totalWords + ' woorden';
       document.getElementById('final-readingtime').innerText = Math.ceil(totalWords / 200) + ' min leestijd';
 
@@ -533,7 +438,7 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
           title: state.outline.title,
           description: state.outline.meta_description,
           slug: state.outline.slug,
-          heroImage: 'https://placehold.co/1200x630/111827/EAB308',
+          heroImage: `https://placehold.co/1200x630/111827/EAB308?text=${encodeURIComponent(state.outline.title.substring(0, 40))}`,
           pubDate: new Date().toISOString(),
           target_keyword: state.config.target_keyword,
           seo_title: state.outline.seo_title,
@@ -560,77 +465,46 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
     });
 
     // --- Platform Management ---
-    const platformModal = document.getElementById('platform-modal');
-    const platformForm = document.getElementById('platform-form');
-    const platformList = document.getElementById('platform-list');
     const addPlatformBtn = document.getElementById('add-platform-btn');
+    const addPlatformModal = document.getElementById('add-platform-modal');
+    const addPlatformForm = document.getElementById('add-platform-form');
+    const platformList = document.getElementById('platform-list');
 
     addPlatformBtn.addEventListener('click', () => {
-      document.getElementById('modal-title').innerText = 'Nieuw Platform Toevoegen';
-      document.getElementById('modal-submit-btn').innerText = 'Toevoegen';
-      document.getElementById('platform-id-input').value = '';
-      platformForm.reset();
-      platformModal.showModal();
+      addPlatformModal.showModal();
     });
 
-    // Delegate Edit/Delete clicks
-    platformList.addEventListener('click', (e) => {
-      const editBtn = e.target.closest('.edit-platform-btn');
-      const deleteBtn = e.target.closest('.delete-platform-btn');
-
-      if (editBtn) {
-        const platform = JSON.parse(editBtn.dataset.platform);
-        document.getElementById('modal-title').innerText = `Bewerk ${platform.name}`;
-        document.getElementById('modal-submit-btn').innerText = 'Opslaan';
-        document.getElementById('platform-id-input').value = platform.id;
-        document.getElementById('platform-name-input').value = platform.name;
-        document.getElementById('platform-slug-input').value = platform.slug;
-        document.getElementById('platform-link-input').value = platform.affiliateLink || '';
-        platformModal.showModal();
-      }
-
-      if (deleteBtn) {
-        if (confirm('Weet je zeker dat je dit platform wilt verwijderen?')) {
-          const id = deleteBtn.dataset.id;
-          deletePlatform(id);
-        }
-      }
-    });
-
-    async function deletePlatform(id) {
-       try {
-        const res = await fetch('/api/platforms', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id })
-        });
-        if (res.ok) {
-          document.querySelector(`[data-platform-id="${id}"]`).remove();
-        }
-      } catch (err) {
-        alert('Fout bij verwijderen: ' + err.message);
-      }
-    }
-
-    platformForm.addEventListener('submit', async (e) => {
+    addPlatformForm.addEventListener('submit', async (e) => {
       if (e.submitter.value === 'cancel') return;
-      e.preventDefault();
+      e.preventDefault(); // Prevent default dialog close to handle async
 
-      const formData = new FormData(platformForm);
+      const formData = new FormData(addPlatformForm);
       const data = Object.fromEntries(formData.entries());
-      const isEdit = !!data.id;
 
       try {
         const res = await fetch('/api/platforms', {
-          method: isEdit ? 'PATCH' : 'POST',
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         });
 
-        if (!res.ok) throw new Error('Failed to save platform');
+        if (!res.ok) throw new Error('Failed to add platform');
 
-        // Fast path: just refresh the page for platform updates to keep it simple and sync data-attributes
-        window.location.reload();
+        const result = await res.json();
+        
+        // Add to list dynamically (without refresh)
+        const label = document.createElement('label');
+        label.className = "relative flex items-center justify-center p-4 rounded-lg border border-gray-700 bg-gray-950 cursor-pointer hover:border-gray-500 transition-all group has-[:checked]:border-yellow-500 has-[:checked]:bg-yellow-500/10";
+        label.innerHTML = `
+          <input type="checkbox" name="platforms" value="${data.slug}" checked class="absolute opacity-0 w-full h-full cursor-pointer" />
+          <span class="font-semibold text-gray-300 group-hover:text-white has-[:checked]:text-yellow-500">${data.name}</span>
+        `;
+        
+        // Insert before the add button
+        platformList.insertBefore(label, addPlatformBtn);
+        
+        addPlatformForm.reset();
+        addPlatformModal.close();
 
       } catch (err) {
         alert('Error: ' + err.message);
@@ -638,24 +512,6 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
     });
 
   </script>
-
-  <style>
-    .loading-spinner {
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-    .wizard-step {
-      animation: fadeIn 0.4s ease-out;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-  </style>
-</DashboardLayout>
 
   <style>
     /* Wizard specific styles */

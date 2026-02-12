@@ -43,9 +43,6 @@ export const POST: APIRoute = async ({ request }) => {
             tone = 'neutral',
             monetization_priority = 'revenue_share',
             include_faq = true,
-            target_audience = '',
-            article_angle = '',
-            custom_instructions = '',
         } = body;
 
         if (!target_keyword) {
@@ -84,9 +81,13 @@ export const POST: APIRoute = async ({ request }) => {
         // Instead of using the static template structure, we build a guide based on platforms.
         let structuralGuide = '';
 
+        // TLDR is always the first section
+        const tldrGuide = `0. TLDR — Samenvatting (3-5 bullet points met kernpunten en platformlinks, block_id: "tldr")`;
+
         if (intent === 'comparison' && platformData.length > 0) {
             structuralGuide = `
                 STRUCTUUR-EISEN VOOR DEZE VERGELIJKING:
+                ${tldrGuide}
                 1. Introductie (waarom deze vergelijking?)
                 ${platformData.map(p => `2. ${p.name} - Overzicht (sterke punten, korte bio)`).join('\n')}
                 3. Vergelijkingstabel & Analyse (vergelijk ${platformData.map(p => p.name).join(' vs ')})
@@ -98,6 +99,7 @@ export const POST: APIRoute = async ({ request }) => {
             const p = platformData[0];
             structuralGuide = `
                 STRUCTUUR-EISEN VOOR DEZE REVIEW:
+                ${tldrGuide}
                 1. Introductie
                 2. Wat is ${p.name}?
                 3. Features & Verborgen Parels
@@ -108,7 +110,7 @@ export const POST: APIRoute = async ({ request }) => {
              `;
         } else {
             // Fallback to template defaults key
-            structuralGuide = `STRUCTUUR-EISEN:\n` + template.headingStructure.join(' -> ');
+            structuralGuide = `STRUCTUUR-EISEN:\n${tldrGuide}\n` + template.headingStructure.join(' -> ');
         }
 
 
@@ -120,12 +122,11 @@ REGELS:
 - Doelgroep: Crypto traders
 - Unieke invalshoek
 - GEBRUIK DE OPGEGEVEN PLATFORMEN VOOR DE STRUCTUUR
+- De EERSTE sectie moet ALTIJD een TLDR zijn met block_id "tldr" — dit is een korte samenvatting met kernpunten
+- De TLDR heading moet zijn: "TLDR — Samenvatting" of een variatie daarop
 
 TOON: ${tone}
-MONETISATIE: ${monetization_priority}
-DOELGROEP: ${target_audience || 'Nederlandse crypto traders'}
-INVALSHOEK: ${article_angle || 'Eerlijke, behulpzame analyse'}
-SPECIFIEKE INSTRUCTIES: ${custom_instructions || 'Geen extra instructies.'}`;
+MONETISATIE: ${monetization_priority}`;
 
         const userPrompt = `Maak een outline.
 

@@ -101,11 +101,7 @@ export function getActiveAffiliates(): AffiliateProgram[] {
 export function getAffiliateUrl(id: string): string | null {
     const aff = getAffiliate(id);
     if (!aff) return null;
-
-    // In Astro server context, import.meta.env might be static.
-    // We use process.env for dynamic runtime access on Vercel/Node.
-    const envUrl = (import.meta as any).env?.[aff.envKey] ||
-        (typeof process !== 'undefined' ? process.env[aff.envKey] : undefined);
-
-    return (envUrl as string) || aff.url;
+    // In Astro server context, import.meta.env is available
+    const envUrl = (import.meta as any).env?.[aff.envKey];
+    return envUrl || aff.url;
 }
