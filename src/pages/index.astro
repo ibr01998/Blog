@@ -9,16 +9,18 @@ const filePosts = await getCollection('blog');
 const dbPosts = await db.select().from(Post);
 
 const posts = [
-  ...filePosts.map((p) => ({ ...p.data, slug: p.slug, source: 'file' })),
+  ...filePosts.map((p) => ({ ...p, source: 'file' })),
   ...dbPosts.map((p) => ({
-    title: p.title,
-    description: p.description,
-    pubDate: p.pubDate,
-    heroImage: p.heroImage,
     slug: p.slug,
     source: 'db',
+    data: {
+      title: p.title,
+      description: p.description,
+      pubDate: p.pubDate,
+      heroImage: p.heroImage,
+    },
   })),
-].sort((a, b) => b.pubDate.valueOf() - a.pubDate.valueOf());
+].sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 ---
 
 <Layout title={SITE_TITLE} description={SITE_DESCRIPTION}>
