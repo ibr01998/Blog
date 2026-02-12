@@ -8,14 +8,14 @@ interface Props {
 
 const { href, title, subtitle, variant = 'primary' } = Astro.props;
 
-const baseStyles = "group relative flex flex-col items-center justify-center w-full sm:w-auto px-8 py-4 text-center font-bold transition-all duration-200 rounded-lg shadow-lg hover:shadow-xl hover:-translate-y-0.5";
+const baseStyles = "group relative flex flex-col items-center justify-center w-full sm:w-auto px-8 py-3.5 text-center font-semibold transition-all duration-200 rounded-lg";
 const variants = {
-  primary: "bg-yellow-500 hover:bg-yellow-400 text-gray-900",
-  secondary: "bg-gray-800 hover:bg-gray-700 text-white border border-gray-700"
+  primary: "bg-yellow-500/90 hover:bg-yellow-500 text-gray-900",
+  secondary: "bg-gray-800 hover:bg-gray-750 text-white border border-gray-700 hover:border-gray-600"
 };
 ---
 
 <a href={href} class={`${baseStyles} ${variants[variant]}`} target="_blank" rel="nofollow noopener noreferrer">
-	<span class="text-lg">{title}</span>
-	{subtitle && <span class="text-xs opacity-75 font-normal">{subtitle}</span>}
+	<span class="text-base">{title}</span>
+	{subtitle && <span class="text-xs opacity-70 font-normal">{subtitle}</span>}
 </a>
