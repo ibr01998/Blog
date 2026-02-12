@@ -1,0 +1,96 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('blog')).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+);
+---
+
+<DashboardLayout title="Artikelen" activePage="dashboard">
+  
+  <!-- Stats Row -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+    <div class="bg-gray-900 rounded-xl border border-gray-800 p-5">
+      <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Totaal Artikelen</p>
+      <p class="text-2xl font-bold text-white">{posts.length}</p>
+    </div>
+    <div class="bg-gray-900 rounded-xl border border-gray-800 p-5">
+      <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Gepubliceerd</p>
+      <p class="text-2xl font-bold text-green-400">{posts.length}</p>
+    </div>
+    <div class="bg-gray-900 rounded-xl border border-gray-800 p-5">
+      <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Concept</p>
+      <p class="text-2xl font-bold text-gray-500">0</p>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="text-lg font-semibold text-white">Alle Artikelen</h2>
+    <a
+      href="/dashboard/new"
+      class="bg-yellow-500/90 hover:bg-yellow-500 text-gray-900 font-semibold py-2 px-4 rounded-lg transition-all duration-200 text-sm flex items-center gap-2"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </svg>
+      Nieuw Artikel
+    </a>
+  </div>
+
+  <!-- Article List -->
+  {posts.length === 0 ? (
+    <div class="bg-gray-900 rounded-xl border border-gray-800 p-12 text-center">
+      <div class="w-12 h-12 rounded-xl bg-gray-800 mx-auto mb-4 flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      </div>
+      <p class="text-gray-500 text-sm">Nog geen artikelen. Maak je eerste artikel aan!</p>
+    </div>
+  ) : (
+    <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-800">
+            <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-5 py-3">Titel</th>
+            <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-5 py-3 hidden md:table-cell">Type</th>
+            <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-5 py-3 hidden sm:table-cell">Datum</th>
+            <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wide px-5 py-3">Acties</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-800/50">
+          {posts.map((post) => (
+            <tr class="hover:bg-gray-800/30 transition-colors">
+              <td class="px-5 py-3.5">
+                <div>
+                  <p class="font-medium text-white truncate max-w-xs">{post.data.title}</p>
+                  <p class="text-xs text-gray-500 mt-0.5 truncate max-w-xs">{post.data.description}</p>
+                </div>
+              </td>
+              <td class="px-5 py-3.5 hidden md:table-cell">
+                <span class="inline-flex items-center px-2 py-0.5 text-xs rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                  {post.data.article_type || 'comparison'}
+                </span>
+              </td>
+              <td class="px-5 py-3.5 text-gray-400 hidden sm:table-cell">
+                {post.data.pubDate.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </td>
+              <td class="px-5 py-3.5 text-right">
+                <div class="flex items-center justify-end gap-2">
+                  <a href={`/blog/${post.slug}`} target="_blank" class="text-gray-500 hover:text-gray-300 transition-colors" title="Bekijk">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+
+</DashboardLayout>
