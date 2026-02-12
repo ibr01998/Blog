@@ -3,10 +3,22 @@ import Layout from '../layouts/Layout.astro';
 import CtaButton from '../components/CtaButton.astro';
 import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
 import { getCollection } from 'astro:content';
+import { db, Post } from 'astro:db';
 
-const posts = (await getCollection('blog')).sort(
-	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
-);
+const filePosts = await getCollection('blog');
+const dbPosts = await db.select().from(Post);
+
+const posts = [
+  ...filePosts.map((p) => ({ ...p.data, slug: p.slug, source: 'file' })),
+  ...dbPosts.map((p) => ({
+    title: p.title,
+    description: p.description,
+    pubDate: p.pubDate,
+    heroImage: p.heroImage,
+    slug: p.slug,
+    source: 'db',
+  })),
+].sort((a, b) => b.pubDate.valueOf() - a.pubDate.valueOf());
 ---
 
 <Layout title={SITE_TITLE} description={SITE_DESCRIPTION}>

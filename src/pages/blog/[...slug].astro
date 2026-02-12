@@ -1,21 +1,42 @@
 ---
 
 import { getCollection } from 'astro:content';
+import { db, Post, eq } from 'astro:db';
+import { Markdown } from 'astro-remote';
 import Layout from '../../layouts/Layout.astro';
+import CtaButton from '../../components/CtaButton.astro'; // Import for passing to Markdown
 
 const { slug } = Astro.params;
 if (!slug) {
 	return Astro.redirect('/404');
 }
 
-const posts = await getCollection('blog');
-const post = posts.find((p) => p.slug === slug);
+let post, Content, isDb = false, dbContent = '';
 
-if (!post) {
-	return Astro.redirect('/404');
+// 1. Check DB
+const dbPosts = await db.select().from(Post).where(eq(Post.slug, slug));
+const dbPost = dbPosts.at(0);
+
+if (dbPost) {
+    post = { data: dbPost };
+    isDb = true;
+    // Cleanup content: remove frontmatter and imports
+    dbContent = dbPost.body
+        .replace(/^---[\s\S]*?---/, '') // Remove frontmatter
+        .replace(/import .*?;/g, '')     // Remove imports
+        .trim();
+} else {
+    // 2. Check File Collection
+    const posts = await getCollection('blog');
+    const filePost = posts.find((p) => p.slug === slug);
+
+    if (!filePost) {
+        return Astro.redirect('/404');
+    }
+    post = filePost; // Keep original object for render()
+    const renderResult = await filePost.render();
+    Content = renderResult.Content;
 }
-
-const { Content } = await post.render();
 ---
 
 <Layout title={post.data.title} description={post.data.description} image={post.data.heroImage} type="article">
@@ -89,7 +110,7 @@ const { Content } = await post.render();
             
             <!-- Main Content -->
             <article class="lg:w-2/3 article-content">
-                <Content />
+                {isDb ? <Markdown content={dbContent} components={{ CtaButton }} /> : <Content />}
             </article>
 
             <!-- Sidebar -->

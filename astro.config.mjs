@@ -8,6 +8,8 @@ import mdx from '@astrojs/mdx';
 
 import sitemap from '@astrojs/sitemap';
 
+import db from '@astrojs/db';
+
 // https://astro.build/config
 export default defineConfig({
   output: 'server',
@@ -24,5 +26,5 @@ export default defineConfig({
     },
   }),
 
-  integrations: [mdx(), sitemap()]
+  integrations: [mdx(), sitemap(), db()]
 });
