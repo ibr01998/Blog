@@ -93,7 +93,7 @@ ${contextSummary}
 Schrijf nu het blok "${block_label}". Begin direct met de tekst, geen heading.`;
 
         const result = await generateText({
-            model: openai('gpt-4o-mini'),
+            model: openai('gpt-5-mini'),
             system: systemPrompt,
             prompt: userPrompt,
             maxTokens: 800,

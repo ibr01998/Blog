@@ -118,7 +118,7 @@ BESCHIKBARE BLOK-TYPES: ${template.blocks.map((b) => `${b.id} (${b.label})`).joi
 Beschikbare affiliates: ${affiliates.map((a) => a.name).join(', ')}`;
 
         const result = await generateObject({
-            model: openai('o3-mini'),
+            model: openai('gpt-4o'), // Switch to gpt-4o for reliable structured output
             schema: outlineSchema,
             system: systemPrompt,
             prompt: userPrompt,
