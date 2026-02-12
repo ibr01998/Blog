@@ -2,6 +2,8 @@
 import Layout from '../layouts/Layout.astro';
 import CtaButton from '../components/CtaButton.astro';
 import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+
+export const prerender = true;
 ---
 
 <Layout title="404 - Pagina Niet Gevonden" description="De opgevraagde pagina bestaat niet.">
