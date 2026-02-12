@@ -6,7 +6,7 @@
 import type { APIRoute } from 'astro';
 import { openai } from '@ai-sdk/openai';
 import { generateText } from 'ai';
-import { getPlatforms } from '../../../data/platforms';
+import { db, Platform, inArray } from 'astro:db';
 import { getActiveAffiliates } from '../../../data/affiliates';
 
 export const POST: APIRoute = async ({ request }) => {
@@ -30,7 +30,11 @@ export const POST: APIRoute = async ({ request }) => {
             });
         }
 
-        const platformData = getPlatforms(platformIds);
+        // Get platform data from DB
+        let platformData: any[] = [];
+        if (platformIds.length > 0) {
+            platformData = await db.select().from(Platform).where(inArray(Platform.slug, platformIds));
+        }
         const affiliates = getActiveAffiliates();
 
         // Find the section info from the outline
@@ -87,7 +91,10 @@ ${p.name} (${p.slug}):
 - Best voor: ${p.bestFor}
 `).join('\n')}` : ''}
 
-BESCHIKBARE AFFILIATE LINKS: ${affiliates.map((a) => `${a.name} → /go/${a.slug}`).join(', ')}
+BESCHIKBARE AFFILIATE LINKS: ${[
+                ...affiliates.map((a) => `${a.name} → /go/${a.slug}`),
+                ...platformData.filter(p => p.affiliateLink).map((p) => `${p.name} → /go/${p.slug}`)
+            ].join(', ')}
 ${contextSummary}
 
 Schrijf nu het blok "${block_label}". Begin direct met de tekst, geen heading.`;

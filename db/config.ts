@@ -17,7 +17,27 @@ const Post = defineTable({
   }
 });
 
+const Platform = defineTable({
+  columns: {
+    id: column.text({ primaryKey: true }),
+    name: column.text(),
+    slug: column.text(),
+    affiliateLink: column.text({ optional: true }),
+    founded: column.number({ optional: true }),
+    headquarters: column.text({ optional: true }),
+    maxLeverage: column.text({ optional: true }),
+    makerFee: column.text({ optional: true }),
+    takerFee: column.text({ optional: true }),
+    tradingPairs: column.text({ optional: true }),
+    features: column.json({ optional: true }), // Array of strings
+    pros: column.json({ optional: true }),
+    cons: column.json({ optional: true }),
+    bestFor: column.text({ optional: true }),
+    shortDescription: column.text({ optional: true }),
+  }
+});
+
 // https://astro.build/db/config
 export default defineDb({
-  tables: { Post }
+  tables: { Post, Platform }
 });

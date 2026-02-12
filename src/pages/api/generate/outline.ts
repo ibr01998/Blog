@@ -8,7 +8,7 @@ import type { APIRoute } from 'astro';
 import { openai } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
 import { z } from 'zod';
-import { getPlatforms } from '../../../data/platforms';
+import { db, Platform, inArray } from 'astro:db';
 import { getTemplate, classifyIntent, type ArticleIntent } from '../../../data/templates';
 import { getActiveAffiliates } from '../../../data/affiliates';
 import { getCollection } from 'astro:content';
@@ -25,7 +25,7 @@ const outlineSchema = z.object({
         heading: z.string().describe('De H2 of H3 heading'),
         level: z.enum(['h2', 'h3']).describe('Heading level'),
         summary: z.string().describe('Wat deze sectie moet behandelen, in 1-2 zinnen'),
-        block_id: z.string().describe('ID dat verwijst naar het bloktype uit het template'),
+        block_id: z.string().describe('Uniek ID voor dit blok (bv. intro, platform_binance_pros, conclusion)'),
     })),
     faq_suggestions: z.array(z.object({
         question: z.string(),
@@ -56,8 +56,12 @@ export const POST: APIRoute = async ({ request }) => {
         const intent: ArticleIntent = userArticleType || classifyIntent(target_keyword);
         const template = getTemplate(intent);
 
-        // Get platform data for context
-        const platformData = getPlatforms(platformIds);
+        // Get platform data from DB
+        let platformData: any[] = [];
+        if (platformIds.length > 0) {
+            platformData = await db.select().from(Platform).where(inArray(Platform.slug, platformIds));
+        }
+
         const affiliates = getActiveAffiliates();
 
         // Get existing posts for context awareness (avoid duplication)
@@ -73,49 +77,69 @@ export const POST: APIRoute = async ({ request }) => {
             // Content collection may be empty
         }
 
-        const systemPrompt = `Je bent een redactie-assistent voor ShortNews, een Nederlands/Belgische crypto-affiliate website.
-Je taak is om een gestructureerde outline te maken voor een blogartikel.
+        // --- Dynamic Structure Logic ---
+        // Instead of using the static template structure, we build a guide based on platforms.
+        let structuralGuide = '';
+
+        if (intent === 'comparison' && platformData.length > 0) {
+            structuralGuide = `
+                STRUCTUUR-EISEN VOOR DEZE VERGELIJKING:
+                1. Introductie (waarom deze vergelijking?)
+                ${platformData.map(p => `2. ${p.name} - Overzicht (sterke punten, korte bio)`).join('\n')}
+                3. Vergelijkingstabel & Analyse (vergelijk ${platformData.map(p => p.name).join(' vs ')})
+                4. Diepte-analyse: Fees & Costs (wie is goedkoper?)
+                ${platformData.map(p => `5. Wanneer kies je ${p.name}? (specifiek doelgroep)`).join('\n')}
+                6. Conclusie & Eindoordeel
+            `;
+        } else if (intent === 'review' && platformData.length === 1) {
+            const p = platformData[0];
+            structuralGuide = `
+                STRUCTUUR-EISEN VOOR DEZE REVIEW:
+                1. Introductie
+                2. Wat is ${p.name}?
+                3. Features & Verborgen Parels
+                4. Fees & Kosten (eerlijke analyse)
+                5. Veiligheid & Betrouwbaarheid
+                6. Voor- en Nadelen
+                7. Conclusie: Is ${p.name} de moeite waard?
+             `;
+        } else {
+            // Fallback to template defaults key
+            structuralGuide = `STRUCTUUR-EISEN:\n` + template.headingStructure.join(' -> ');
+        }
+
+
+        const systemPrompt = `Je bent een redactie-assistent voor ShortNews.
+Je taak is om een gestructureerde outline te maken voor een artikel over "${target_keyword}".
 
 REGELS:
-- Schrijf ALLES in het Nederlands
-- De doelgroep is Nederlandse en Belgische crypto traders
-- Genereer GEEN generieke structuren — elke outline moet een unieke invalshoek hebben
-- Gebruik feitelijke data waar mogelijk
-- De outline moet aansluiten bij het zoekintent: "${intent}" (${template.description})
-- Vermijd structuren die lijken op bestaande artikelen
-- Wees specifiek, geen vage beloftes
+- Nederlands
+- Doelgroep: Crypto traders
+- Unieke invalshoek
+- GEBRUIK DE OPGEGEVEN PLATFORMEN VOOR DE STRUCTUUR
 
-TOON: ${tone === 'neutral' ? 'Objectief en informatief' : tone === 'opinionated' ? 'Mild opiniërend maar eerlijk' : 'Direct en no-nonsense'}
+TOON: ${tone}
+MONETISATIE: ${monetization_priority}`;
 
-MONETISATIE: Prioriteit is ${monetization_priority === 'cpa' ? 'CPA (kosten per actie)' : 'Revenue share (commissie op fees)'}
-
-${include_faq ? 'GENEREER 3-5 FAQ items die relevant zijn voor het zoekwoord.' : 'GEEN FAQ items nodig.'}`;
-
-        const userPrompt = `Maak een outline voor een artikel over: "${target_keyword}"
+        const userPrompt = `Maak een outline.
 
 Type: ${template.label}
-Template structuur: ${template.headingStructure.join(' → ')}
+Geselecteerde Platformen: ${platformData.map(p => p.name).join(', ')}
 
-${platformData.length > 0 ? `
-PLATFORM DATA (gebruik deze feitelijke gegevens, NIET verzonnen data):
+${structuralGuide}
+
+PLATFORM DATA (Gebruik deze feitelijke info):
 ${platformData.map((p) => `
-${p.name}:
+${p.name} (${p.slug}):
 - Opgericht: ${p.founded}
-- Max leverage: ${p.maxLeverage}
-- Maker fee: ${p.makerFee}
-- Taker fee: ${p.takerFee}
-- Trading pairs: ${p.tradingPairs}
-- Best voor: ${p.bestFor}
-`).join('\n')}` : ''}
+- Fees: Maker ${p.makerFee} / Taker ${p.takerFee}
+- Pairs: ${p.tradingPairs}
+- USP: ${p.bestFor}
+`).join('\n')}
 
-${existingPosts.length > 0 ? `
-BESTAANDE ARTIKELEN (vermijd duplicatie):
-${existingPosts.map((p) => `- "${p.title}" (${p.slug})`).join('\n')}
-` : ''}
+${include_faq ? 'Voeg een FAQ sectie toe.' : ''}
 
-BESCHIKBARE BLOK-TYPES: ${template.blocks.map((b) => `${b.id} (${b.label})`).join(', ')}
-
-Beschikbare affiliates: ${affiliates.map((a) => a.name).join(', ')}`;
+BESCHIKBARE BLOK-TYPES: Gebruik logische IDs zoals 'intro', 'platform_binance_overzicht', 'vergelijkingstabel', 'conclusie'. Je mag zelf IDs bedenken die passen bij de sectie.`;
 
         const result = await generateObject({
             model: openai('gpt-4o'), // Switch to gpt-4o for reliable structured output

@@ -1,7 +1,10 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
-import { platforms } from '../../data/platforms';
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import { articleTemplates } from '../../data/templates';
+import { db, Platform } from 'astro:db';
+
+const platforms = await db.select().from(Platform).orderBy(Platform.name);
 ---
 
 <DashboardLayout title="Nieuw Artikel" activePage="new">
@@ -68,13 +71,18 @@ import { articleTemplates } from '../../data/templates';
           <!-- Platforms -->
           <div class="col-span-2">
             <label class="block text-sm font-medium text-gray-400 mb-3">Welke platformen bespreken?</label>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4" id="platform-list">
               {platforms.map(p => (
                 <label class="relative flex items-center justify-center p-4 rounded-lg border border-gray-700 bg-gray-950 cursor-pointer hover:border-gray-500 transition-all group has-[:checked]:border-yellow-500 has-[:checked]:bg-yellow-500/10">
                   <input type="checkbox" name="platforms" value={p.id} class="absolute opacity-0 w-full h-full cursor-pointer" />
                   <span class="font-semibold text-gray-300 group-hover:text-white has-[:checked]:text-yellow-500">{p.name}</span>
                 </label>
               ))}
+              
+              <!-- Add New Button -->
+              <button type="button" id="add-platform-btn" class="flex items-center justify-center p-4 rounded-lg border border-dashed border-gray-700 bg-gray-900/50 hover:bg-gray-800 hover:border-yellow-500 hover:text-yellow-500 text-gray-400 transition-all">
+                <span class="text-2xl font-bold">+</span>
+              </button>
             </div>
           </div>
 
@@ -189,6 +197,31 @@ import { articleTemplates } from '../../data/templates';
           </button>
         </div>
       </div>
+
+  <!-- Add Platform Modal -->
+  <dialog id="add-platform-modal" class="bg-gray-900 text-white p-6 rounded-xl border border-gray-800 backdrop:bg-black/80 w-full max-w-md">
+    <h3 class="text-xl font-bold mb-4">Nieuw Platform Toevoegen</h3>
+    <form method="dialog" id="add-platform-form" class="space-y-4">
+      <div>
+        <label class="block text-sm text-gray-400 mb-1">Naam</label>
+        <input type="text" name="name" required class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 focus:ring-yellow-500" placeholder="bv. Coinbase" />
+      </div>
+      <div>
+        <label class="block text-sm text-gray-400 mb-1">Slug (ID)</label>
+        <input type="text" name="slug" required pattern="[a-z0-9-]+" class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 focus:ring-yellow-500" placeholder="bv. coinbase" />
+        <p class="text-xs text-gray-500 mt-1">Kleine letters, geen spaties.</p>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-400 mb-1">Affiliate Link</label>
+        <input type="url" name="affiliateLink" class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 focus:ring-yellow-500" placeholder="https://..." />
+      </div>
+
+       <div class="flex justify-end gap-3 mt-6">
+        <button value="cancel" class="px-4 py-2 text-gray-400 hover:text-white">Annuleren</button>
+        <button type="submit" class="bg-yellow-500 text-gray-900 font-bold px-4 py-2 rounded hover:bg-yellow-400">Toevoegen</button>
+      </div>
+    </form>
+  </dialog>
     </section>
 
   </div>
@@ -429,6 +462,53 @@ import { articleTemplates } from '../../data/templates';
         alert('Fout bij publiceren: ' + err.message);
         btn.disabled = false;
         btn.innerText = 'PUBLICEREN';
+      }
+    });
+
+    // --- Platform Management ---
+    const addPlatformBtn = document.getElementById('add-platform-btn');
+    const addPlatformModal = document.getElementById('add-platform-modal');
+    const addPlatformForm = document.getElementById('add-platform-form');
+    const platformList = document.getElementById('platform-list');
+
+    addPlatformBtn.addEventListener('click', () => {
+      addPlatformModal.showModal();
+    });
+
+    addPlatformForm.addEventListener('submit', async (e) => {
+      if (e.submitter.value === 'cancel') return;
+      e.preventDefault(); // Prevent default dialog close to handle async
+
+      const formData = new FormData(addPlatformForm);
+      const data = Object.fromEntries(formData.entries());
+
+      try {
+        const res = await fetch('/api/platforms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (!res.ok) throw new Error('Failed to add platform');
+
+        const result = await res.json();
+        
+        // Add to list dynamically (without refresh)
+        const label = document.createElement('label');
+        label.className = "relative flex items-center justify-center p-4 rounded-lg border border-gray-700 bg-gray-950 cursor-pointer hover:border-gray-500 transition-all group has-[:checked]:border-yellow-500 has-[:checked]:bg-yellow-500/10";
+        label.innerHTML = `
+          <input type="checkbox" name="platforms" value="${data.slug}" checked class="absolute opacity-0 w-full h-full cursor-pointer" />
+          <span class="font-semibold text-gray-300 group-hover:text-white has-[:checked]:text-yellow-500">${data.name}</span>
+        `;
+        
+        // Insert before the add button
+        platformList.insertBefore(label, addPlatformBtn);
+        
+        addPlatformForm.reset();
+        addPlatformModal.close();
+
+      } catch (err) {
+        alert('Error: ' + err.message);
       }
     });
 
