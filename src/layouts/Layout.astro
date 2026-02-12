@@ -16,15 +16,16 @@ interface Props {
 	title: string;
 	description: string;
 	image?: string;
+    type?: 'website' | 'article';
 }
 
-const { title, description, image } = Astro.props;
+const { title, description, image, type } = Astro.props;
 ---
 
 <!doctype html>
 <html lang="nl" class="h-full bg-gray-950 text-gray-100 antialiased">
 	<head>
-		<BaseHead title={title} description={description} image={image} />
+		<BaseHead title={title} description={description} image={image} type={type} />
 	</head>
 	<body class="flex flex-col min-h-screen font-outfit">
 		<Header />
