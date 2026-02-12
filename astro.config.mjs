@@ -16,7 +16,7 @@ export default defineConfig({
     plugins: [tailwindcss()]
   },
 
-  site: 'https://crypto-leverage-nl.vercel.app',
+  site: 'https://shortnews.tech',
 
   adapter: vercel({
     webAnalytics: {

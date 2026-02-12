@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://crypto-leverage-nl.vercel.app/sitemap-index.xml
+Sitemap: https://shortnews.tech/sitemap-index.xml
