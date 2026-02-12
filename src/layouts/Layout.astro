@@ -5,6 +5,12 @@ import Footer from '../components/Footer.astro';
 
 
 import '../styles/global.css';
+import '@fontsource/outfit/300.css';
+import '@fontsource/outfit/400.css';
+import '@fontsource/outfit/500.css';
+import '@fontsource/outfit/600.css';
+import '@fontsource/outfit/700.css';
+import '@fontsource/outfit/800.css';
 
 interface Props {
 	title: string;
@@ -19,9 +25,6 @@ const { title, description, image } = Astro.props;
 <html lang="nl" class="h-full bg-gray-950 text-gray-100 antialiased">
 	<head>
 		<BaseHead title={title} description={description} image={image} />
-		<link rel="preconnect" href="https://fonts.googleapis.com">
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-		<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 	</head>
 	<body class="flex flex-col min-h-screen font-outfit">
 		<Header />
