@@ -70,7 +70,7 @@ ${b.content}
                 heroImage,
                 target_keyword,
                 seo_title,
-                article_type,
+                article_type: article_type || 'comparison',
                 platforms,
                 blocks,
                 updatedDate: new Date(),
