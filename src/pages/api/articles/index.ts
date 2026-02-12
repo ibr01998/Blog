@@ -1,13 +1,16 @@
 /**
  * POST /api/articles
- * Saves a generated article as an MDX file in the content directory.
- * Triggers a rebuild in Vercel.
+ * Saves a generated article.
+ * 
+ * ENVIRONMENT-AWARE SAVING:
+ * - Local Dev (npm run dev): Writes directly to local filesystem.
+ * - Production (Vercel): Commits to GitHub repository via API to trigger a new build.
  */
 import type { APIRoute } from 'astro';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-// Helper to sanitize filenames (only alphanumeric en dashes)
+// Helper to sanitize filenames
 function sanitize(str: string) {
     return str.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
 }
@@ -52,26 +55,78 @@ ${b.content}
 `).join('\n\n')}
 `;
 
-        // Write file in production? 
-        // In Vercel serverless functions, we cannot write to the persistent file system like this to trigger a build.
-        // However, for the USER's local environment or a VPS, this works.
-        // For Vercel output, we typically need a CMS or a database (Postgres/Supabase).
-        // EXCEPT: The user explicitly asked for "fast article generation inside the dashboard"
-        // and this is an "Astro + Tailwind + Vercel" project.
-        // Writing to existing local FS works in 'npm run dev' or on a VPS.
-        // On Vercel, this will FAIL if we try to write to src/content.
-        // BUT the user is asking to "design and operate", implying they might run this locally to generate, 
-        // OR they have a Git-based workflow (commit from dashboard?).
-        // For now, I will implement local file writing which works for the dev environment.
-        // A production-grade Git-backed CMS is out of scope for step 1 unless requested.
+        // --- SAVE LOGIC ---
 
-        // We'll write to src/content/blog/{slug}.mdx
-        const projectRoot = process.cwd();
-        const filePath = path.join(projectRoot, 'src', 'content', 'blog', `${sanitize(slug)}.mdx`);
+        // 1. Check if we are in Development Mode
+        if (import.meta.env.DEV) {
+            try {
+                const projectRoot = process.cwd();
+                const filePath = path.join(projectRoot, 'src', 'content', 'blog', `${sanitize(slug)}.mdx`);
+                await fs.writeFile(filePath, frontmatter, 'utf-8');
+                return new Response(JSON.stringify({ success: true, mode: 'local', path: filePath }), { status: 200 });
+            } catch (e: any) {
+                console.error('Local save failed:', e);
+                throw new Error(`Local save failed: ${e.message}`);
+            }
+        }
 
-        await fs.writeFile(filePath, frontmatter, 'utf-8');
+        // 2. Production Mode -> Commit to GitHub
+        const GITHUB_TOKEN = import.meta.env.GITHUB_TOKEN;
+        const REPO_OWNER = import.meta.env.GITHUB_OWNER || 'ibr01998'; // Defaulting to your username
+        const REPO_NAME = import.meta.env.GITHUB_REPO || 'Blog';       // Defaulting to your repo
+        const BRANCH = import.meta.env.GITHUB_BRANCH || 'main';
 
-        return new Response(JSON.stringify({ success: true, path: filePath }), {
+        if (!GITHUB_TOKEN) {
+            return new Response(JSON.stringify({
+                error: 'Configuration Error: GITHUB_TOKEN is missing in Vercel Environment Variables.'
+            }), { status: 500 });
+        }
+
+        const filePath = `src/content/blog/${sanitize(slug)}.mdx`;
+        const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}`;
+
+        // A. Check if file exists (to get SHA for update)
+        let sha: string | undefined;
+        try {
+            const checkRes = await fetch(apiUrl, {
+                headers: {
+                    'Authorization': `Bearer ${GITHUB_TOKEN}`,
+                    'User-Agent': 'ShortNews-CMS',
+                    'Accept': 'application/vnd.github.v3+json',
+                }
+            });
+            if (checkRes.ok) {
+                const data = await checkRes.json();
+                sha = data.sha;
+            }
+        } catch (e) {
+            // ignore network errors, assume new file
+        }
+
+        // B. Commit File
+        const payload = {
+            message: `chore(content): publish article "${title}"`,
+            content: Buffer.from(frontmatter).toString('base64'),
+            branch: BRANCH,
+            ...(sha ? { sha } : {})
+        };
+
+        const uploadRes = await fetch(apiUrl, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${GITHUB_TOKEN}`,
+                'User-Agent': 'ShortNews-CMS',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!uploadRes.ok) {
+            const errorText = await uploadRes.text();
+            throw new Error(`GitHub API Error: ${errorText}`);
+        }
+
+        return new Response(JSON.stringify({ success: true, mode: 'github' }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         });
