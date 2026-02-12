@@ -43,6 +43,9 @@ export const POST: APIRoute = async ({ request }) => {
             tone = 'neutral',
             monetization_priority = 'revenue_share',
             include_faq = true,
+            target_audience = '',
+            article_angle = '',
+            custom_instructions = '',
         } = body;
 
         if (!target_keyword) {
@@ -119,7 +122,10 @@ REGELS:
 - GEBRUIK DE OPGEGEVEN PLATFORMEN VOOR DE STRUCTUUR
 
 TOON: ${tone}
-MONETISATIE: ${monetization_priority}`;
+MONETISATIE: ${monetization_priority}
+DOELGROEP: ${target_audience || 'Nederlandse crypto traders'}
+INVALSHOEK: ${article_angle || 'Eerlijke, behulpzame analyse'}
+SPECIFIEKE INSTRUCTIES: ${custom_instructions || 'Geen extra instructies.'}`;
 
         const userPrompt = `Maak een outline.
 

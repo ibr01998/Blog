@@ -56,3 +56,35 @@ export const POST: APIRoute = async ({ request }) => {
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }
 };
+
+export const PATCH: APIRoute = async ({ request }) => {
+    try {
+        const body = await request.json();
+        const { id, ...data } = body;
+
+        if (!id) return new Response(JSON.stringify({ error: 'ID is required' }), { status: 400 });
+
+        await db.update(Platform).set(data).where(eq(Platform.id, id));
+
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+    } catch (error: any) {
+        console.error('Error updating platform:', error);
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    }
+};
+
+export const DELETE: APIRoute = async ({ request }) => {
+    try {
+        const body = await request.json();
+        const { id } = body;
+
+        if (!id) return new Response(JSON.stringify({ error: 'ID is required' }), { status: 400 });
+
+        await db.delete(Platform).where(eq(Platform.id, id));
+
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+    } catch (error: any) {
+        console.error('Error deleting platform:', error);
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    }
+};
