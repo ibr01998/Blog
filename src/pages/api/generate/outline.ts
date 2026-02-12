@@ -118,7 +118,7 @@ BESCHIKBARE BLOK-TYPES: ${template.blocks.map((b) => `${b.id} (${b.label})`).joi
 Beschikbare affiliates: ${affiliates.map((a) => a.name).join(', ')}`;
 
         const result = await generateObject({
-            model: openai('o4-mini'),
+            model: openai('o3-mini'),
             schema: outlineSchema,
             system: systemPrompt,
             prompt: userPrompt,
@@ -136,10 +136,12 @@ Beschikbare affiliates: ${affiliates.map((a) => a.name).join(', ')}`;
         });
 
     } catch (error: any) {
-        console.error('Outline generation error:', error);
+        console.error('Outline generation error full details:', error);
+        // return full error for debugging
         return new Response(JSON.stringify({
             error: 'Er ging iets mis bij het genereren van de outline.',
             details: error?.message || 'Unknown error',
+            stack: error?.stack,
         }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
