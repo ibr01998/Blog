@@ -37,7 +37,7 @@ if (slug) {
 
 <DashboardLayout title="Nieuw Artikel" activePage="new">
 
-  <div id="wizard-app" class="max-w-5xl mx-auto space-y-8 pb-20">
+  <div id="wizard-app" class="max-w-5xl mx-auto space-y-8 pb-20" data-initial-state={JSON.stringify({ existingArticle, initialConfig, initialBlocks })}>
     
     <!-- Step Indicator -->
     <div class="flex items-center justify-between px-4 py-4 glass rounded-2xl border-white/20">
@@ -431,8 +431,10 @@ if (slug) {
 
   </div>
 
-  <script is:inline define:vars={{ existingArticle, initialConfig, initialBlocks }}>
+  <script>
     // --- State Management ---
+    const wizardCtx = document.getElementById('wizard-app');
+    const { existingArticle, initialConfig, initialBlocks } = JSON.parse(wizardCtx.dataset.initialState);
     
     const state = {
       step: existingArticle ? 4 : 1, // Jump to review/publish if editing
