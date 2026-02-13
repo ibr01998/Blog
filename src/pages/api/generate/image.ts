@@ -37,11 +37,12 @@ export const POST: APIRoute = async ({ request }) => {
         };
 
         const styleDesc = stylePrompts[style] || stylePrompts['futuristic'];
-        const imagePrompt = `Create a blog header image for an article titled "${title}". 
-Topic: ${keyword || title}. 
-Style: ${styleDesc}. 
-The image should be visually striking, professional, and suitable as a 1200x630 blog hero banner. 
-Do NOT include any text or words in the image. Focus on visual metaphors and symbols related to cryptocurrency trading.`;
+
+        // Optimized prompt to avoid text generation and focus on visuals
+        const subject = keyword || title;
+        const imagePrompt = `A high-quality, ${styleDesc} digital artwork representing the concept of "${subject}".
+The image should be visually striking, professional, and suitable as a blog hero banner.
+IMPORTANT: Do NOT include any text, letters, words, or typography in the image. The image must be purely visual/symbolic.`;
 
         let imageBuffer: Buffer;
 
