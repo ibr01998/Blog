@@ -13,51 +13,56 @@ const error = Astro.url.searchParams.get('error');
 <head>
   <BaseHead title="Login | Dashboard" description="Dashboard Login" />
 </head>
-<body class="flex items-center justify-center min-h-screen font-outfit">
+<body class="flex items-center justify-center min-h-screen font-outfit bg-dashboard text-main relative overflow-hidden">
+  
+  <div class="absolute inset-0 z-0">
+    <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-navy/5 blur-[100px]"></div>
+    <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-navy/5 blur-[100px]"></div>
+  </div>
 
-  <div class="w-full max-w-sm mx-auto px-4">
+  <div class="w-full max-w-sm mx-auto px-4 relative z-10">
     <!-- Logo -->
     <div class="text-center mb-8">
-      <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-yellow-500/20 mb-4">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-navy/10 mb-4 shadow-sm border border-navy/5">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-navy" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
       </div>
-      <h1 class="text-xl font-bold text-white">ShortNews Engine</h1>
-      <p class="text-sm text-gray-500 mt-1">Content Dashboard</p>
+      <h1 class="text-xl font-bold text-navy">ShortNews Engine</h1>
+      <p class="text-sm text-muted mt-1">Content Dashboard</p>
     </div>
 
     <!-- Login Form -->
-    <form method="POST" action="/api/auth/login" class="bg-gray-900 rounded-xl border border-gray-800 p-6 space-y-5">
+    <form method="POST" action="/api/auth/login" class="glass p-8 space-y-5 rounded-2xl">
       {error && (
-        <div class="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-lg p-3 text-center">
+        <div class="bg-red-500/10 border border-red-500/20 text-red-600 text-sm rounded-lg p-3 text-center">
           Onjuist wachtwoord. Probeer opnieuw.
         </div>
       )}
 
       <div>
-        <label for="password" class="block text-sm font-medium text-gray-400 mb-2">Wachtwoord</label>
+        <label for="password" class="block text-sm font-medium text-navy/70 mb-2">Wachtwoord</label>
         <input
           type="password"
           id="password"
           name="password"
           required
           autofocus
-          class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition"
+          class="w-full bg-white/50 border border-black/10 rounded-lg px-4 py-2.5 text-sm text-navy placeholder-navy/30 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy/20 transition shadow-sm"
           placeholder="Voer je wachtwoord in"
         />
       </div>
 
       <button
         type="submit"
-        class="w-full bg-yellow-500/90 hover:bg-yellow-500 text-gray-900 font-semibold py-2.5 px-4 rounded-lg transition-all duration-200 text-sm"
+        class="w-full bg-navy hover:bg-navy/90 text-white font-semibold py-2.5 px-4 rounded-lg transition-all duration-200 text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
       >
         Inloggen
       </button>
     </form>
 
-    <p class="text-center text-xs text-gray-600 mt-6">
-      <a href="/" class="hover:text-gray-400 transition-colors">← Terug naar site</a>
+    <p class="text-center text-xs text-muted mt-6">
+      <a href="/" class="hover:text-navy transition-colors">← Terug naar site</a>
     </p>
   </div>
 

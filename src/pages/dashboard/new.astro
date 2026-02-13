@@ -40,25 +40,25 @@ if (slug) {
   <div id="wizard-app" class="max-w-5xl mx-auto space-y-8 pb-20">
     
     <!-- Step Indicator -->
-    <div class="flex items-center justify-between px-4 py-4 bg-gray-900 rounded-xl border border-gray-800">
+    <div class="flex items-center justify-between px-4 py-4 glass rounded-2xl border-white/20">
       <div class="flex items-center gap-4">
         {[1, 2, 3, 4].map((step) => (
           <div class="flex items-center gap-2 step-indicator" data-step={step}>
-            <div class={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-colors duration-300 step-circle border-gray-700 text-gray-400 bg-gray-900`}>
+            <div class={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-colors duration-300 step-circle border-navy/10 text-muted bg-white/50`}>
               {step}
             </div>
-            <span class="text-sm font-medium hidden sm:block text-gray-400 step-label">
+            <span class="text-sm font-medium hidden sm:block text-muted step-label">
               {step === 1 && 'Setup'}
               {step === 2 && 'Outline'}
               {step === 3 && 'Schrijven'}
               {step === 4 && 'Review'}
             </span>
-            {step < 4 && <div class="w-8 h-0.5 bg-gray-800 mx-2 hidden sm:block"></div>}
+            {step < 4 && <div class="w-8 h-0.5 bg-navy/10 mx-2 hidden sm:block"></div>}
           </div>
         ))}
       </div>
       <div>
-        <button id="save-draft-btn" class="text-sm text-gray-400 hover:text-white transition-colors">
+        <button id="save-draft-btn" class="text-sm text-muted hover:text-navy transition-colors font-medium">
           Opslaan als concept
         </button>
       </div>
@@ -66,20 +66,20 @@ if (slug) {
 
     <!-- Step 1: Configuration -->
     <section id="step-1" class="wizard-step">
-      <div class="bg-gray-900 rounded-xl border border-gray-800 p-6 sm:p-8">
-        <h2 class="text-xl font-bold text-white mb-6">Artikel Configuratie</h2>
+      <div class="glass rounded-2xl p-6 sm:p-8">
+        <h2 class="text-xl font-bold text-navy mb-6">Artikel Configuratie</h2>
         
         <div class="grid gap-6 md:grid-cols-2">
           <!-- Keyword -->
           <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-400 mb-2">Target Keyword</label>
-            <input type="text" id="target_keyword" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-yellow-500/50 outline-none" placeholder="bv. BitMEX vs Bybit review" />
+            <label class="block text-sm font-medium text-navy/70 mb-2">Target Keyword</label>
+            <input type="text" id="target_keyword" class="w-full bg-white/50 border border-navy/10 rounded-lg px-4 py-3 text-navy placeholder-navy/30 focus:ring-2 focus:ring-navy/20 outline-none transition" placeholder="bv. BitMEX vs Bybit review" />
           </div>
 
           <!-- Article Type -->
           <div>
-            <label class="block text-sm font-medium text-gray-400 mb-2">Artikel Type</label>
-            <select id="article_type" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-yellow-500/50 outline-none">
+            <label class="block text-sm font-medium text-navy/70 mb-2">Artikel Type</label>
+            <select id="article_type" class="w-full bg-white/50 border border-navy/10 rounded-lg px-4 py-3 text-navy focus:ring-2 focus:ring-navy/20 outline-none transition appearance-none">
               <option value="">Automatisch bepalen (aanbevolen)</option>
               {articleTemplates.map(t => (
                 <option value={t.intent}>{t.label}</option>
@@ -89,8 +89,8 @@ if (slug) {
 
           <!-- Monetization -->
           <div>
-            <label class="block text-sm font-medium text-gray-400 mb-2">Monetisatie Focus</label>
-            <select id="monetization_priority" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-yellow-500/50 outline-none">
+            <label class="block text-sm font-medium text-navy/70 mb-2">Monetisatie Focus</label>
+            <select id="monetization_priority" class="w-full bg-white/50 border border-navy/10 rounded-lg px-4 py-3 text-navy focus:ring-2 focus:ring-navy/20 outline-none transition appearance-none">
               <option value="revenue_share">Revenue Share (Lange termijn)</option>
               <option value="cpa">CPA (Directe vergoeding)</option>
             </select>
@@ -98,35 +98,35 @@ if (slug) {
 
           <!-- Target Audience -->
           <div>
-            <label class="block text-sm font-medium text-gray-400 mb-2">Doelgroep</label>
-            <input type="text" id="target_audience" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-yellow-500/50 outline-none" placeholder="bv. Ervaren crypto traders, beginners..." />
+            <label class="block text-sm font-medium text-navy/70 mb-2">Doelgroep</label>
+            <input type="text" id="target_audience" class="w-full bg-white/50 border border-navy/10 rounded-lg px-4 py-3 text-navy placeholder-navy/30 focus:ring-2 focus:ring-navy/20 outline-none transition" placeholder="bv. Ervaren crypto traders, beginners..." />
           </div>
 
           <!-- Article Angle -->
           <div>
-            <label class="block text-sm font-medium text-gray-400 mb-2">Artikel Invalshoek</label>
-            <input type="text" id="article_angle" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-yellow-500/50 outline-none" placeholder="bv. Eerlijke vergelijking op basis van fees" />
+            <label class="block text-sm font-medium text-navy/70 mb-2">Artikel Invalshoek</label>
+            <input type="text" id="article_angle" class="w-full bg-white/50 border border-navy/10 rounded-lg px-4 py-3 text-navy placeholder-navy/30 focus:ring-2 focus:ring-navy/20 outline-none transition" placeholder="bv. Eerlijke vergelijking op basis van fees" />
           </div>
 
           <!-- Platforms -->
           <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-400 mb-3">Welke platformen bespreken?</label>
+            <label class="block text-sm font-medium text-navy/70 mb-3">Welke platformen bespreken?</label>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4" id="platform-list">
               {platforms.map(p => (
                 <div class="relative group" data-platform-id={p.id}>
-                  <label class="flex items-center justify-center p-4 rounded-lg border border-gray-700 bg-gray-950 cursor-pointer hover:border-gray-500 transition-all has-[:checked]:border-yellow-500 has-[:checked]:bg-yellow-500/10 min-h-[64px]">
+                  <label class="flex items-center justify-center p-4 rounded-lg border border-navy/10 bg-white/30 cursor-pointer hover:border-navy/30 hover:bg-white/60 transition-all has-[:checked]:border-navy has-[:checked]:bg-navy/5 has-[:checked]:shadow-inner min-h-[64px]">
                     <input type="checkbox" name="platforms" value={p.id} class="absolute opacity-0 w-full h-full cursor-pointer" />
-                    <span class="font-semibold text-gray-300 has-[:checked]:text-yellow-500 text-center">{p.name}</span>
+                    <span class="font-semibold text-muted has-[:checked]:text-navy text-center">{p.name}</span>
                   </label>
                   <div class="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button type="button" class="edit-platform-btn p-1 bg-gray-800 rounded hover:text-yellow-500 text-xs" data-platform={JSON.stringify(p)}>✎</button>
-                    <button type="button" class="delete-platform-btn p-1 bg-gray-800 rounded hover:text-red-500 text-xs" data-id={p.id}>✕</button>
+                    <button type="button" class="edit-platform-btn p-1 bg-white rounded shadow text-muted hover:text-navy text-xs" data-platform={JSON.stringify(p)}>✎</button>
+                    <button type="button" class="delete-platform-btn p-1 bg-white rounded shadow text-muted hover:text-red-500 text-xs" data-id={p.id}>✕</button>
                   </div>
                 </div>
               ))}
               
               <!-- Add New Button -->
-              <button type="button" id="add-platform-btn" class="flex items-center justify-center p-4 rounded-lg border border-dashed border-gray-700 bg-gray-900/50 hover:bg-gray-800 hover:border-yellow-500 hover:text-yellow-500 text-gray-400 transition-all min-h-[64px]">
+              <button type="button" id="add-platform-btn" class="flex items-center justify-center p-4 rounded-lg border border-dashed border-navy/20 bg-navy/5 hover:bg-navy/10 hover:border-navy hover:text-navy text-muted transition-all min-h-[64px]">
                 <span class="text-2xl font-bold">+</span>
               </button>
             </div>
@@ -134,14 +134,14 @@ if (slug) {
 
           <!-- Custom Instructions -->
           <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-400 mb-2">Specifieke AI Instructies (optioneel)</label>
-            <textarea id="custom_instructions" rows="3" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-yellow-500/50 outline-none" placeholder="bv. Focus extra op de veiligheidsaspecten van BitMEX of gebruik een humoristische toon."></textarea>
+            <label class="block text-sm font-medium text-navy/70 mb-2">Specifieke AI Instructies (optioneel)</label>
+            <textarea id="custom_instructions" rows="3" class="w-full bg-white/50 border border-navy/10 rounded-lg px-4 py-3 text-navy placeholder-navy/30 focus:ring-2 focus:ring-navy/20 outline-none transition resize-none" placeholder="bv. Focus extra op de veiligheidsaspecten van BitMEX of gebruik een humoristische toon."></textarea>
           </div>
 
           <!-- Tone -->
           <div>
-            <label class="block text-sm font-medium text-gray-400 mb-2">Toon & Stijl</label>
-            <select id="tone" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-yellow-500/50 outline-none">
+            <label class="block text-sm font-medium text-navy/70 mb-2">Toon & Stijl</label>
+            <select id="tone" class="w-full bg-white/50 border border-navy/10 rounded-lg px-4 py-3 text-navy focus:ring-2 focus:ring-navy/20 outline-none transition appearance-none">
               <option value="neutral">Objectief & Informatief</option>
               <option value="opinionated">Persoonlijk & Opiniërend</option>
               <option value="direct">Direct & No-nonsense</option>
@@ -151,26 +151,26 @@ if (slug) {
           <!-- FAQ toggle -->
           <div class="flex items-center pt-8">
             <label class="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" id="include_faq" checked class="w-5 h-5 rounded border-gray-700 bg-gray-950 text-yellow-500 focus:ring-yellow-500/50" />
-              <span class="text-gray-300">Genereer FAQ sectie?</span>
+              <input type="checkbox" id="include_faq" checked class="w-5 h-5 rounded border-navy/20 bg-white/50 text-navy focus:ring-navy/20" />
+              <span class="text-navy/80 font-medium">Genereer FAQ sectie?</span>
             </label>
           </div>
 
           <!-- AI Model Selector -->
           <div class="col-span-2 mt-6">
-            <label class="block text-sm font-medium text-gray-400 mb-3">AI Model voor Tekst</label>
+            <label class="block text-sm font-medium text-navy/70 mb-3">AI Model voor Tekst</label>
             <div class="grid grid-cols-2 gap-4">
-              <label class="relative flex flex-col items-center p-4 rounded-lg border-2 border-yellow-500 bg-yellow-500/10 cursor-pointer transition-all group" id="model-openai-label">
+              <label class="relative flex flex-col items-center p-4 rounded-lg border-2 border-navy bg-navy/5 cursor-pointer transition-all group shadow-sm" id="model-openai-label">
                 <input type="radio" name="model_provider" value="openai" checked class="absolute opacity-0 w-full h-full cursor-pointer" />
                 <span class="text-2xl mb-1">⚡</span>
-                <span class="font-semibold text-yellow-400 text-sm">OpenAI GPT-5 mini</span>
-                <span class="text-xs text-gray-500 mt-1">Snel & betrouwbaar</span>
+                <span class="font-semibold text-navy text-sm">OpenAI GPT-5 mini</span>
+                <span class="text-xs text-muted mt-1">Snel & betrouwbaar</span>
               </label>
-              <label class="relative flex flex-col items-center p-4 rounded-lg border-2 border-gray-700 bg-gray-950 cursor-pointer hover:border-gray-500 transition-all group" id="model-gemini-label">
+              <label class="relative flex flex-col items-center p-4 rounded-lg border-2 border-transparent bg-white/40 border-navy/10 cursor-pointer hover:border-navy/30 transition-all group" id="model-gemini-label">
                 <input type="radio" name="model_provider" value="gemini" class="absolute opacity-0 w-full h-full cursor-pointer" />
                 <span class="text-2xl mb-1">🌟</span>
-                <span class="font-semibold text-gray-300 text-sm">Google Gemini 2.5 Flash</span>
-                <span class="text-xs text-gray-500 mt-1">Nieuwste Google AI</span>
+                <span class="font-semibold text-muted text-sm">Google Gemini 2.5 Flash</span>
+                <span class="text-xs text-muted mt-1">Nieuwste Google AI</span>
               </label>
             </div>
           </div>
@@ -179,21 +179,21 @@ if (slug) {
           <div class="col-span-2 mt-6">
             <div class="flex items-center gap-3 mb-4">
               <label class="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" id="generate_hero_image" checked class="w-5 h-5 rounded border-gray-700 bg-gray-950 text-yellow-500 focus:ring-yellow-500/50" />
-                <span class="text-sm font-medium text-gray-400">Genereer AI Hero Afbeelding</span>
+                <input type="checkbox" id="generate_hero_image" checked class="w-5 h-5 rounded border-navy/20 bg-white/50 text-navy focus:ring-navy/20" />
+                <span class="text-sm font-medium text-navy/80">Genereer AI Hero Afbeelding</span>
               </label>
             </div>
             <div id="image-config" class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-xs text-gray-500 mb-1">Afbeelding Provider</label>
-                <select id="image_provider" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:ring-2 focus:ring-yellow-500/50 outline-none">
+                <label class="block text-xs text-muted mb-1">Afbeelding Provider</label>
+                <select id="image_provider" class="w-full bg-white/50 border border-navy/10 rounded-lg px-3 py-2.5 text-navy text-sm focus:ring-2 focus:ring-navy/20 outline-none transition appearance-none">
                   <option value="google">🌟 Google Imagen 4 ($0.02)</option>
                   <option value="openai">⚡ OpenAI DALL-E 3 ($0.04)</option>
                 </select>
               </div>
               <div>
-                <label class="block text-xs text-gray-500 mb-1">Afbeelding Stijl</label>
-                <select id="image_style" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:ring-2 focus:ring-yellow-500/50 outline-none">
+                <label class="block text-xs text-muted mb-1">Afbeelding Stijl</label>
+                <select id="image_style" class="w-full bg-white/50 border border-navy/10 rounded-lg px-3 py-2.5 text-navy text-sm focus:ring-2 focus:ring-navy/20 outline-none transition appearance-none">
                   <option value="futuristic">🔮 Futuristisch</option>
                   <option value="abstract">🎨 Abstract</option>
                   <option value="illustration">✏️ Illustratie</option>
@@ -205,7 +205,7 @@ if (slug) {
         </div>
 
         <div class="mt-8 flex justify-end">
-          <button id="generate-outline-btn" class="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold py-3 px-8 rounded-lg transition-all flex items-center gap-2">
+          <button id="generate-outline-btn" class="bg-navy hover:bg-navy/90 text-white font-bold py-3 px-8 rounded-lg transition-all flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
             GENEREER OUTLINE
             <span class="loading-spinner hidden animate-spin">⟳</span>
           </button>
@@ -215,20 +215,20 @@ if (slug) {
 
     <!-- Step 2: Outline Editor -->
     <section id="step-2" class="wizard-step hidden">
-      <div class="bg-gray-900 rounded-xl border border-gray-800 p-6 sm:p-8">
-        <h2 class="text-xl font-bold text-white mb-2">Outline Controleren & Aanpassen</h2>
-        <p class="text-gray-400 mb-6 text-sm">Controleer de structuur voordat we gaan schrijven. Je kunt secties aanpassen, herorderen of verwijderen.</p>
+      <div class="glass rounded-2xl p-6 sm:p-8">
+        <h2 class="text-xl font-bold text-navy mb-2">Outline Controleren & Aanpassen</h2>
+        <p class="text-muted mb-6 text-sm">Controleer de structuur voordat we gaan schrijven. Je kunt secties aanpassen, herorderen of verwijderen.</p>
 
         <div class="space-y-6 mb-8">
           <!-- Metadata preview -->
-          <div class="grid gap-4 md:grid-cols-2 p-4 bg-gray-950 rounded-lg border border-gray-800">
+          <div class="grid gap-4 md:grid-cols-2 p-4 bg-white/30 rounded-lg border border-navy/5">
             <div>
-              <label class="text-xs text-gray-500 uppercase">SEO Titel</label>
-              <input type="text" id="seo_title" class="w-full bg-transparent text-white font-medium border-none p-0 focus:ring-0" />
+              <label class="text-xs text-muted uppercase">SEO Titel</label>
+              <input type="text" id="seo_title" class="w-full bg-transparent text-navy font-bold border-none p-0 focus:ring-0" />
             </div>
              <div>
-              <label class="text-xs text-gray-500 uppercase">Slug</label>
-              <input type="text" id="slug" class="w-full bg-transparent text-gray-400 text-sm border-none p-0 focus:ring-0" />
+              <label class="text-xs text-muted uppercase">Slug</label>
+              <input type="text" id="slug" class="w-full bg-transparent text-navy/70 text-sm border-none p-0 focus:ring-0" />
             </div>
           </div>
 
@@ -237,14 +237,14 @@ if (slug) {
             <!-- Injected via JS -->
           </div>
 
-          <button id="add-section-btn" class="w-full py-3 border-2 border-dashed border-gray-800 rounded-lg text-gray-500 hover:border-gray-700 hover:text-gray-300 transition-all font-medium">
+          <button id="add-section-btn" class="w-full py-3 border-2 border-dashed border-navy/20 rounded-lg text-muted hover:border-navy/40 hover:text-navy transition-all font-medium">
             +Sectie Toevoegen
           </button>
         </div>
 
         <div class="flex justify-between">
-           <button class="back-btn text-gray-400 hover:text-white px-6 py-3">Terug</button>
-           <button id="start-writing-btn" class="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold py-3 px-8 rounded-lg transition-all flex items-center gap-2">
+           <button class="back-btn text-muted hover:text-navy px-6 py-3 font-medium">Terug</button>
+           <button id="start-writing-btn" class="bg-navy hover:bg-navy/90 text-white font-bold py-3 px-8 rounded-lg transition-all flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
             START MET SCHRIJVEN
              <span class="loading-spinner hidden animate-spin">⟳</span>
           </button>
@@ -254,15 +254,17 @@ if (slug) {
 
     <!-- Step 3: Writing Progress -->
     <section id="step-3" class="wizard-step hidden">
-      <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+      <div class="glass rounded-2xl p-6">
         <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-bold text-white">Artikel Genereren...</h2>
-          <div id="progress-text" class="text-yellow-500 font-mono">0%</div>
+          <h2 class="text-xl font-bold text-navy">Artikel Genereren...</h2>
+          <div id="progress-text" class="text-navy font-mono font-bold">0%</div>
         </div>
 
         <!-- Progress Bar -->
-        <div class="w-full bg-gray-800 rounded-full h-2.5 mb-8">
-          <div id="progress-bar" class="bg-yellow-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+        <div class="w-full bg-navy/10 rounded-full h-2.5 mb-8 overflow-hidden">
+          <div id="progress-bar" class="bg-navy h-2.5 rounded-full transition-all duration-500 relative" style="width: 0%">
+             <div class="absolute inset-0 bg-white/20 animate-pulse"></div>
+          </div>
         </div>
 
         <!-- Live Preview -->
@@ -271,23 +273,23 @@ if (slug) {
         </div>
 
          <div class="mt-8 flex justify-between hidden" id="finish-writing-controls">
-           <button class="back-btn text-gray-400 hover:text-white px-6 py-3">Terug</button>
-           <button id="to-review-btn" class="bg-green-500 hover:bg-green-400 text-white font-bold py-3 px-8 rounded-lg transition-all">
+           <button class="back-btn text-muted hover:text-navy px-6 py-3 font-medium">Terug</button>
+           <button id="to-review-btn" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-8 rounded-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
             NAAR REVIEW
           </button>
         </div>
       </div>
     </section>
 
-     <!-- Step 4: Final Review -->
+    <!-- Step 4: Final Review -->
     <section id="step-4" class="wizard-step hidden">
-      <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
-        <h2 class="text-xl font-bold text-white mb-6">Klaar voor Publicatie?</h2>
+      <div class="glass rounded-2xl p-6">
+        <h2 class="text-xl font-bold text-navy mb-6">Klaar voor Publicatie?</h2>
         
-        <div class="p-6 bg-gray-950 rounded-xl border border-gray-800 mb-8">
-           <h3 class="font-bold text-lg text-white mb-2" id="final-title">...</h3>
-           <p class="text-gray-400 mb-4" id="final-description">...</p>
-           <div class="flex gap-2 text-xs text-gray-500">
+        <div class="p-6 bg-white/40 rounded-xl border border-navy/5 mb-8">
+           <h3 class="font-bold text-lg text-navy mb-2" id="final-title">...</h3>
+           <p class="text-muted mb-4" id="final-description">...</p>
+           <div class="flex gap-2 text-xs text-muted font-medium">
              <span id="final-wordcount">0 woorden</span>
              <span>•</span>
              <span id="final-readingtime">0 min leestijd</span>
@@ -296,14 +298,14 @@ if (slug) {
 
         <!-- Hero image preview -->
         <div id="hero-image-section" class="mb-8">
-          <h3 class="text-sm font-medium text-gray-400 mb-3">Hero Afbeelding</h3>
-          <div id="hero-image-preview" class="bg-gray-950 rounded-xl border border-gray-800 p-4 flex items-center justify-center min-h-[200px]">
-            <p class="text-gray-500 text-sm" id="hero-image-status">Wordt gegenereerd bij publicatie...</p>
+          <h3 class="text-sm font-medium text-muted mb-3">Hero Afbeelding</h3>
+          <div id="hero-image-preview" class="bg-navy/5 rounded-xl border border-navy/5 p-4 flex items-center justify-center min-h-[200px]">
+            <p class="text-muted text-sm" id="hero-image-status">Wordt gegenereerd bij publicatie...</p>
           </div>
         </div>
 
         <div class="flex justify-end gap-4">
-           <button id="publish-btn" class="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold py-3 px-8 rounded-lg transition-all">
+           <button id="publish-btn" class="bg-navy hover:bg-navy/90 text-white font-bold py-3 px-8 rounded-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
             PUBLICEREN
           </button>
         </div>
@@ -311,30 +313,121 @@ if (slug) {
     </section>
 
   <!-- Add/Edit Platform Modal -->
-  <dialog id="platform-modal" class="bg-gray-900 text-white p-6 rounded-xl border border-gray-800 backdrop:bg-black/80 w-full max-w-md">
-    <h3 class="text-xl font-bold mb-4" id="modal-title">Nieuw Platform Toevoegen</h3>
+  <dialog id="platform-modal" class="bg-white text-navy p-6 rounded-xl border border-navy/10 shadow-2xl backdrop:bg-navy/20 w-full max-w-md">
+    <h3 class="text-xl font-bold mb-4 text-navy" id="modal-title">Nieuw Platform Toevoegen</h3>
     <form method="dialog" id="platform-form" class="space-y-4">
       <input type="hidden" name="id" id="platform-id-input" />
       <div>
-        <label class="block text-sm text-gray-400 mb-1">Naam</label>
-        <input type="text" name="name" id="platform-name-input" required class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 focus:ring-yellow-500" placeholder="bv. Coinbase" />
+        <label class="block text-sm text-muted mb-1">Naam</label>
+        <input type="text" name="name" id="platform-name-input" required class="w-full bg-white border border-navy/20 rounded px-3 py-2 focus:ring-2 focus:ring-navy/20 outline-none" placeholder="bv. Coinbase" />
       </div>
       <div>
-        <label class="block text-sm text-gray-400 mb-1">Slug (ID)</label>
-        <input type="text" name="slug" id="platform-slug-input" required pattern="[a-z0-9-]+" class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 focus:ring-yellow-500" placeholder="bv. coinbase" />
-        <p class="text-xs text-gray-500 mt-1">Kleine letters, geen spaties.</p>
+        <label class="block text-sm text-muted mb-1">Slug (ID)</label>
+        <input type="text" name="slug" id="platform-slug-input" required pattern="[a-z0-9-]+" class="w-full bg-white border border-navy/20 rounded px-3 py-2 focus:ring-2 focus:ring-navy/20 outline-none" placeholder="bv. coinbase" />
+        <p class="text-xs text-muted mt-1">Kleine letters, geen spaties.</p>
       </div>
       <div>
-        <label class="block text-sm text-gray-400 mb-1">Affiliate Link</label>
-        <input type="url" name="affiliateLink" id="platform-link-input" class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 focus:ring-yellow-500" placeholder="https://..." />
+        <label class="block text-sm text-muted mb-1">Affiliate Link</label>
+        <input type="url" name="affiliateLink" id="platform-link-input" class="w-full bg-white border border-navy/20 rounded px-3 py-2 focus:ring-2 focus:ring-navy/20 outline-none" placeholder="https://..." />
       </div>
 
        <div class="flex justify-end gap-3 mt-6">
-        <button value="cancel" class="px-4 py-2 text-gray-400 hover:text-white">Annuleren</button>
-        <button type="submit" id="modal-submit-btn" class="bg-yellow-500 text-gray-900 font-bold px-4 py-2 rounded hover:bg-yellow-400">Toevoegen</button>
+        <button value="cancel" class="px-4 py-2 text-muted hover:text-navy hover:underline">Annuleren</button>
+        <button type="submit" id="modal-submit-btn" class="bg-navy text-white font-bold px-4 py-2 rounded shadow hover:bg-navy/90">Toevoegen</button>
       </div>
     </form>
   </dialog>
+
+  </div>
+
+  <script>
+    // --- State Management ---
+    const existingArticle = JSON.parse(JSON.stringify({existingArticle}));
+    
+    const state = {
+      step: existingArticle ? 4 : 1, // Jump to review/publish if editing
+      config: {initialConfig} || {},
+      outline: existingArticle ? {
+        title: existingArticle.title,
+        seo_title: existingArticle.seo_title,
+        meta_description: existingArticle.description,
+        slug: existingArticle.slug,
+        sections: [] // We might lost sections structure if not saved separately, but we have blocks
+      } : null,
+      generatedBlocks: {initialBlocks} || []
+    };
+    
+    // Pre-fill inputs if editing
+    if (existingArticle) {
+       // Fill Step 1 inputs for context
+       if(state.config.target_keyword) document.getElementById('target_keyword').value = state.config.target_keyword;
+       if(state.config.article_type) document.getElementById('article_type').value = state.config.article_type;
+       
+       // Handle platforms check
+       if(state.config.platforms && Array.isArray(state.config.platforms)) {
+          state.config.platforms.forEach(pid => {
+             const cb = document.querySelector(`input[name="platforms"][value="${pid}"]`);
+             if(cb) cb.checked = true;
+          });
+       }
+
+       // Fill Review Screen
+       document.getElementById('final-title').innerText = existingArticle.title;
+       document.getElementById('final-description').innerText = existingArticle.description;
+       
+       // Fill Hero Image
+       if (existingArticle.heroImage) {
+          const previewEl = document.getElementById('hero-image-preview');
+          previewEl.innerHTML = `<img src="${existingArticle.heroImage}" alt="Hero" class="rounded-lg max-h-[300px] object-cover w-full" />`;
+          document.getElementById('hero-image-status').innerText = 'Huidige afbeelding';
+          // Disable generate by default if exists
+          document.getElementById('generate_hero_image').checked = false;
+          
+          // Re-enable image config opacity change logic
+           const imageConfig = document.getElementById('image-config');
+           imageConfig.style.opacity = '0.4';
+           imageConfig.style.pointerEvents = 'none';
+       }
+
+       // Update button text
+       document.getElementById('publish-btn').innerText = 'UPDATEN';
+    }
+
+    // --- DOM Elements ---
+    const steps = document.querySelectorAll('.wizard-step');
+    const stepIndicators = document.querySelectorAll('.step-indicator');
+    
+    // --- Functions ---
+    function setStep(newStep) {
+      state.step = newStep;
+      
+      // Update UI visibility
+      steps.forEach(el => el.classList.add('hidden'));
+      document.getElementById(`step-${newStep}`).classList.remove('hidden');
+
+      // Update indicators
+      stepIndicators.forEach(el => {
+        const s = parseInt(el.dataset.step);
+        const circle = el.querySelector('.step-circle');
+        const label = el.querySelector('.step-label');
+        
+        if (s === newStep) {
+          circle.classList.add('bg-navy', 'text-white', 'border-navy');
+          circle.classList.remove('bg-white/50', 'text-muted', 'border-navy/10', 'bg-green-600', 'border-green-600');
+          label.classList.add('text-navy');
+          label.classList.remove('text-muted');
+        } else if (s < newStep) {
+           circle.classList.add('bg-green-600', 'text-white', 'border-green-600');
+           circle.classList.remove('bg-white/50', 'text-muted', 'border-navy/10', 'bg-navy', 'text-white', 'border-navy');
+        } else {
+           circle.classList.remove('bg-navy', 'text-white', 'border-navy', 'bg-green-600', 'border-green-600');
+           circle.classList.add('bg-white/50', 'text-muted', 'border-navy/10');
+           label.classList.remove('text-navy');
+           label.classList.add('text-muted');
+        }
+      });
+      window.scrollTo(0, 0);
+    }
 
   </div>
 
