@@ -57,49 +57,45 @@ if (platformSlugs && Array.isArray(platformSlugs) && platformSlugs.length > 0) {
 
 <Layout title={post.data.title} description={post.data.description} image={post.data.heroImage} type="article">
     <!-- Hero Banner -->
-    <div class="relative w-full h-[340px] md:h-[420px] overflow-hidden">
-        <div class="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/60 to-gray-950/20 z-10"></div>
-        {post.data.heroImage && <img width={1920} height={1080} src={post.data.heroImage} alt="" class="absolute inset-0 w-full h-full object-cover" />}
+    <div class="relative w-full overflow-hidden border-b border-theme">
+        <!-- Hero Image (if available) -->
+        {post.data.heroImage && (
+            <div class="w-full h-[280px] md:h-[380px] overflow-hidden">
+                <img width={1920} height={1080} src={post.data.heroImage} alt="" class="w-full h-full object-cover filter grayscale" />
+            </div>
+        )}
         
-        <div class="absolute bottom-0 left-0 w-full z-20 pb-10 pt-24 px-4">
+        <!-- Article Header -->
+        <div class="bg-[var(--bg-main)] px-4 py-10 md:py-14">
             <div class="container mx-auto max-w-4xl">
                  <!-- Breadcrumbs -->
-                 <nav class="flex text-sm text-gray-400 mb-5" aria-label="Breadcrumb">
-                    <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                 <nav class="flex text-sm text-muted mb-6" aria-label="Breadcrumb">
+                    <ol class="inline-flex items-center space-x-1 md:space-x-2">
                         <li class="inline-flex items-center">
-                            <a href="/" class="hover:text-yellow-500 transition-colors">Home</a>
+                            <a href="/" class="hover:text-main transition-colors">Home</a>
                         </li>
                         <li>
                             <div class="flex items-center">
-                                <svg class="w-3 h-3 text-gray-500 mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
-                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/>
-                                </svg>
-                                <span class="ml-1 text-sm font-medium text-gray-400 md:ml-2">Blog</span>
+                                <span class="mx-2 text-muted">/</span>
+                                <span class="text-muted">Blog</span>
                             </div>
                         </li>
                         <li aria-current="page">
                             <div class="flex items-center">
-                                <svg class="w-3 h-3 text-gray-500 mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
-                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/>
-                                </svg>
-                                <span class="ml-1 text-sm font-medium text-yellow-500 md:ml-2 truncate max-w-[200px] md:max-w-xs">{post.data.title}</span>
+                                <span class="mx-2 text-muted">/</span>
+                                <span class="text-main font-medium truncate max-w-[200px] md:max-w-xs">{post.data.title}</span>
                             </div>
                         </li>
                     </ol>
                 </nav>
 
-                <h1 class="text-3xl md:text-5xl font-extrabold text-white mb-5 leading-tight tracking-tight">
+                <h1 class="text-4xl md:text-6xl font-extrabold text-main mb-6 leading-tight tracking-tight">
                     {post.data.title}
                 </h1>
-                 <div class="flex gap-4 text-sm text-gray-400 items-center">
-                    <div class="w-10 h-10 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                    </div>
+                 <div class="flex gap-4 text-sm text-muted items-center">
                     <div>
-                        <p class="text-gray-200 font-medium">Redactie</p>
-                        <div class="flex items-center gap-3">
+                        <p class="text-main font-semibold">Redactie</p>
+                        <div class="flex items-center gap-2 text-muted">
                             <time datetime={post.data.pubDate.toISOString()}>
                                 {post.data.pubDate.toLocaleDateString('nl-NL', {
                                     year: 'numeric',
@@ -107,13 +103,8 @@ if (platformSlugs && Array.isArray(platformSlugs) && platformSlugs.length > 0) {
                                     day: 'numeric',
                                 })}
                             </time>
-                            <span class="text-gray-600">·</span>
-                            <span class="text-gray-400 flex items-center gap-1">
-                               <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                               </svg>
-                               6 min leestijd
-                            </span>
+                            <span>·</span>
+                            <span>6 min leestijd</span>
                         </div>
                     </div>
                 </div>
