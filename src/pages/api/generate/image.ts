@@ -9,6 +9,8 @@ import OpenAI from 'openai';
 import { GoogleGenAI } from '@google/genai';
 import fs from 'node:fs';
 import path from 'node:path';
+import { put } from '@vercel/blob';
+import sharp from 'sharp';
 
 export const POST: APIRoute = async ({ request }) => {
     try {
@@ -80,19 +82,36 @@ IMPORTANT: Do NOT include any text, letters, words, or typography in the image. 
             imageBuffer = Buffer.from(imageData, 'base64');
         }
 
-        // Save to public/images/articles/
-        const imagesDir = path.join(process.cwd(), 'public', 'images', 'articles');
-        if (!fs.existsSync(imagesDir)) {
-            fs.mkdirSync(imagesDir, { recursive: true });
+        // Optimize with Sharp (Resize & Compress)
+        let optimizedBuffer: Buffer;
+        try {
+            optimizedBuffer = await sharp(imageBuffer)
+                .resize({ width: 1200, withoutEnlargement: true }) // standard web width
+                .jpeg({ quality: 80, mozjpeg: true }) // efficient compression
+                .toBuffer();
+        } catch (sharpError) {
+            console.error('Sharp optimization failed:', sharpError);
+            optimizedBuffer = imageBuffer; // Fallback to original
         }
 
-        const sanitizedSlug = slug.replace(/[^a-z0-9-]/gi, '-').toLowerCase();
-        const filename = `${sanitizedSlug}.png`;
-        const filepath = path.join(imagesDir, filename);
+        // Save to Vercel Blob
+        let imageUrl: string;
 
-        fs.writeFileSync(filepath, imageBuffer);
+        try {
+            const sanitizedSlug = slug.replace(/[^a-z0-9-]/gi, '-').toLowerCase();
+            const filename = `articles/${sanitizedSlug}-${Date.now()}.jpg`; // Unique name
 
-        const imageUrl = `/images/articles/${filename}`;
+            const blob = await put(filename, optimizedBuffer, {
+                access: 'public',
+            });
+
+            imageUrl = blob.url;
+
+        } catch (blobError) {
+            console.warn('Vercel Blob upload failed (check BLOB_READ_WRITE_TOKEN), fallback to Base64:', blobError);
+            // Fallback: Return Base64 Data URI
+            imageUrl = `data:image/jpeg;base64,${optimizedBuffer.toString('base64')}`;
+        }
 
         return new Response(JSON.stringify({
             success: true,
