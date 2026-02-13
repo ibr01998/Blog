@@ -18,6 +18,11 @@ const dbPosts = await db.select().from(Post).where(eq(Post.slug, slug));
 const dbPost = dbPosts.at(0);
 
 if (dbPost) {
+    // Check visibility
+    if (dbPost.status === 'draft') {
+        return Astro.redirect('/404');
+    }
+
     post = { data: dbPost };
     isDb = true;
     // Cleanup content: remove frontmatter and imports

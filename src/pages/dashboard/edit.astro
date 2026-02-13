@@ -1,0 +1,318 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { db, Post, Platform, eq } from 'astro:db';
+
+const { slug } = Astro.url.searchParams;
+if (!slug) {
+  return Astro.redirect('/dashboard');
+}
+
+const article = await db.select().from(Post).where(eq(Post.slug, slug)).get();
+if (!article) {
+  return Astro.redirect('/dashboard?error=notfound');
+}
+
+const platforms = await db.select().from(Platform).orderBy(Platform.name);
+---
+
+<DashboardLayout title={`Bewerk: ${article.title}`} activePage="dashboard">
+  <div class="max-w-7xl mx-auto pb-20">
+    
+    <!-- Top Bar -->
+    <div class="flex items-center justify-between mb-8 sticky top-0 bg-gray-950/80 backdrop-blur-md py-4 z-50 border-b border-gray-800/50">
+      <div class="flex items-center gap-4">
+        <a href="/dashboard" class="text-gray-400 hover:text-white transition-colors">← Terug</a>
+        <h1 class="text-xl font-bold text-white truncate max-w-xl">{article.title}</h1>
+        <span class={`px-2 py-0.5 text-xs rounded-full border ${article.status === 'published' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-gray-700 text-gray-300 border-gray-600'}`}>
+          {article.status}
+        </span>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href={`/blog/${article.slug}`} target="_blank" class="text-gray-400 hover:text-white px-3 py-2 text-sm">Bekijk Preview</a>
+        <button id="save-btn" class="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold py-2 px-6 rounded-lg transition-all flex items-center gap-2">
+          <span>OPSLAAN</span>
+          <span class="loading-spinner hidden animate-spin">⟳</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      
+      <!-- LEFT: Main Content Editor -->
+      <div class="lg:col-span-2 space-y-8">
+        
+        <!-- Title & Description -->
+        <div class="bg-gray-900 rounded-xl border border-gray-800 p-6 space-y-4">
+           <div>
+             <label class="block text-sm font-medium text-gray-400 mb-1">Titel (H1)</label>
+             <input type="text" id="article_title" value={article.title} class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-white text-lg font-bold focus:ring-2 focus:ring-yellow-500/50 outline-none" />
+           </div>
+           <div>
+             <label class="block text-sm font-medium text-gray-400 mb-1">Beschrijving</label>
+             <textarea id="article_description" rows="2" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-yellow-500/50 outline-none">{article.description}</textarea>
+           </div>
+        </div>
+
+        <!-- Blocks Editor -->
+        <div id="blocks-container" class="space-y-6">
+          <!-- Blocks will be injected here -->
+        </div>
+
+        <!-- Add Block Button -->
+        <button id="add-block-btn" class="w-full py-4 border-2 border-dashed border-gray-800 rounded-xl text-gray-500 hover:border-gray-700 hover:text-gray-300 transition-all font-medium flex items-center justify-center gap-2">
+           <span class="text-2xl">+</span> Nieuwe Sectie Toevoegen
+        </button>
+
+      </div>
+
+      <!-- RIGHT: Sidebar Settings -->
+      <div class="space-y-6">
+        
+        <!-- Metadata -->
+        <div class="bg-gray-900 rounded-xl border border-gray-800 p-6 space-y-4">
+          <h3 class="font-bold text-white border-b border-gray-800 pb-2 mb-4">Metadata</h3>
+          
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1 uppercase">Slug</label>
+            <input type="text" id="article_slug" value={article.slug} class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-gray-300 text-sm focus:ring-yellow-500/50 outline-none" disabled />
+          </div>
+
+          <div>
+             <label class="block text-xs font-medium text-gray-500 mb-1 uppercase">SEO Titel</label>
+             <input type="text" id="article_seo_title" value={article.seo_title} class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-white text-sm focus:ring-yellow-500/50 outline-none" />
+          </div>
+
+          <div>
+             <label class="block text-xs font-medium text-gray-500 mb-1 uppercase">Target Keyword</label>
+             <input type="text" id="article_keyword" value={article.target_keyword} class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-white text-sm focus:ring-yellow-500/50 outline-none" />
+          </div>
+
+           <div>
+             <label class="block text-xs font-medium text-gray-500 mb-1 uppercase">Publicatie Datum</label>
+             <input type="datetime-local" id="article_date" value={new Date(article.pubDate).toISOString().slice(0, 16)} class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-white text-sm focus:ring-yellow-500/50 outline-none" />
+          </div>
+          
+           <div>
+             <label class="block text-xs font-medium text-gray-500 mb-1 uppercase">Status</label>
+             <select id="article_status" class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-white text-sm focus:ring-yellow-500/50 outline-none">
+               <option value="published" selected={article.status === 'published'}>Gepubliceerd</option>
+               <option value="draft" selected={article.status === 'draft'}>Concept</option>
+             </select>
+          </div>
+        </div>
+
+        <!-- Hero Image -->
+        <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+           <h3 class="font-bold text-white border-b border-gray-800 pb-2 mb-4">Hero Afbeelding</h3>
+           
+           <div id="hero-preview" class="mb-4 bg-gray-950 rounded-lg overflow-hidden border border-gray-800">
+             <img src={article.heroImage || "https://placehold.co/1200x630"} id="current-hero-img" class="w-full h-auto object-cover" />
+           </div>
+           
+           <div class="space-y-2">
+             <input type="text" id="hero_image_url" value={article.heroImage} class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-xs text-gray-400 focus:ring-yellow-500/50 outline-none mb-2" placeholder="Image URL..." />
+             
+             <button id="regen-hero-btn" class="w-full bg-gray-800 hover:bg-gray-700 text-white text-xs font-bold py-2 rounded transition-colors border border-gray-700">
+               ✨ Genereer Nieuw (AI)
+             </button>
+           </div>
+        </div>
+
+        <!-- Platforms -->
+        <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+           <h3 class="font-bold text-white border-b border-gray-800 pb-2 mb-4">Gekoppelde Platformen</h3>
+           <div class="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+             {platforms.map(p => (
+               <label class="flex items-center gap-3 p-2 rounded hover:bg-gray-950/50 cursor-pointer">
+                 <input type="checkbox" name="platforms" value={p.id} checked={article.platforms && article.platforms.includes(p.id)} class="rounded border-gray-700 bg-gray-950 text-yellow-500 focus:ring-yellow-500/50" />
+                 <span class="text-sm text-gray-300">{p.name}</span>
+               </label>
+             ))}
+           </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script define:vars={{ initialBlocks: article.blocks, initialTitle: article.title, initialSlug: article.slug }}>
+    // --- State ---
+    let blocks = initialBlocks || [];
+    const container = document.getElementById('blocks-container');
+
+    // --- Renders ---
+    function renderBlocks() {
+      container.innerHTML = '';
+      blocks.forEach((block, index) => {
+        const div = document.createElement('div');
+        div.className = 'bg-gray-900 rounded-xl border border-gray-800 p-6 group transition-all relative hover:border-gray-700';
+        div.dataset.index = index;
+        div.innerHTML = `
+          <div class="flex items-center justify-between mb-4">
+             <div class="flex items-center gap-2">
+               <span class="text-xs font-mono text-gray-600 bg-gray-950 px-2 py-1 rounded">Blok ${index + 1}</span>
+               <input type="text" class="bg-transparent border-none p-0 text-lg font-bold text-white focus:ring-0 w-full block-heading" value="${block.heading}" placeholder="Sectie Titel" />
+             </div>
+             <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+               <button class="move-up-btn p-1 hover:text-white text-gray-500" title="Omhoog">▲</button>
+               <button class="move-down-btn p-1 hover:text-white text-gray-500" title="Omlaag">▼</button>
+               <button class="delete-block-btn p-1 hover:text-red-500 text-gray-500" title="Verwijder">✕</button>
+             </div>
+          </div>
+          <textarea class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-gray-300 focus:ring-2 focus:ring-yellow-500/50 outline-none font-mono text-sm block-content min-h-[150px]" placeholder="Markdown inhoud...">${block.content}</textarea>
+        `;
+        container.appendChild(div);
+
+        // Events
+        div.querySelector('.block-heading').addEventListener('input', (e) => {
+          blocks[index].heading = e.target.value;
+        });
+        div.querySelector('.block-content').addEventListener('input', (e) => {
+          blocks[index].content = e.target.value;
+          // Auto resize
+          e.target.style.height = 'auto';
+          e.target.style.height = e.target.scrollHeight + 'px';
+        });
+
+        div.querySelector('.delete-block-btn').addEventListener('click', () => {
+          if(confirm('Blok verwijderen?')) {
+            blocks.splice(index, 1);
+            renderBlocks();
+          }
+        });
+        
+        div.querySelector('.move-up-btn').addEventListener('click', () => {
+          if (index > 0) {
+            [blocks[index - 1], blocks[index]] = [blocks[index], blocks[index - 1]];
+            renderBlocks();
+          }
+        });
+
+        div.querySelector('.move-down-btn').addEventListener('click', () => {
+          if (index < blocks.length - 1) {
+            [blocks[index], blocks[index + 1]] = [blocks[index + 1], blocks[index]];
+            renderBlocks();
+          }
+        });
+      });
+    }
+
+    // --- Init ---
+    renderBlocks();
+
+    // --- Actions ---
+    document.getElementById('add-block-btn').addEventListener('click', () => {
+      blocks.push({ heading: 'Nieuwe Sectie', content: 'Inhoud hier...' });
+      renderBlocks();
+    });
+
+    document.getElementById('save-btn').addEventListener('click', async () => {
+       const btn = document.getElementById('save-btn');
+       const spinner = btn.querySelector('.loading-spinner');
+       
+       // Gather Data
+       const title = document.getElementById('article_title').value;
+       const description = document.getElementById('article_description').value;
+       const seo_title = document.getElementById('article_seo_title').value;
+       const target_keyword = document.getElementById('article_keyword').value;
+       const pubDate = document.getElementById('article_date').value;
+       const status = document.getElementById('article_status').value;
+       const heroImage = document.getElementById('hero_image_url').value;
+       
+       const platforms = Array.from(document.querySelectorAll('input[name="platforms"]:checked')).map(el => el.value);
+
+       if(!title) return alert('Titel is verplicht');
+
+       btn.disabled = true;
+       spinner.classList.remove('hidden');
+       btn.querySelector('span:first-child').innerText = 'OPSLAAN...';
+
+       try {
+         const payload = {
+            title,
+            description,
+            seo_title,
+            target_keyword,
+            pubDate,
+            status,
+            heroImage,
+            platforms,
+            blocks,
+            // article_type: '...' // Could add field for this too if needed
+         };
+
+         const res = await fetch(`/api/articles/${initialSlug}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+         });
+
+         if(res.ok) {
+           // Success feedback
+           btn.querySelector('span:first-child').innerText = 'OPGESLAGEN!';
+           setTimeout(() => {
+              btn.disabled = false;
+              btn.querySelector('span:first-child').innerText = 'OPSLAAN';
+              spinner.classList.add('hidden');
+           }, 2000);
+         } else {
+           throw new Error('Save failed');
+         }
+
+       } catch(err) {
+         console.error(err);
+         alert('Fout bij opslaan: ' + err.message);
+         btn.disabled = false;
+         spinner.classList.add('hidden');
+         btn.querySelector('span:first-child').innerText = 'OPSLAAN';
+       }
+    });
+
+    // --- Hero Gen ---
+    document.getElementById('regen-hero-btn').addEventListener('click', async () => {
+       const keyword = document.getElementById('article_keyword').value;
+       const title = document.getElementById('article_title').value;
+       const btn = document.getElementById('regen-hero-btn');
+       
+       if(!confirm('Dit zal de huidige afbeelding overschrijven. Doorgaan?')) return;
+
+       btn.disabled = true;
+       btn.innerText = 'Genereren...';
+       
+       try {
+          const res = await fetch('/api/generate/image', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                title,
+                keyword: keyword || title,
+                slug: initialSlug,
+                provider: 'google',
+                style: 'futuristic',
+              })
+          });
+          const data = await res.json();
+          if(data.success) {
+            document.getElementById('hero_image_url').value = data.imageUrl;
+            document.getElementById('current-hero-img').src = data.imageUrl;
+          } else {
+            alert('Fout: ' + data.error);
+          }
+       } catch(err) {
+         alert('Error generating image');
+       } finally {
+         btn.disabled = false;
+         btn.innerText = '✨ Genereer Nieuw (AI)';
+       }
+    });
+
+  </script>
+  
+  <style>
+    .loading-spinner { animation: spin 1s linear infinite; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #111827; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
+  </style>
+</DashboardLayout>

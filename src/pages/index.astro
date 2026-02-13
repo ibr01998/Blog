@@ -3,10 +3,10 @@ import Layout from '../layouts/Layout.astro';
 import CtaButton from '../components/CtaButton.astro';
 import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
 import { getCollection } from 'astro:content';
-import { db, Post } from 'astro:db';
+import { db, Post, eq } from 'astro:db';
 
 const filePosts = await getCollection('blog');
-const dbPosts = await db.select().from(Post);
+const dbPosts = await db.select().from(Post).where(eq(Post.status, 'published'));
 
 const posts = [
   ...filePosts.map((p) => ({ ...p, source: 'file' })),
