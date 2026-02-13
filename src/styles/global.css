@@ -2,34 +2,50 @@
 
 :root {
   /* Light Mode (Paper / Professional) */
-  --bg-main: #f8fafc;       /* Slate-50 */
-  --bg-card: #ffffff;       /* White */
-  --text-main: #0f172a;     /* Slate-900 (Deep Navy) */
-  --text-muted: #64748b;    /* Slate-500 */
-  --border-color: #e2e8f0;  /* Slate-200 */
-  --primary: #0f172a;       /* Slate-900 (Navy) */
-  --primary-fg: #ffffff;    /* White text on Navy */
-  --accent: #334155;        /* Slate-700 */
-  
+  --bg-main: #f8fafc;
+  /* Slate-50 */
+  --bg-card: #ffffff;
+  /* White */
+  --text-main: #0f172a;
+  /* Slate-900 (Deep Navy) */
+  --text-muted: #64748b;
+  /* Slate-500 */
+  --border-color: #e2e8f0;
+  /* Slate-200 */
+  --primary: #0f172a;
+  /* Slate-900 (Navy) */
+  --primary-fg: #ffffff;
+  /* White text on Navy */
+  --accent: #334155;
+  /* Slate-700 */
+
   /* Halftone Pattern Color */
-  --pattern-color: rgba(15, 23, 42, 0.08); /* Navy dots */
+  --pattern-color: rgba(15, 23, 42, 0.08);
+  /* Navy dots */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Dark Mode (Deep Tech / Night) */
-    --bg-main: #020617;     /* Slate-950 */
-    --bg-card: #0f172a;     /* Slate-900 */
-    --text-main: #f8fafc;   /* Slate-50 */
-    --text-muted: #94a3b8;  /* Slate-400 */
-    --border-color: #1e293b;/* Slate-800 */
-    --primary: #f8fafc;     /* Slate-50 (White) */
-    --primary-fg: #0f172a;  /* Navy text on White */
-    --accent: #e2e8f0;      /* Slate-200 */
+/* Dark Mode (Deep Tech / Night) - Applied via .dark class */
+:root.dark {
+  --bg-main: #020617;
+  /* Slate-950 */
+  --bg-card: #0f172a;
+  /* Slate-900 */
+  --text-main: #f8fafc;
+  /* Slate-50 */
+  --text-muted: #94a3b8;
+  /* Slate-400 */
+  --border-color: #1e293b;
+  /* Slate-800 */
+  --primary: #f8fafc;
+  /* Slate-50 (White) */
+  --primary-fg: #0f172a;
+  /* Navy text on White */
+  --accent: #e2e8f0;
+  /* Slate-200 */
 
-    /* Halftone Pattern Color */
-    --pattern-color: rgba(255, 255, 255, 0.05); /* White dots */
-  }
+  /* Halftone Pattern Color */
+  --pattern-color: rgba(255, 255, 255, 0.05);
+  /* White dots */
 }
 
 body {
@@ -40,7 +56,8 @@ body {
 /* Halftone Pattern Utility */
 .halftone-bg {
   background-image: radial-gradient(var(--pattern-color) 1px, transparent 1px);
-  background-size: 24px 24px; /* Distinct, retro dot size */
+  background-size: 24px 24px;
+  /* Distinct, retro dot size */
 }
 
 /* Card Style: Professional, Hard Shadow or Clean Border */
@@ -48,11 +65,22 @@ body {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   /* Optional: Hard shadow for 'Pop' feel, or keep clean */
-  /* box-shadow: 4px 4px 0px 0px var(--border-color); */ 
+  /* box-shadow: 4px 4px 0px 0px var(--border-color); */
 }
 
 /* Utility for text colors using vars */
-.text-main { color: var(--text-main); }
-.text-muted { color: var(--text-muted); }
-.border-theme { border-color: var(--border-color); }
-.bg-theme-card { background-color: var(--bg-card); }
+.text-main {
+  color: var(--text-main);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.border-theme {
+  border-color: var(--border-color);
+}
+
+.bg-theme-card {
+  background-color: var(--bg-card);
+}
