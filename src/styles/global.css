@@ -32,19 +32,21 @@
 
 /* ========================
    HALFTONE BACKGROUND
-   Only applied via .halftone-bg class
+   Global dot pattern on body
    ======================== */
 body {
   background-color: var(--bg-main);
+  background-image: radial-gradient(circle, var(--dot-color) var(--dot-size), transparent var(--dot-size));
+  background-size: var(--dot-spacing) var(--dot-spacing);
 }
 
-/* Opt-in halftone pattern for hero/decorative sections */
+/* Opt-in extra halftone for hero/decorative sections */
 .halftone-bg {
   background-image: radial-gradient(circle, var(--dot-color) var(--dot-size), transparent var(--dot-size));
   background-size: var(--dot-spacing) var(--dot-spacing);
 }
 
-/* Solid readable background for content sections */
+/* Solid readable background — use on text-heavy content areas */
 .bg-solid {
   background-color: var(--bg-main);
   background-image: none;

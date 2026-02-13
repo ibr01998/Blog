@@ -87,7 +87,7 @@ const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
             )}
 
             <!-- Article Header -->
-            <div class="bg-[var(--cream)] px-4 py-10 md:py-14">
+            <div class="bg-solid px-4 py-10 md:py-14">
                 <div class="container mx-auto max-w-4xl">
                     {pubDate && (
                         <span class="date-badge mb-5 inline-block">
@@ -106,7 +106,7 @@ const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
             <div class="section-divider"></div>
 
             <!-- Article Content -->
-            <div class="container mx-auto px-4 py-12 md:py-16 max-w-4xl">
+            <div class="bg-solid container mx-auto px-4 py-12 md:py-16 max-w-4xl">
                 <article class="prose prose-lg mx-auto">
                     <slot />
                 </article>
