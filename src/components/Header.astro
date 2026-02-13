@@ -1,5 +1,6 @@
 ---
 import { SITE_TITLE } from '../consts';
+import ThemeToggle from './ThemeToggle.astro';
 ---
 
 <header class="border-b border-theme bg-[var(--bg-main)]/80 backdrop-blur-md sticky top-0 z-50">
@@ -7,8 +8,11 @@ import { SITE_TITLE } from '../consts';
 		<h2 class="text-xl font-bold tracking-tight">
 			<a href="/" class="text-main hover:text-muted transition-colors">{SITE_TITLE}</a>
 		</h2>
-		<div class="hidden md:flex gap-4">
-			<!-- Add links here if needed later -->
+		<div class="flex items-center gap-4">
+            <div class="hidden md:flex gap-4">
+			    <!-- Add links here if needed later -->
+            </div>
+            <ThemeToggle />
 		</div>
 	</nav>
 </header>
