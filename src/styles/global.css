@@ -129,6 +129,14 @@ body {
   border-color: var(--border-color);
 }
 
+.text-cream {
+  color: var(--cream);
+}
+
+.border-navy {
+  border-color: var(--navy);
+}
+
 .bg-theme-card {
   background-color: var(--bg-card);
 }

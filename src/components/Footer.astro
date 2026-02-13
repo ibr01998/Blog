@@ -1,14 +1,17 @@
 ---
 const today = new Date();
 ---
-<footer class="border-t border-theme bg-navy text-cream mt-auto">
-	<div class="container mx-auto px-6 max-w-7xl py-8 flex flex-col md:flex-row justify-between items-center gap-4">
-		<p class="text-sm opacity-70">&copy; {today.getFullYear()} ShortNews</p>
-		<nav class="flex gap-6 text-sm opacity-60">
-			<a href="/" class="hover:opacity-100 transition-opacity">Home</a>
-			<a href="/blog" class="hover:opacity-100 transition-opacity">Blog</a>
-			<a href="#" class="hover:opacity-100 transition-opacity">Disclaimer</a>
-			<a href="#" class="hover:opacity-100 transition-opacity">Privacy</a>
+<footer class="bg-navy mt-auto" style="color: var(--cream);">
+	<div class="container mx-auto px-6 max-w-7xl py-6 flex flex-col sm:flex-row justify-between items-center gap-3">
+		<p class="text-sm font-medium">&copy; {today.getFullYear()} ShortNews</p>
+		<nav class="flex gap-5 text-sm">
+			<a href="/" class="opacity-70 hover:opacity-100 transition-opacity">Home</a>
+			<span class="opacity-30">·</span>
+			<a href="/blog" class="opacity-70 hover:opacity-100 transition-opacity">Blog</a>
+			<span class="opacity-30">·</span>
+			<a href="#" class="opacity-70 hover:opacity-100 transition-opacity">Disclaimer</a>
+			<span class="opacity-30">·</span>
+			<a href="#" class="opacity-70 hover:opacity-100 transition-opacity">Privacy</a>
 		</nav>
 	</div>
 </footer>
