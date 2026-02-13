@@ -2,62 +2,34 @@
 
 :root {
   /* Light Mode (Paper / Professional) */
-  --bg-main: #f8fafc;
-  /* Slate-50 */
+  --bg-main: #f4f4f0;
+  /* Warmer "Paper" Off-White */
   --bg-card: #ffffff;
   /* White */
-  --text-main: #0f172a;
-  /* Slate-900 (Deep Navy) */
-  --text-muted: #64748b;
-  /* Slate-500 */
-  --border-color: #e2e8f0;
-  /* Slate-200 */
+  --text-main: #1a1a1a;
+  /* Almost Black for better contrast */
+  --text-muted: #575757;
+  /* Darker Grey for better readability */
+  --border-color: #e5e5e0;
+  /* Warm Grey */
   --primary: #0f172a;
-  /* Slate-900 (Navy) */
+  /* Navy */
   --primary-fg: #ffffff;
-  /* White text on Navy */
   --accent: #334155;
-  /* Slate-700 */
 
   /* Halftone Pattern Color */
-  --pattern-color: rgba(15, 23, 42, 0.08);
-  /* Navy dots */
+  --pattern-color: rgba(15, 23, 42, 0.05);
+  /* Very subtle Navy dots */
 }
 
-/* Dark Mode (Deep Tech / Night) - Applied via .dark class */
-:root.dark {
-  --bg-main: #020617;
-  /* Slate-950 */
-  --bg-card: #0f172a;
-  /* Slate-900 */
-  --text-main: #f8fafc;
-  /* Slate-50 */
-  --text-muted: #94a3b8;
-  /* Slate-400 */
-  --border-color: #1e293b;
-  /* Slate-800 */
-  --primary: #f8fafc;
-  /* Slate-50 (White) */
-  --primary-fg: #0f172a;
-  /* Navy text on White */
-  --accent: #e2e8f0;
-  /* Slate-200 */
-
-  /* Halftone Pattern Color */
-  --pattern-color: rgba(255, 255, 255, 0.05);
-  /* White dots */
-}
-
-body {
-  background-color: var(--bg-main);
-  color: var(--text-main);
-}
+/* ... Dark Mode ... */
 
 /* Halftone Pattern Utility */
 .halftone-bg {
   background-image: radial-gradient(var(--pattern-color) 1px, transparent 1px);
-  background-size: 24px 24px;
-  /* Distinct, retro dot size */
+  background-size: 20px 20px;
+  opacity: 0.4;
+  /* Much softer */
 }
 
 /* Card Style: Professional, Hard Shadow or Clean Border */
