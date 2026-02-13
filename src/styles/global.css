@@ -5,34 +5,32 @@
    Inspired by Lefthalf.com reference
    ================================================ */
 
-:root {
-  /* Core Colors */
-  --navy: #1B2D4F;
-  --navy-light: #2a4270;
-  --navy-dark: #0f1d33;
-  --cream: #F5F0EB;
-  --cream-dark: #E8E0D8;
-  --white: #FFFFFF;
+@theme {
+  --color-navy: #1B2D4F;
+  --color-navy-light: #2a4270;
+  --color-navy-dark: #0f1d33;
+  --color-cream: #F5F0EB;
+  --color-cream-dark: #E8E0D8;
+}
 
+:root {
   /* Semantic Tokens */
-  --bg-main: var(--cream);
-  --bg-card: var(--white);
-  --text-main: var(--navy);
+  --bg-main: var(--color-cream);
+  --bg-card: #ffffff;
+  --text-main: var(--color-navy);
   --text-muted: #5a6a80;
   --border-color: #d4cdc5;
-  --primary: var(--navy);
-  --primary-fg: var(--cream);
+  --primary: var(--color-navy);
+  --primary-fg: var(--color-cream);
 
   /* Halftone */
-  --dot-color: var(--navy);
-  --dot-opacity: 0.07;
+  --dot-color: var(--color-navy);
   --dot-size: 3px;
   --dot-spacing: 14px;
 }
 
 /* ========================
-   HALFTONE BACKGROUND
-   Global dot pattern on body
+   BASE STYLES
    ======================== */
 body {
   background-color: var(--bg-main);
@@ -40,17 +38,9 @@ body {
   background-size: var(--dot-spacing) var(--dot-spacing);
 }
 
-/* Opt-in extra halftone for hero/decorative sections */
-.halftone-bg {
-  background-image: radial-gradient(circle, var(--dot-color) var(--dot-size), transparent var(--dot-size));
-  background-size: var(--dot-spacing) var(--dot-spacing);
-}
-
-/* Solid readable background — use on text-heavy content areas */
-.bg-solid {
-  background-color: var(--bg-main);
-  background-image: none;
-}
+/* ========================
+   COMPONENTS (multi-property)
+   ======================== */
 
 /* Halftone overlay — for hero sections */
 .halftone-overlay {
@@ -61,17 +51,14 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(circle, var(--navy) 1.5px, transparent 1.5px);
+  background-image: radial-gradient(circle, var(--color-navy) 1.5px, transparent 1.5px);
   background-size: 8px 8px;
   opacity: 0.12;
   pointer-events: none;
   z-index: 2;
 }
 
-/* ========================
-   DUOTONE IMAGE EFFECT
-   Navy overlay on images
-   ======================== */
+/* Duotone Image Effect */
 .duotone-navy {
   position: relative;
   overflow: hidden;
@@ -86,7 +73,7 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background: var(--navy);
+  background: var(--color-navy);
   mix-blend-mode: screen;
   z-index: 1;
   pointer-events: none;
@@ -102,6 +89,28 @@ body {
   pointer-events: none;
 }
 
+/* Date badge */
+.date-badge {
+  display: inline-block;
+  background: var(--color-navy);
+  color: var(--color-cream);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  letter-spacing: 0.03em;
+}
+
+/* Glassmorphism card — frosted glass */
+.glass {
+  background: rgba(255, 255, 255, 0.35) !important;
+  backdrop-filter: blur(6px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(6px) saturate(160%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  box-shadow:
+    0 4px 30px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
 /* ========================
    UTILITY CLASSES
    ======================== */
@@ -113,56 +122,25 @@ body {
   color: var(--text-muted);
 }
 
-.text-navy {
-  color: var(--navy);
-}
-
-.bg-navy {
-  background-color: var(--navy);
-}
-
-.bg-cream {
-  background-color: var(--cream);
-}
-
 .border-theme {
   border-color: var(--border-color);
-}
-
-.text-cream {
-  color: var(--cream);
-}
-
-.border-navy {
-  border-color: var(--navy);
 }
 
 .bg-theme-card {
   background-color: var(--bg-card);
 }
 
-/* Date badge */
-.date-badge {
-  display: inline-block;
-  background: var(--navy);
-  color: var(--cream);
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.25rem 0.75rem;
-  letter-spacing: 0.03em;
+.halftone-bg {
+  background-image: radial-gradient(circle, var(--dot-color) var(--dot-size), transparent var(--dot-size));
+  background-size: var(--dot-spacing) var(--dot-spacing);
 }
 
-/* Section divider */
+.bg-solid {
+  background-color: var(--bg-main);
+  background-image: none;
+}
+
 .section-divider {
   height: 1px;
   background: var(--border-color);
-}
-
-/* Glassmorphism card — frosty, dense */
-.glass {
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.04);
 }
