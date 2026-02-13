@@ -431,13 +431,12 @@ if (slug) {
 
   </div>
 
-  <script>
+  <script define:vars={{ existingArticle, initialConfig, initialBlocks }}>
     // --- State Management ---
-    const existingArticle = JSON.parse(JSON.stringify({existingArticle}));
     
     const state = {
       step: existingArticle ? 4 : 1, // Jump to review/publish if editing
-      config: {initialConfig} || {},
+      config: initialConfig || {},
       outline: existingArticle ? {
         title: existingArticle.title,
         seo_title: existingArticle.seo_title,
@@ -445,7 +444,7 @@ if (slug) {
         slug: existingArticle.slug,
         sections: [] // We might lost sections structure if not saved separately, but we have blocks
       } : null,
-      generatedBlocks: {initialBlocks} || []
+      generatedBlocks: initialBlocks || []
     };
     
     // Pre-fill inputs if editing
