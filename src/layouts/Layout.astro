@@ -28,7 +28,7 @@ const { title, description, image, type } = Astro.props;
 	<head>
 		<BaseHead title={title} description={description} image={image} type={type} />
 	</head>
-	<body class="flex flex-col min-h-screen font-outfit bg-[var(--bg-main)] text-[var(--text-main)] halftone-bg">
+	<body class="flex flex-col min-h-screen font-outfit bg-[var(--bg-main)] text-[var(--text-main)]">
 		<Header />
 		<main class="flex-grow">
 			<slot />
