@@ -2,10 +2,10 @@
 import { SITE_TITLE } from '../consts';
 ---
 
-<header class="bg-gray-900 border-b border-gray-800">
+<header class="border-b border-theme bg-[var(--bg-main)]/80 backdrop-blur-md sticky top-0 z-50">
 	<nav class="container mx-auto px-4 py-4 flex justify-between items-center">
-		<h2 class="text-xl font-bold text-white">
-			<a href="/" class="hover:text-yellow-400 transition-colors">{SITE_TITLE}</a>
+		<h2 class="text-xl font-bold tracking-tight">
+			<a href="/" class="text-main hover:text-muted transition-colors">{SITE_TITLE}</a>
 		</h2>
 		<div class="hidden md:flex gap-4">
 			<!-- Add links here if needed later -->

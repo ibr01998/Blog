@@ -24,58 +24,84 @@ const posts = [
 ---
 
 <Layout title={SITE_TITLE} description={SITE_DESCRIPTION}>
+<Layout title={SITE_TITLE} description={SITE_DESCRIPTION}>
     <!-- Hero Section -->
-    <section class="relative py-20 md:py-28 px-4 overflow-hidden">
-    <div class="absolute inset-0 bg-gradient-to-b from-gray-900 to-gray-950 z-0"></div>
-    <div class="container mx-auto relative z-10 text-center max-w-3xl">
-        <h1 class="text-4xl md:text-5xl font-extrabold text-white mb-6 leading-tight tracking-tight">
-        Crypto Exchange <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600">Vergelijkingen</span> voor <br class="hidden md:block" />Nederlandse Traders
-        </h1>
-        <p class="text-lg md:text-xl text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed">
-        Eerlijke reviews en vergelijkingen van crypto exchanges. We testen platformen zelf en delen onze bevindingen, zodat jij een weloverwogen keuze kunt maken.
-        </p>
-        <div class="flex flex-col sm:flex-row gap-4 justify-center">
-        <CtaButton href="/blog/100x-leverage-nederland" title="Lees: BitMEX vs Bybit" subtitle="Onze nieuwste vergelijking" />
+    <section class="relative py-24 px-4 overflow-hidden border-b border-theme">
+        <!-- Background Pattern -->
+        <div class="absolute inset-0 opacity-20 pointer-events-none" 
+             style="background-image: radial-gradient(var(--border-color) 1px, transparent 1px); background-size: 32px 32px;">
         </div>
-    </div>
+
+        <div class="container mx-auto relative z-10 max-w-4xl text-center">
+            <span class="inline-block py-1 px-3 rounded-full bg-[var(--bg-card)] border border-[var(--border-color)] text-xs font-semibold tracking-wide text-muted mb-6 uppercase">
+                {new Date().getFullYear()} Crypto Market Insights
+            </span>
+            <h1 class="text-5xl md:text-7xl font-extrabold text-main mb-8 leading-tight tracking-tighter">
+                Crypto. <br class="md:hidden" />
+                <span class="text-muted">Unfiltered.</span>
+            </h1>
+            <p class="text-xl md:text-2xl text-muted mb-10 max-w-2xl mx-auto leading-relaxed font-light">
+                Institutional-grade analysis and honest exchange reviews for Dutch traders. No hype, just data.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <CtaButton href="/blog/100x-leverage-nederland" title="Read Analysis: BitMEX vs Bybit" subtitle="Latest Compare" variant="primary" />
+            </div>
+        </div>
     </section>
 
     <!-- Latest Articles -->
-    <section class="py-16 px-4 bg-gray-950">
-    <div class="container mx-auto max-w-5xl">
-        <h2 class="text-2xl font-bold text-white mb-10 text-center">Nieuwste Artikelen</h2>
-        <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-        {
-            posts.map((post) => (
-            <article class="bg-gray-900 rounded-xl overflow-hidden shadow-lg border border-gray-800 hover:border-gray-700 transition-all duration-300 group">
-                <a href={`/blog/${post.slug}/`} class="block h-full">
-                <img width={720} height={360} src={post.data.heroImage || "/blog-placeholder-1.jpg"} alt="" class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500" />
-                <div class="p-6">
-                    <h3 class="text-lg font-bold text-white mb-2 group-hover:text-yellow-400 transition-colors">
-                    {post.data.title}
-                    </h3>
-                    <p class="text-gray-400 text-sm mb-4 line-clamp-3">
-                    {post.data.description}
-                    </p>
-                    <span class="text-yellow-500 text-sm font-medium flex items-center gap-1">
-                    Lees artikel →
-                    </span>
-                </div>
+    <section class="py-20 px-4 bg-[var(--bg-main)]">
+        <div class="container mx-auto max-w-6xl">
+            <div class="flex items-end justify-between mb-12 border-b border-theme pb-4">
+                <h2 class="text-3xl font-bold text-main tracking-tight">Latest Research</h2>
+                <a href="/blog" class="hidden md:inline-flex items-center text-sm font-semibold text-main hover:text-muted transition-colors">
+                    View Archive &rarr;
                 </a>
-            </article>
-            ))
-        }
+            </div>
+
+            <div class="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
+                {
+                    posts.map((post) => (
+                    <article class="group flex flex-col h-full">
+                        <a href={`/blog/${post.slug}/`} class="block overflow-hidden border border-theme rounded-sm mb-4">
+                            <img width={720} height={360} src={post.data.heroImage || "/blog-placeholder-1.jpg"} alt="" class="w-full aspect-[16/9] object-cover filter grayscale group-hover:grayscale-0 transition-all duration-500" />
+                        </a>
+                        <div class="flex flex-col flex-grow">
+                            <div class="flex items-center gap-3 text-xs font-medium text-muted uppercase tracking-wider mb-3">
+                                <time datetime={post.data.pubDate.toISOString()}>
+                                    {post.data.pubDate.toLocaleDateString('nl-NL', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric',
+                                    })}
+                                </time>
+                                <span class="w-1 h-1 bg-current rounded-full"></span>
+                                <span>Analysis</span>
+                            </div>
+                            <h3 class="text-2xl font-bold text-main mb-3 leading-snug group-hover:underline decoration-2 underline-offset-4">
+                                <a href={`/blog/${post.slug}/`}>{post.data.title}</a>
+                            </h3>
+                            <p class="text-muted text-base leading-relaxed line-clamp-3 mb-4 flex-grow">
+                                {post.data.description}
+                            </p>
+                            <a href={`/blog/${post.slug}/`} class="inline-flex items-center text-sm font-bold text-main hover:opacity-70 mt-auto">
+                                Read Full Report &rarr;
+                            </a>
+                        </div>
+                    </article>
+                    ))
+                }
+            </div>
         </div>
-    </div>
     </section>
 
-    <!-- About Section -->
-    <section class="py-14 px-4 border-t border-gray-900 bg-gray-900/30">
-    <div class="container mx-auto text-center max-w-2xl">
-        <h3 class="text-xl font-bold text-white mb-3">Over ShortNews</h3>
-        <p class="text-gray-400 text-sm leading-relaxed">
-        Wij testen crypto exchanges met echt geld en delen eerlijke, onafhankelijke vergelijkingen. Geen hype, geen overdreven beloftes — gewoon de feiten zodat jij je eigen keuze kunt maken.
-        </p>
-    </div>
+    <!-- Simple Trust Section -->
+    <section class="py-16 px-4 border-t border-theme bg-[var(--bg-card)]">
+        <div class="container mx-auto text-center max-w-3xl">
+            <h3 class="text-lg font-bold text-main mb-4 uppercase tracking-widest">Our Methodology</h3>
+            <p class="text-muted text-lg leading-relaxed font-light">
+                We test every platform with real capital. Our reviews are independent, data-driven, and designed for serious traders who value execution speed and liquidity over marketing fluff.
+            </p>
+        </div>
     </section>
 </Layout>
