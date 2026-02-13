@@ -21,70 +21,81 @@ const posts = [
     },
   })),
 ].sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const featuredPost = posts[0];
+const otherPosts = posts.slice(1);
 ---
 
 <Layout title={SITE_TITLE} description={SITE_DESCRIPTION}>
-    <!-- Hero Section -->
-    <section class="relative py-24 px-4 overflow-hidden border-b border-theme">
-        <!-- Background Pattern -->
-        <div class="absolute inset-0 opacity-20 pointer-events-none" 
-             style="background-image: radial-gradient(var(--border-color) 1px, transparent 1px); background-size: 32px 32px;">
-        </div>
 
-        <div class="container mx-auto relative z-10 max-w-4xl text-center">
-            <span class="inline-block py-1 px-3 rounded-full bg-[var(--bg-card)] border border-[var(--border-color)] text-xs font-semibold tracking-wide text-muted mb-6 uppercase">
-                {new Date().getFullYear()} Crypto Market Insights
+    <!-- Hero: Featured Article -->
+    {featuredPost && (
+    <section class="relative">
+        <!-- Halftone hero image -->
+        <div class="relative w-full h-[420px] md:h-[520px] overflow-hidden duotone-navy">
+            <img 
+                src={featuredPost.data.heroImage || "/blog-placeholder-1.jpg"} 
+                alt="" 
+                class="w-full h-full object-cover"
+            />
+        </div>
+        
+        <!-- Title overlay -->
+        <div class="bg-[var(--cream)] relative z-10 -mt-6 mx-4 md:mx-auto max-w-4xl p-8 md:p-12 border border-theme">
+            <span class="date-badge mb-4 inline-block">
+                {featuredPost.data.pubDate.toLocaleDateString('nl-NL', {
+                    day: 'numeric', month: 'long', year: 'numeric'
+                })}
             </span>
-            <h1 class="text-5xl md:text-7xl font-extrabold text-main mb-8 leading-tight tracking-tighter">
-                Crypto. <br class="md:hidden" />
-                <span class="text-muted">Unfiltered.</span>
+            <h1 class="text-3xl md:text-5xl font-extrabold text-navy leading-tight tracking-tight mb-4">
+                <a href={`/blog/${featuredPost.slug}/`} class="hover:opacity-70 transition-opacity">
+                    {featuredPost.data.title}
+                </a>
             </h1>
-            <p class="text-xl md:text-2xl text-muted mb-10 max-w-2xl mx-auto leading-relaxed font-light">
-                Institutional-grade analysis and honest exchange reviews for Dutch traders. No hype, just data.
+            <p class="text-base md:text-lg text-muted leading-relaxed max-w-2xl mb-6">
+                {featuredPost.data.description}
             </p>
-            <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <CtaButton href="/blog/100x-leverage-nederland" title="Read Analysis: BitMEX vs Bybit" subtitle="Latest Compare" variant="primary" />
-            </div>
+            <a href={`/blog/${featuredPost.slug}/`} class="inline-flex items-center gap-2 text-sm font-bold text-navy border-b-2 border-navy pb-1 hover:opacity-70 transition-opacity">
+                Lees verder &rarr;
+            </a>
         </div>
     </section>
+    )}
 
-    <!-- Latest Articles -->
-    <section class="py-20 px-4 bg-[var(--bg-main)]">
-        <div class="container mx-auto max-w-6xl">
-            <div class="flex items-end justify-between mb-12 border-b border-theme pb-4">
-                <h2 class="text-3xl font-bold text-main tracking-tight">Latest Research</h2>
-                <a href="/blog" class="hidden md:inline-flex items-center text-sm font-semibold text-main hover:text-muted transition-colors">
-                    View Archive &rarr;
-                </a>
+    <!-- Latest Articles Grid -->
+    <section class="py-16 md:py-24 px-4">
+        <div class="container mx-auto max-w-7xl">
+            <div class="flex items-end justify-between mb-10 pb-4 border-b border-theme">
+                <h2 class="text-2xl md:text-3xl font-bold text-navy tracking-tight">Laatste artikelen</h2>
+                <span class="text-sm text-muted hidden md:inline">{posts.length} artikelen</span>
             </div>
 
-            <div class="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
+            <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                 {
-                    posts.map((post) => (
-                    <article class="group flex flex-col h-full">
-                        <a href={`/blog/${post.slug}/`} class="block overflow-hidden border border-theme rounded-sm mb-4">
-                            <img width={720} height={360} src={post.data.heroImage || "/blog-placeholder-1.jpg"} alt="" class="w-full aspect-[16/9] object-cover filter grayscale group-hover:grayscale-0 transition-all duration-500" />
+                    otherPosts.map((post) => (
+                    <article class="group flex flex-col">
+                        <a href={`/blog/${post.slug}/`} class="block overflow-hidden mb-4 duotone-navy">
+                            <img 
+                                width={720} height={360} 
+                                src={post.data.heroImage || "/blog-placeholder-1.jpg"} 
+                                alt="" 
+                                class="w-full aspect-[16/9] object-cover group-hover:scale-105 transition-transform duration-500" 
+                            />
                         </a>
                         <div class="flex flex-col flex-grow">
-                            <div class="flex items-center gap-3 text-xs font-medium text-muted uppercase tracking-wider mb-3">
-                                <time datetime={post.data.pubDate.toISOString()}>
-                                    {post.data.pubDate.toLocaleDateString('nl-NL', {
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: 'numeric',
-                                    })}
-                                </time>
-                                <span class="w-1 h-1 bg-current rounded-full"></span>
-                                <span>Analysis</span>
-                            </div>
-                            <h3 class="text-2xl font-bold text-main mb-3 leading-snug group-hover:underline decoration-2 underline-offset-4">
+                            <span class="date-badge mb-3 self-start">
+                                {post.data.pubDate.toLocaleDateString('nl-NL', {
+                                    day: 'numeric', month: 'short', year: 'numeric'
+                                })}
+                            </span>
+                            <h3 class="text-xl font-bold text-navy mb-2 leading-snug group-hover:opacity-70 transition-opacity">
                                 <a href={`/blog/${post.slug}/`}>{post.data.title}</a>
                             </h3>
-                            <p class="text-muted text-base leading-relaxed line-clamp-3 mb-4 flex-grow">
+                            <p class="text-muted text-sm leading-relaxed line-clamp-3 mb-4 flex-grow">
                                 {post.data.description}
                             </p>
-                            <a href={`/blog/${post.slug}/`} class="inline-flex items-center text-sm font-bold text-main hover:opacity-70 mt-auto">
-                                Read Full Report &rarr;
+                            <a href={`/blog/${post.slug}/`} class="inline-flex items-center text-sm font-bold text-navy hover:opacity-70 mt-auto border-b border-navy pb-0.5 self-start">
+                                Lees meer &rarr;
                             </a>
                         </div>
                     </article>
@@ -94,12 +105,12 @@ const posts = [
         </div>
     </section>
 
-    <!-- Simple Trust Section -->
-    <section class="py-16 px-4 border-t border-theme bg-[var(--bg-card)]">
+    <!-- Trust / Methodology -->
+    <section class="py-16 px-4 bg-navy text-cream">
         <div class="container mx-auto text-center max-w-3xl">
-            <h3 class="text-lg font-bold text-main mb-4 uppercase tracking-widest">Our Methodology</h3>
-            <p class="text-muted text-lg leading-relaxed font-light">
-                We test every platform with real capital. Our reviews are independent, data-driven, and designed for serious traders who value execution speed and liquidity over marketing fluff.
+            <h3 class="text-xs font-bold uppercase tracking-[0.2em] opacity-60 mb-4">Onze methodologie</h3>
+            <p class="text-lg md:text-xl leading-relaxed opacity-80 font-light">
+                Wij testen elk platform met echt kapitaal. Onze reviews zijn onafhankelijk, data-driven, en gemaakt voor serieuze traders die execution speed en liquiditeit waarderen boven marketing.
             </p>
         </div>
     </section>

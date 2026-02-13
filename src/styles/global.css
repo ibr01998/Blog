@@ -1,67 +1,99 @@
 @import "tailwindcss";
 
+/* ================================================
+   DESIGN SYSTEM — Editorial Halftone (Navy + Cream)
+   Inspired by Lefthalf.com reference
+   ================================================ */
+
 :root {
-  /* Light Mode (Paper / Professional) */
-  --bg-main: #f4f4f0;
-  /* Warmer "Paper" Off-White */
-  --bg-card: #ffffff;
-  /* White */
-  --text-main: #1a1a1a;
-  /* Almost Black for better contrast */
-  --text-muted: #575757;
-  /* Darker Grey for better readability */
-  --border-color: #e5e5e0;
-  /* Warm Grey */
-  --primary: #0f172a;
-  /* Navy */
-  --primary-fg: #ffffff;
-  --accent: #334155;
+  /* Core Colors */
+  --navy: #1B2D4F;
+  --navy-light: #2a4270;
+  --navy-dark: #0f1d33;
+  --cream: #F5F0EB;
+  --cream-dark: #E8E0D8;
+  --white: #FFFFFF;
 
-  /* Halftone Pattern Color */
-  --pattern-color: rgba(15, 23, 42, 0.05);
-  /* Very subtle Navy dots */
+  /* Semantic Tokens */
+  --bg-main: var(--cream);
+  --bg-card: var(--white);
+  --text-main: var(--navy);
+  --text-muted: #5a6a80;
+  --border-color: #d4cdc5;
+  --primary: var(--navy);
+  --primary-fg: var(--cream);
+
+  /* Halftone */
+  --dot-color: var(--navy);
+  --dot-opacity: 0.07;
+  --dot-size: 3px;
+  --dot-spacing: 14px;
 }
 
-/* Dark Mode - Applied via .dark class on <html> */
-:root.dark {
-  --bg-main: #0a0a0a;
-  /* Near-black */
-  --bg-card: #161616;
-  /* Dark card */
-  --text-main: #e5e5e5;
-  /* Light grey text */
-  --text-muted: #a3a3a3;
-  /* Medium grey */
-  --border-color: #2a2a2a;
-  /* Dark border */
-  --primary: #e5e5e5;
-  /* Light for buttons */
-  --primary-fg: #0a0a0a;
-  /* Dark text on light button */
-  --accent: #d4d4d4;
-
-  /* Halftone Pattern Color */
-  --pattern-color: rgba(255, 255, 255, 0.03);
-  /* Very subtle white dots */
+/* ========================
+   HALFTONE BACKGROUND
+   Diagonal dot pattern 
+   ======================== */
+body {
+  background-color: var(--bg-main);
+  background-image: radial-gradient(circle, var(--dot-color) var(--dot-size), transparent var(--dot-size));
+  background-size: var(--dot-spacing) var(--dot-spacing);
+  background-position: 0 0;
 }
 
-/* Halftone Pattern Utility */
-.halftone-bg {
-  background-image: radial-gradient(var(--pattern-color) 1px, transparent 1px);
-  background-size: 20px 20px;
-  opacity: 0.4;
-  /* Much softer */
+/* Halftone overlay — for hero sections */
+.halftone-overlay {
+  position: relative;
 }
 
-/* Card Style: Professional, Hard Shadow or Clean Border */
-.card-base {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
-  /* Optional: Hard shadow for 'Pop' feel, or keep clean */
-  /* box-shadow: 4px 4px 0px 0px var(--border-color); */
+.halftone-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, var(--navy) 1.5px, transparent 1.5px);
+  background-size: 8px 8px;
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 2;
 }
 
-/* Utility for text colors using vars */
+/* ========================
+   DUOTONE IMAGE EFFECT
+   Navy overlay on images
+   ======================== */
+.duotone-navy {
+  position: relative;
+  overflow: hidden;
+}
+
+.duotone-navy img {
+  filter: grayscale(100%) contrast(1.1);
+  mix-blend-mode: multiply;
+}
+
+.duotone-navy::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--navy);
+  mix-blend-mode: screen;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.duotone-navy::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+  background-size: 6px 6px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* ========================
+   UTILITY CLASSES
+   ======================== */
 .text-main {
   color: var(--text-main);
 }
@@ -70,10 +102,39 @@
   color: var(--text-muted);
 }
 
+.text-navy {
+  color: var(--navy);
+}
+
+.bg-navy {
+  background-color: var(--navy);
+}
+
+.bg-cream {
+  background-color: var(--cream);
+}
+
 .border-theme {
   border-color: var(--border-color);
 }
 
 .bg-theme-card {
   background-color: var(--bg-card);
+}
+
+/* Date badge */
+.date-badge {
+  display: inline-block;
+  background: var(--navy);
+  color: var(--cream);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  letter-spacing: 0.03em;
+}
+
+/* Section divider */
+.section-divider {
+  height: 1px;
+  background: var(--border-color);
 }

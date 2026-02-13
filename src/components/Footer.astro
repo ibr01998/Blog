@@ -1,12 +1,58 @@
 ---
 const today = new Date();
 ---
-<footer class="py-8 border-t border-theme mt-auto bg-[var(--bg-main)]">
-	<div class="container mx-auto px-4 text-center">
-		<p class="text-[var(--text-main)] font-medium">&copy; {today.getFullYear()} Crypto Leverage NL. Alle rechten voorbehouden.</p>
-		<p class="text-xs mt-3 text-[var(--text-muted)] opacity-80 max-w-2xl mx-auto leading-relaxed">
-			<strong>Disclaimer:</strong> Handelen in crypto brengt risico's met zich mee. 
-			Deze site geeft geen financieel advies. Wij testen platformen zelf en delen onze eigen ervaringen.
-		</p>
+<footer class="bg-navy text-cream mt-auto">
+	<!-- Main Footer -->
+	<div class="container mx-auto px-6 max-w-7xl py-16">
+		<div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+			<!-- Column 1 -->
+			<div>
+				<h4 class="font-bold text-sm uppercase tracking-wider mb-4 opacity-60">Platform</h4>
+				<ul class="space-y-2 text-sm opacity-80">
+					<li><a href="/" class="hover:opacity-100 transition-opacity">Home</a></li>
+					<li><a href="/blog" class="hover:opacity-100 transition-opacity">Blog</a></li>
+					<li><a href="/blog/100x-leverage-nederland" class="hover:opacity-100 transition-opacity">Reviews</a></li>
+				</ul>
+			</div>
+			<!-- Column 2 -->
+			<div>
+				<h4 class="font-bold text-sm uppercase tracking-wider mb-4 opacity-60">Exchanges</h4>
+				<ul class="space-y-2 text-sm opacity-80">
+					<li><a href="/go/bitmex" class="hover:opacity-100 transition-opacity">BitMEX</a></li>
+					<li><a href="/go/bybit" class="hover:opacity-100 transition-opacity">Bybit</a></li>
+					<li><a href="/go/binance" class="hover:opacity-100 transition-opacity">Binance</a></li>
+				</ul>
+			</div>
+			<!-- Column 3 -->
+			<div>
+				<h4 class="font-bold text-sm uppercase tracking-wider mb-4 opacity-60">Resources</h4>
+				<ul class="space-y-2 text-sm opacity-80">
+					<li><a href="/blog" class="hover:opacity-100 transition-opacity">Guides</a></li>
+					<li><a href="/blog" class="hover:opacity-100 transition-opacity">Comparisons</a></li>
+				</ul>
+			</div>
+			<!-- Column 4 -->
+			<div>
+				<h4 class="font-bold text-sm uppercase tracking-wider mb-4 opacity-60">Legal</h4>
+				<ul class="space-y-2 text-sm opacity-80">
+					<li><a href="#" class="hover:opacity-100 transition-opacity">Disclaimer</a></li>
+					<li><a href="#" class="hover:opacity-100 transition-opacity">Privacy</a></li>
+				</ul>
+			</div>
+		</div>
+
+		<!-- Newsletter / CTA -->
+		<div class="border-t border-white/10 pt-8 mb-8">
+			<h3 class="text-lg font-bold mb-2">Navigate the markets</h3>
+			<p class="text-sm opacity-60 max-w-md">Ontvang onze nieuwste analyses en exchange reviews direct in je inbox.</p>
+		</div>
+
+		<!-- Bottom -->
+		<div class="border-t border-white/10 pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
+			<p class="text-xs opacity-50">&copy; {today.getFullYear()} ShortNews. Alle rechten voorbehouden.</p>
+			<p class="text-xs opacity-40 max-w-lg text-center md:text-right">
+				Handelen in crypto brengt risico's met zich mee. Deze site geeft geen financieel advies.
+			</p>
+		</div>
 	</div>
 </footer>

@@ -56,63 +56,50 @@ if (platformSlugs && Array.isArray(platformSlugs) && platformSlugs.length > 0) {
 ---
 
 <Layout title={post.data.title} description={post.data.description} image={post.data.heroImage} type="article">
-    <!-- Hero Banner -->
-    <div class="relative w-full overflow-hidden border-b border-theme">
-        <!-- Hero Image (if available) -->
-        {post.data.heroImage && (
-            <div class="w-full h-[280px] md:h-[380px] overflow-hidden">
-                <img width={1920} height={1080} src={post.data.heroImage} alt="" class="w-full h-full object-cover filter grayscale" />
-            </div>
-        )}
-        
-        <!-- Article Header -->
-        <div class="bg-[var(--bg-main)] px-4 py-10 md:py-14">
-            <div class="container mx-auto max-w-4xl">
-                 <!-- Breadcrumbs -->
-                 <nav class="flex text-sm text-muted mb-6" aria-label="Breadcrumb">
-                    <ol class="inline-flex items-center space-x-1 md:space-x-2">
-                        <li class="inline-flex items-center">
-                            <a href="/" class="hover:text-main transition-colors">Home</a>
-                        </li>
-                        <li>
-                            <div class="flex items-center">
-                                <span class="mx-2 text-muted">/</span>
-                                <span class="text-muted">Blog</span>
-                            </div>
-                        </li>
-                        <li aria-current="page">
-                            <div class="flex items-center">
-                                <span class="mx-2 text-muted">/</span>
-                                <span class="text-main font-medium truncate max-w-[200px] md:max-w-xs">{post.data.title}</span>
-                            </div>
-                        </li>
-                    </ol>
-                </nav>
 
-                <h1 class="text-4xl md:text-6xl font-extrabold text-main mb-6 leading-tight tracking-tight">
-                    {post.data.title}
-                </h1>
-                 <div class="flex gap-4 text-sm text-muted items-center">
-                    <div>
-                        <p class="text-main font-semibold">Redactie</p>
-                        <div class="flex items-center gap-2 text-muted">
-                            <time datetime={post.data.pubDate.toISOString()}>
-                                {post.data.pubDate.toLocaleDateString('nl-NL', {
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric',
-                                })}
-                            </time>
-                            <span>·</span>
-                            <span>6 min leestijd</span>
-                        </div>
-                    </div>
-                </div>
+    <!-- Hero: Duotone Image -->
+    {post.data.heroImage && (
+    <div class="relative w-full h-[320px] md:h-[450px] overflow-hidden duotone-navy">
+        <img width={1920} height={1080} src={post.data.heroImage} alt="" class="w-full h-full object-cover" />
+    </div>
+    )}
+
+    <!-- Article Header -->
+    <div class="bg-[var(--cream)] px-4">
+        <div class="container mx-auto max-w-4xl py-10 md:py-14">
+            <!-- Breadcrumbs -->
+            <nav class="flex text-sm text-muted mb-6" aria-label="Breadcrumb">
+                <a href="/" class="hover:text-navy transition-colors">Home</a>
+                <span class="mx-2 opacity-40">/</span>
+                <a href="/blog" class="hover:text-navy transition-colors">Blog</a>
+                <span class="mx-2 opacity-40">/</span>
+                <span class="text-navy font-medium truncate max-w-[200px] md:max-w-sm">{post.data.title}</span>
+            </nav>
+
+            <!-- Date Badge -->
+            <span class="date-badge mb-5 inline-block">
+                {post.data.pubDate.toLocaleDateString('nl-NL', {
+                    day: 'numeric', month: 'long', year: 'numeric'
+                })}
+            </span>
+
+            <h1 class="text-4xl md:text-6xl font-extrabold text-navy leading-[1.1] tracking-tight mb-6">
+                {post.data.title}
+            </h1>
+
+            <div class="flex items-center gap-3 text-sm text-muted">
+                <span class="font-semibold text-navy">Redactie</span>
+                <span class="opacity-40">·</span>
+                <span>6 min leestijd</span>
             </div>
         </div>
     </div>
 
-    <div class="container mx-auto max-w-6xl px-4 py-16">
+    <!-- Divider -->
+    <div class="section-divider"></div>
+
+    <!-- Article Body + Sidebar -->
+    <div class="container mx-auto max-w-7xl px-4 py-12 md:py-20">
         <div class="flex flex-col lg:flex-row gap-16">
             
             <!-- Main Content -->
@@ -123,32 +110,40 @@ if (platformSlugs && Array.isArray(platformSlugs) && platformSlugs.length > 0) {
             <!-- Sidebar -->
             <aside class="lg:w-1/3 space-y-8">
                 <div class="sticky top-24 space-y-6">
+
+                    <!-- In this article -->
+                    <div class="border border-theme bg-[var(--cream)] p-6">
+                        <h3 class="text-xs font-bold text-navy uppercase tracking-[0.15em] mb-4">In dit artikel</h3>
+                        <p class="text-sm text-muted leading-relaxed">
+                            {post.data.description}
+                        </p>
+                    </div>
+
                     <!-- Platforms in this article -->
                     {sidebarPlatforms.length > 0 && (
-                    <div class="bg-[var(--bg-card)] rounded-xl p-6 border border-theme shadow-sm">
-                        <h3 class="text-lg font-bold text-main mb-5 flex items-center gap-2 uppercase tracking-wider text-sm">
-                             <span class="w-1.5 h-1.5 bg-[var(--text-main)] rounded-full"></span>
-                             Platformen in dit artikel
+                    <div class="border border-theme bg-white p-6">
+                        <h3 class="text-xs font-bold text-navy uppercase tracking-[0.15em] mb-5">
+                             Platformen
                         </h3>
                         
                         <div class="space-y-3">
                             {sidebarPlatforms.map((p: any) => (
-                                <a href={`/go/${p.slug}`} target="_blank" rel="nofollow noopener noreferrer" class="flex items-center gap-4 p-3 rounded-lg hover:bg-[var(--bg-main)] border border-transparent hover:border-theme transition-all group">
-                                    <div class="w-10 h-10 bg-[var(--bg-main)] rounded border border-theme flex items-center justify-center text-xs font-bold text-muted group-hover:text-main transition-colors">{p.name.substring(0, 2).toUpperCase()}</div>
+                                <a href={`/go/${p.slug}`} target="_blank" rel="nofollow noopener noreferrer" class="flex items-center gap-3 p-3 border border-theme hover:bg-[var(--cream)] transition-colors group">
+                                    <div class="w-9 h-9 bg-navy text-cream flex items-center justify-center text-xs font-bold">{p.name.substring(0, 2).toUpperCase()}</div>
                                     <div class="flex-1">
-                                        <h4 class="font-bold text-main text-sm">{p.name}</h4>
-                                        <p class="text-xs text-muted">{p.shortDescription ? p.shortDescription.substring(0, 40) + '...' : `Review`}</p>
+                                        <h4 class="font-bold text-navy text-sm">{p.name}</h4>
+                                        <p class="text-xs text-muted">{p.shortDescription ? p.shortDescription.substring(0, 40) + '...' : 'Review'}</p>
                                     </div>
-                                    <span class="text-muted group-hover:text-main transition-colors text-sm">→</span>
+                                    <span class="text-muted group-hover:text-navy transition-colors text-sm">&rarr;</span>
                                 </a>
                             ))}
                         </div>
                     </div>
                     )}
 
-                    <!-- Disclaimer box -->
-                     <div class="bg-[var(--bg-main)] rounded-xl p-5 border border-theme">
-                        <h4 class="font-bold text-main text-xs mb-2 uppercase tracking-wide">Disclaimer</h4>
+                    <!-- Disclaimer -->
+                    <div class="border border-theme p-5 bg-[var(--cream)]">
+                        <h4 class="font-bold text-navy text-xs uppercase tracking-wider mb-2">Disclaimer</h4>
                         <p class="text-xs text-muted leading-relaxed">
                             Dit artikel bevat affiliate links. Wij ontvangen een commissie als je je via onze links aanmeldt, zonder extra kosten voor jou.
                         </p>
@@ -166,37 +161,34 @@ if (platformSlugs && Array.isArray(platformSlugs) && platformSlugs.length > 0) {
             color: var(--text-muted); 
         }
 
-        /* --- Paragraphs --- */
         .article-content :global(p) {
-            font-size: 1.125rem;       /* 18px */
-            line-height: 1.8;
-            margin-bottom: 2rem;
-            color: var(--text-muted);
+            font-size: 1.125rem;
+            line-height: 1.85;
+            margin-bottom: 1.75rem;
+            color: #3a4a5c;
         }
         
-        /* High contrast for first paragraph */
         .article-content :global(p:first-of-type) {
-            font-size: 1.25rem;
-            color: var(--text-main);
+            font-size: 1.2rem;
+            color: var(--navy);
             font-weight: 500;
         }
 
-        /* --- Headings --- */
         .article-content :global(h2) {
-            font-size: 1.875rem;        /* 30px */
+            font-size: 1.75rem;
             font-weight: 800;
-            color: var(--text-main);
-            margin-top: 4rem;
-            margin-bottom: 1.5rem;
+            color: var(--navy);
+            margin-top: 3.5rem;
+            margin-bottom: 1.25rem;
             letter-spacing: -0.02em;
             line-height: 1.2;
         }
 
         .article-content :global(h3) {
-            font-size: 1.5rem;       /* 24px */
+            font-size: 1.375rem;
             font-weight: 700;
-            color: var(--text-main);
-            margin-top: 3rem;
+            color: var(--navy);
+            margin-top: 2.5rem;
             margin-bottom: 1rem;
             line-height: 1.3;
         }
@@ -204,117 +196,109 @@ if (platformSlugs && Array.isArray(platformSlugs) && platformSlugs.length > 0) {
         .article-content :global(h4) {
             font-size: 1.125rem;
             font-weight: 700;
-            color: var(--text-main);
+            color: var(--navy);
             margin-top: 2rem;
             margin-bottom: 0.75rem;
         }
 
-        /* --- Links --- */
         .article-content :global(a) {
-            color: var(--text-main);
+            color: var(--navy);
             font-weight: 600;
             text-decoration: underline;
             text-underline-offset: 3px;
-            text-decoration-color: rgba(15, 23, 42, 0.3); /* Subtle underline */
-            transition: all 0.2s;
+            text-decoration-color: rgba(27, 45, 79, 0.3);
+            transition: opacity 0.2s;
         }
         .article-content :global(a:hover) {
-            background-color: var(--text-main);
-            color: var(--bg-card);
-            text-decoration: none;
+            opacity: 0.6;
         }
 
-        /* --- Bold / Strong --- */
         .article-content :global(strong) {
-            color: var(--text-main);
+            color: var(--navy);
             font-weight: 700;
         }
 
-        /* --- Italic / Emphasis --- */
         .article-content :global(em) {
             color: var(--text-muted);
             font-style: italic;
         }
 
-        /* --- Blockquotes --- */
         .article-content :global(blockquote) {
-            border-left: 3px solid var(--text-main);
+            border-left: 3px solid var(--navy);
             padding-left: 1.5rem;
             margin: 2.5rem 0;
             font-style: italic;
-            font-size: 1.25rem;
-            color: var(--text-main);
+            font-size: 1.125rem;
+            color: var(--navy);
         }
         .article-content :global(blockquote p) {
-            font-size: 1.25rem !important;
-            color: var(--text-main) !important;
+            font-size: 1.125rem !important;
+            color: var(--navy) !important;
             margin-bottom: 0;
         }
 
-        /* --- Lists --- */
         .article-content :global(ul), .article-content :global(ol) {
             margin: 1.5rem 0 2rem;
             padding-left: 1.5rem;
-            color: var(--text-muted);
+            color: #3a4a5c;
         }
-        .article-content :global(ul) {
-            list-style-type: disc;
-        }
-        .article-content :global(ol) {
-            list-style-type: decimal;
-        }
+        .article-content :global(ul) { list-style-type: disc; }
+        .article-content :global(ol) { list-style-type: decimal; }
         .article-content :global(li) {
             margin-bottom: 0.75rem;
             padding-left: 0.5rem;
+            font-size: 1.0625rem;
+            line-height: 1.75;
         }
         .article-content :global(li::marker) {
-            color: var(--text-main);
+            color: var(--navy);
             font-weight: bold;
         }
 
-        /* --- Tables --- */
         .article-content :global(table) {
             width: 100%;
             border-collapse: collapse;
             margin: 2.5rem 0;
             border: 1px solid var(--border-color);
-            border-radius: 0.5rem;
             overflow: hidden;
             font-size: 0.95rem;
         }
         .article-content :global(thead) {
-            background: var(--bg-main);
-            border-bottom: 1px solid var(--border-color);
+            background: var(--navy);
+            color: var(--cream);
         }
         .article-content :global(th) {
             text-align: left;
-            padding: 1rem;
+            padding: 0.875rem 1rem;
             font-weight: 700;
-            color: var(--text-main);
             text-transform: uppercase;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             letter-spacing: 0.05em;
         }
         .article-content :global(td) {
-            padding: 1rem;
+            padding: 0.875rem 1rem;
             border-bottom: 1px solid var(--border-color);
-            color: var(--text-muted);
+            color: #3a4a5c;
         }
         .article-content :global(tbody tr:last-child td) {
             border-bottom: none;
         }
 
-        /* --- Images --- */
         .article-content :global(img) {
-            border-radius: 4px;
             margin: 2.5rem 0;
             border: 1px solid var(--border-color);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* Subtle shadow */
-            filter: grayscale(100%); /* Default grayscale */
+            filter: grayscale(100%) contrast(1.05);
             transition: filter 0.3s;
         }
         .article-content :global(img:hover) {
-            filter: grayscale(0%); /* Color on hover */
+            filter: grayscale(0%);
+        }
+
+        .article-content :global(hr) {
+            border: none;
+            height: 1px;
+            background: var(--border-color);
+            margin: 3rem 0;
         }
     </style>
 

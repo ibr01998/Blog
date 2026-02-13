@@ -1,18 +1,17 @@
 ---
 import { SITE_TITLE } from '../consts';
-import ThemeToggle from './ThemeToggle.astro';
 ---
 
-<header class="border-b border-theme bg-[var(--bg-main)]/80 backdrop-blur-md sticky top-0 z-50">
-	<nav class="container mx-auto px-4 py-4 flex justify-between items-center">
-		<h2 class="text-xl font-bold tracking-tight">
-			<a href="/" class="text-main hover:text-muted transition-colors">{SITE_TITLE}</a>
-		</h2>
-		<div class="flex items-center gap-4">
-            <div class="hidden md:flex gap-4">
-			    <!-- Add links here if needed later -->
-            </div>
-            <ThemeToggle />
+<header class="border-b border-theme bg-[var(--cream)]/90 backdrop-blur-sm sticky top-0 z-50">
+	<nav class="container mx-auto px-6 py-4 flex justify-between items-center max-w-7xl">
+		<a href="/" class="flex items-center gap-2 text-navy font-bold text-lg tracking-tight">
+			<span class="w-2 h-2 rounded-full bg-navy inline-block"></span>
+			{SITE_TITLE}
+		</a>
+		<div class="flex items-center gap-6 text-sm font-medium text-navy">
+			<a href="/" class="hover:opacity-60 transition-opacity hidden md:inline">Home</a>
+			<a href="/blog" class="hover:opacity-60 transition-opacity hidden md:inline">Blog</a>
+			<a href="/dashboard/new" class="hover:opacity-60 transition-opacity hidden md:inline">Dashboard</a>
 		</div>
 	</nav>
 </header>
