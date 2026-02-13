@@ -66,7 +66,7 @@ if (platformSlugs && Array.isArray(platformSlugs) && platformSlugs.length > 0) {
 
     <!-- Article Header -->
     <div class="px-4 -mt-6 relative z-10">
-        <div class="container mx-auto max-w-5xl bg-white border border-theme p-8 md:p-12">
+        <div class="container mx-auto max-w-5xl glass rounded-lg p-8 md:p-12">
             <!-- Breadcrumbs -->
             <nav class="flex text-sm text-muted mb-6" aria-label="Breadcrumb">
                 <a href="/" class="hover:text-navy transition-colors">Home</a>
@@ -103,7 +103,7 @@ if (platformSlugs && Array.isArray(platformSlugs) && platformSlugs.length > 0) {
         <div class="flex flex-col lg:flex-row gap-8">
             
             <!-- Main Content (its own card) -->
-            <article class="lg:w-2/3 article-content bg-white border border-theme p-8 md:p-12">
+            <article class="lg:w-2/3 article-content glass rounded-lg p-8 md:p-12">
                 {isDb ? <Markdown content={dbContent} components={{ CtaButton }} /> : <Content />}
             </article>
 
@@ -112,7 +112,7 @@ if (platformSlugs && Array.isArray(platformSlugs) && platformSlugs.length > 0) {
                 <div class="sticky top-24 space-y-6">
 
                     <!-- In this article -->
-                    <div class="border border-theme bg-white p-6">
+                    <div class="glass rounded-lg p-6">
                         <h3 class="text-xs font-bold text-navy uppercase tracking-[0.15em] mb-4">In dit artikel</h3>
                         <p class="text-sm text-muted leading-relaxed">
                             {post.data.description}
@@ -121,7 +121,7 @@ if (platformSlugs && Array.isArray(platformSlugs) && platformSlugs.length > 0) {
 
                     <!-- Platforms in this article -->
                     {sidebarPlatforms.length > 0 && (
-                    <div class="border border-theme bg-white p-6">
+                    <div class="glass rounded-lg p-6">
                         <h3 class="text-xs font-bold text-navy uppercase tracking-[0.15em] mb-5">
                              Platformen
                         </h3>
@@ -142,7 +142,7 @@ if (platformSlugs && Array.isArray(platformSlugs) && platformSlugs.length > 0) {
                     )}
 
                     <!-- Disclaimer -->
-                    <div class="border border-theme p-5 bg-white">
+                    <div class="glass rounded-lg p-5">
                         <h4 class="font-bold text-navy text-xs uppercase tracking-wider mb-2">Disclaimer</h4>
                         <p class="text-xs text-muted leading-relaxed">
                             Dit artikel bevat affiliate links. Wij ontvangen een commissie als je je via onze links aanmeldt, zonder extra kosten voor jou.

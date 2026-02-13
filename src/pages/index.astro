@@ -41,7 +41,7 @@ const otherPosts = posts.slice(1);
         </div>
         
         <!-- Title overlay -->
-        <div class="bg-solid relative z-10 -mt-6 mx-4 md:mx-auto max-w-4xl p-8 md:p-12 border border-theme">
+        <div class="glass relative z-10 -mt-6 mx-4 md:mx-auto max-w-4xl p-8 md:p-12 rounded-lg">
             <span class="date-badge mb-4 inline-block">
                 {featuredPost.data.pubDate.toLocaleDateString('nl-NL', {
                     day: 'numeric', month: 'long', year: 'numeric'
@@ -65,15 +65,19 @@ const otherPosts = posts.slice(1);
     <!-- Latest Articles Grid -->
     <section class="py-16 md:py-24 px-4">
         <div class="container mx-auto max-w-7xl">
-            <div class="flex items-end justify-between mb-10 pb-4 border-b border-theme bg-white px-6 py-4 -mx-2">
-                <h2 class="text-2xl md:text-3xl font-bold text-navy tracking-tight">Laatste artikelen</h2>
-                <span class="text-sm text-muted hidden md:inline">{posts.length} artikelen</span>
+            <div class="flex items-center justify-between mb-10 gap-4">
+                <div class="glass px-6 py-3 rounded-lg">
+                    <h2 class="text-2xl md:text-3xl font-bold text-navy tracking-tight">Laatste artikelen</h2>
+                </div>
+                <div class="glass px-4 py-2 rounded-lg hidden md:block">
+                    <span class="text-sm text-muted font-medium">{posts.length} artikelen</span>
+                </div>
             </div>
 
             <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                 {
                     otherPosts.map((post) => (
-                    <article class="group flex flex-col bg-white border border-theme">
+                    <article class="group flex flex-col glass rounded-lg overflow-hidden">
                         <a href={`/blog/${post.slug}/`} class="block overflow-hidden duotone-navy">
                             <img 
                                 width={720} height={360} 
