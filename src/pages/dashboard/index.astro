@@ -16,6 +16,7 @@ const posts = [
       description: p.description,
       pubDate: p.pubDate,
       article_type: p.article_type,
+      status: p.status // Add status
     }
   })),
 ].sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
@@ -87,17 +88,66 @@ const posts = [
                 <span class="inline-flex items-center px-2 py-0.5 text-xs rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
                   {post.data.article_type || 'comparison'}
                 </span>
+                
+                {post.data.status === 'draft' && (
+                  <span class="inline-flex items-center ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-700 text-gray-300 border border-gray-600">
+                    Draft
+                  </span>
+                )}
+                {post.source === 'file' && (
+                   <span class="inline-flex items-center ml-2 px-2 py-0.5 text-xs rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                    File
+                  </span>
+                )}
               </td>
               <td class="px-5 py-3.5 text-gray-400 hidden sm:table-cell">
                 {post.data.pubDate.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}
               </td>
               <td class="px-5 py-3.5 text-right">
                 <div class="flex items-center justify-end gap-2">
-                  <a href={`/blog/${post.slug}`} target="_blank" class="text-gray-500 hover:text-gray-300 transition-colors" title="Bekijk">
+                  <a href={`/blog/${post.slug}`} target="_blank" class="p-2 text-gray-500 hover:text-white transition-colors" title="Bekijk">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                     </svg>
                   </a>
+                  
+                  {post.source === 'db' && (
+                    <>
+                      <a href={`/dashboard/new?slug=${post.slug}`} class="p-2 text-gray-500 hover:text-yellow-500 transition-colors" title="Bewerken">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </a>
+                      
+                      <button 
+                        class="toggle-status-btn p-2 text-gray-500 hover:text-blue-400 transition-colors" 
+                        title={post.data.status === 'published' ? 'Zet offline' : 'Publiceer'}
+                        data-slug={post.slug}
+                        data-status={post.data.status}
+                      >
+                         {post.data.status === 'published' ? (
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                           </svg>
+                         ) : (
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                           </svg>
+                         )}
+                      </button>
+
+                      <button 
+                        class="delete-btn p-2 text-gray-500 hover:text-red-500 transition-colors" 
+                        title="Verwijderen"
+                        data-slug={post.slug}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </>
+                  )}
                 </div>
               </td>
             </tr>
@@ -106,5 +156,51 @@ const posts = [
       </table>
     </div>
   )}
+  
+  <script>
+    // Handle Delete
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        if(!confirm('Weet je zeker dat je dit artikel wilt verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
+        
+        const slug = e.currentTarget.dataset.slug;
+        try {
+          const res = await fetch(`/api/articles/${slug}`, { method: 'DELETE' });
+          if(res.ok) {
+            window.location.reload();
+          } else {
+            alert('Fout bij verwijderen');
+          }
+        } catch(err) {
+          console.error(err);
+          alert('Er ging iets mis');
+        }
+      });
+    });
 
-</DashboardLayout>
+    // Handle Status Toggle (Publish/Unpublish)
+    document.querySelectorAll('.toggle-status-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const slug = e.currentTarget.dataset.slug;
+        const currentStatus = e.currentTarget.dataset.status;
+        const newStatus = currentStatus === 'published' ? 'draft' : 'published';
+        
+        try {
+          const res = await fetch(`/api/articles/${slug}`, { 
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ status: newStatus })
+          });
+          
+          if(res.ok) {
+            window.location.reload();
+          } else {
+            alert('Fout bij status wijzigen');
+          }
+        } catch(err) {
+          console.error(err);
+          alert('Er ging iets mis');
+        }
+      });
+    });
+  </script>

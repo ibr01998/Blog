@@ -14,6 +14,7 @@ const Post = defineTable({
     platforms: column.json({ optional: true }),
     blocks: column.json({ optional: true }), // Store structured blocks for potential re-editing
     updatedDate: column.date({ optional: true }),
+    status: column.text({ optional: true, default: 'published' }), // 'published' | 'draft'
   }
 });
 

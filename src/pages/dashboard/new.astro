@@ -1,9 +1,38 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import { articleTemplates } from '../../data/templates';
-import { db, Platform } from 'astro:db';
+import { db, Platform, Post, eq } from 'astro:db';
 
 const platforms = await db.select().from(Platform).orderBy(Platform.name);
+
+// Check if we are editing
+const slug = Astro.url.searchParams.get('slug');
+let existingArticle = null;
+let initialConfig = {};
+let initialOutline = null;
+let initialBlocks = [];
+
+if (slug) {
+  const article = await db.select().from(Post).where(eq(Post.slug, slug)).get();
+  if (article) {
+    existingArticle = article;
+    // Map existing data to state format
+    initialConfig = {
+      target_keyword: article.target_keyword,
+      article_type: article.article_type,
+      // monetization_priority: article.monetization_priority, // Not in DB schema yet, maybe skip or default
+      // tone: article.tone, // Not in DB schema
+      platforms: article.platforms,
+      image_provider: 'google', // Default or need to store
+      image_style: 'futuristic' // Default
+    };
+    
+    // If blocks exist, we can pre-fill
+    if (article.blocks) {
+       initialBlocks = article.blocks;
+    }
+  }
+}
 ---
 
 <DashboardLayout title="Nieuw Artikel" activePage="new">
@@ -311,12 +340,56 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
 
   <script>
     // --- State Management ---
+    const existingArticle = JSON.parse(JSON.stringify({existingArticle}));
+    
     const state = {
-      step: 1,
-      config: {},
-      outline: null,
-      generatedBlocks: []
+      step: existingArticle ? 4 : 1, // Jump to review/publish if editing
+      config: {initialConfig} || {},
+      outline: existingArticle ? {
+        title: existingArticle.title,
+        seo_title: existingArticle.seo_title,
+        meta_description: existingArticle.description,
+        slug: existingArticle.slug,
+        sections: [] // We might lost sections structure if not saved separately, but we have blocks
+      } : null,
+      generatedBlocks: {initialBlocks} || []
     };
+    
+    // Pre-fill inputs if editing
+    if (existingArticle) {
+       // Fill Step 1 inputs for context
+       if(state.config.target_keyword) document.getElementById('target_keyword').value = state.config.target_keyword;
+       if(state.config.article_type) document.getElementById('article_type').value = state.config.article_type;
+       
+       // Handle platforms check
+       if(state.config.platforms && Array.isArray(state.config.platforms)) {
+          state.config.platforms.forEach(pid => {
+             const cb = document.querySelector(`input[name="platforms"][value="${pid}"]`);
+             if(cb) cb.checked = true;
+          });
+       }
+
+       // Fill Review Screen
+       document.getElementById('final-title').innerText = existingArticle.title;
+       document.getElementById('final-description').innerText = existingArticle.description;
+       
+       // Fill Hero Image
+       if (existingArticle.heroImage) {
+          const previewEl = document.getElementById('hero-image-preview');
+          previewEl.innerHTML = `<img src="${existingArticle.heroImage}" alt="Hero" class="rounded-lg max-h-[300px] object-cover w-full" />`;
+          document.getElementById('hero-image-status').innerText = 'Huidige afbeelding';
+          // Disable generate by default if exists
+          document.getElementById('generate_hero_image').checked = false;
+          
+          // Re-enable image config opacity change logic
+           const imageConfig = document.getElementById('image-config');
+           imageConfig.style.opacity = '0.4';
+           imageConfig.style.pointerEvents = 'none';
+       }
+
+       // Update button text
+       document.getElementById('publish-btn').innerText = 'UPDATEN';
+    }
 
     // --- DOM Elements ---
     const steps = document.querySelectorAll('.wizard-step');
@@ -589,11 +662,11 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
     document.getElementById('publish-btn').addEventListener('click', async () => {
       const btn = document.getElementById('publish-btn');
       btn.disabled = true;
-      btn.innerText = 'Bezig met opslaan...';
+      btn.innerText = existingArticle ? 'Bezig met updaten...' : 'Bezig met opslaan...';
 
       try {
         // Step 1: Generate hero image if enabled
-        let heroImage = `https://placehold.co/1200x630/111827/EAB308?text=${encodeURIComponent(state.outline.title.substring(0, 40))}`;
+        let heroImage = existingArticle?.heroImage || `https://placehold.co/1200x630/111827/EAB308?text=${encodeURIComponent(state.outline.title.substring(0, 40))}`;
 
         if (state.config.generate_hero_image) {
           btn.innerText = '🎨 Afbeelding genereren...';
@@ -606,7 +679,7 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 title: state.outline.title,
-                keyword: state.config.target_keyword,
+                keyword: state.config.target_keyword || state.outline.title,
                 slug: state.outline.slug,
                 provider: state.config.image_provider,
                 style: state.config.image_style,
@@ -621,15 +694,15 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
                 previewEl.innerHTML = `<img src="${imgData.imageUrl}" alt="Hero" class="rounded-lg max-h-[300px] object-cover w-full" />`;
               }
             } else {
-              console.warn('Image generation failed, using placeholder:', imgData.error);
-              if (statusEl) statusEl.innerText = '⚠️ Afbeelding gefaald, placeholder gebruikt.';
+              console.warn('Image generation failed:', imgData.error);
+              if (statusEl) statusEl.innerText = '⚠️ Afbeelding gefaald, oude/placeholder gebruikt.';
             }
           } catch (imgErr) {
             console.warn('Image generation error:', imgErr);
           }
-
-          btn.innerText = '📝 Artikel opslaan...';
         }
+
+        btn.innerText = existingArticle ? '📝 Artikel updaten...' : '📝 Artikel opslaan...';
 
         // Step 2: Save the article
         const payload = {
@@ -637,28 +710,34 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
           description: state.outline.meta_description,
           slug: state.outline.slug,
           heroImage,
-          pubDate: new Date().toISOString(),
+          pubDate: existingArticle?.pubDate || new Date().toISOString(),
           target_keyword: state.config.target_keyword,
           seo_title: state.outline.seo_title,
           article_type: state.config.article_type,
           blocks: state.generatedBlocks,
-          platforms: state.config.platforms
+          platforms: state.config.platforms,
+          status: existingArticle?.status || 'published' // Keep existing status or default to published
         };
 
-        const res = await fetch('/api/articles', {
-          method: 'POST',
+        const method = existingArticle ? 'PUT' : 'POST';
+        const url = existingArticle ? `/api/articles/${existingArticle.slug}` : '/api/articles';
+
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
 
         if (res.ok) {
-           window.location.href = '/dashboard?success=published';
+           window.location.href = '/dashboard?success=saved';
         } else {
-           throw new Error('Save failed');
+           const errData = await res.json();
+           throw new Error(errData.error || 'Save failed');
         }
       } catch (err) {
-        alert('Fout bij publiceren: ' + err.message);
+        alert('Fout bij opslaan: ' + err.message);
         btn.disabled = false;
-        btn.innerText = 'PUBLICEREN';
+        btn.innerText = existingArticle ? 'UPDATEN' : 'PUBLICEREN';
       }
     });
 
