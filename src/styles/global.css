@@ -32,13 +32,22 @@
 
 /* ========================
    HALFTONE BACKGROUND
-   Diagonal dot pattern 
+   Only applied via .halftone-bg class
    ======================== */
 body {
   background-color: var(--bg-main);
+}
+
+/* Opt-in halftone pattern for hero/decorative sections */
+.halftone-bg {
   background-image: radial-gradient(circle, var(--dot-color) var(--dot-size), transparent var(--dot-size));
   background-size: var(--dot-spacing) var(--dot-spacing);
-  background-position: 0 0;
+}
+
+/* Solid readable background for content sections */
+.bg-solid {
+  background-color: var(--bg-main);
+  background-image: none;
 }
 
 /* Halftone overlay — for hero sections */
