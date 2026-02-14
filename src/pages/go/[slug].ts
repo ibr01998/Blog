@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { db, Platform, eq } from 'astro:db';
-import { affiliatePrograms as affiliates } from '../../data/affiliates';
+import { affiliatePrograms as affiliates, getAffiliateUrl } from '../../data/affiliates';
 
 export const GET: APIRoute = async ({ params, redirect }) => {
     const { slug } = params;
@@ -13,10 +13,13 @@ export const GET: APIRoute = async ({ params, redirect }) => {
         return redirect(platform.affiliateLink, 307);
     }
 
-    // 2. Check Static Affiliates (fallback)
+    // 2. Check Static Affiliates (fallback — uses env var, then hardcoded url)
     const affiliate = affiliates.find(a => a.slug === slug);
     if (affiliate) {
-        return redirect(affiliate.url, 307);
+        const url = getAffiliateUrl(affiliate.id);
+        if (url) {
+            return redirect(url, 307);
+        }
     }
 
     return new Response('Link not found', { status: 404 });
