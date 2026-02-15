@@ -169,6 +169,22 @@ export async function runEditorialCycle(onProgress?: ProgressCallback): Promise<
   const humanizerAgent = await loadAgent('humanizer', HumanizerAgent);
   const seoAgent = await loadAgent('seo', SEOAgent);
 
+  // Apply analyst evolution suggestions to in-memory agents immediately,
+  // so this cycle's articles already benefit from the recommended overrides.
+  if (cfg.enable_auto_evolution && analystReport.suggested_agent_overrides.length > 0) {
+    const agentMap = new Map<string, BaseAgent>([
+      [writerAgent.id, writerAgent],
+      [humanizerAgent.id, humanizerAgent],
+      [seoAgent.id, seoAgent],
+    ]);
+    for (const suggestion of analystReport.suggested_agent_overrides) {
+      const agent = agentMap.get(suggestion.agent_id);
+      if (agent && Object.keys(suggestion.suggested_overrides).length > 0) {
+        agent.applyOverrides(suggestion.suggested_overrides);
+      }
+    }
+  }
+
   const articleIds: string[] = [];
   const errors: string[] = [];
 

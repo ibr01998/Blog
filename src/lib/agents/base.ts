@@ -116,12 +116,14 @@ export class BaseAgent {
     userPrompt: string;
     schema: ZodSchema<T>;
     model?: string;
+    maxTokens?: number;
   }): Promise<T> {
     const result = await generateObject({
       model: resolveModel(params.model ?? 'gpt-4o'),
       system: params.systemPrompt,
       prompt: params.userPrompt,
       schema: params.schema,
+      ...(params.maxTokens ? ({ maxTokens: params.maxTokens } as object) : {}),
     });
     return result.object;
   }
@@ -149,6 +151,15 @@ export class BaseAgent {
         params.reasoningSummary,
       ]
     );
+  }
+
+  /**
+   * Apply additional overrides to the in-memory merged config.
+   * Used by the orchestrator to apply analyst evolution suggestions
+   * to agents before they run in the current cycle.
+   */
+  applyOverrides(overrides: Record<string, unknown>): void {
+    this.mergedConfig = { ...this.mergedConfig, ...overrides } as PersonalityConfig & BehaviorOverrides;
   }
 
   // Getters

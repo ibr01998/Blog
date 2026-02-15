@@ -86,7 +86,7 @@ ${CRYPTO_TOPIC_SEEDS.map((t, i) => `${i + 1}. ${t}`).join('\n')}
 REQUIREMENTS:
 - All primary_keywords must be Dutch search queries
 - title_suggestion must be Dutch, click-worthy, max 70 chars
-- target_word_count: money=1000-1500, authority=1200-2000, trend=700-1000
+- target_word_count: money=800-1200, authority=1000-1500, trend=500-800
 - target_platforms: relevant exchange slugs (bitmex/bybit/binance/kraken)
 - reasoning: 1-2 sentences explaining why this brief will convert or rank
 - Spread keywords across all 4 platforms — no single platform dominating
