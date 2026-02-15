@@ -17,6 +17,7 @@ const { title, activePage = 'dashboard' } = Astro.props;
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: 'home' },
+  { id: 'analytics', label: 'Analytics', href: '/dashboard/analytics', icon: 'chart' },
   { id: 'new', label: 'Nieuw Artikel', href: '/dashboard/new', icon: 'plus' },
 ];
 ---
@@ -78,6 +79,11 @@ const navItems = [
           {item.icon === 'plus' && (
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+          )}
+          {item.icon === 'chart' && (
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /> 
             </svg>
           )}
           {item.label}

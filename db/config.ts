@@ -38,7 +38,30 @@ const Platform = defineTable({
   }
 });
 
+const AnalyticsView = defineTable({
+  columns: {
+    id: column.text({ primaryKey: true }),
+    slug: column.text(),
+    timestamp: column.date(),
+    duration: column.number({ optional: true, default: 0 }), // Duration in seconds
+    source: column.text({ optional: true }), // Referrer
+    userAgent: column.text({ optional: true }),
+    country: column.text({ optional: true }),
+    visitorId: column.text({ optional: true })
+  }
+});
+
+const AnalyticsClick = defineTable({
+  columns: {
+    id: column.text({ primaryKey: true }),
+    slug: column.text(),
+    link: column.text(), // The URL clicked
+    timestamp: column.date(),
+    type: column.text({ optional: true }) // 'affiliate', 'internal', 'external'
+  }
+});
+
 // https://astro.build/db/config
 export default defineDb({
-  tables: { Post, Platform }
+  tables: { Post, Platform, AnalyticsView, AnalyticsClick }
 });

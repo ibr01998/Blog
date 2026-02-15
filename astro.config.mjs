@@ -11,6 +11,7 @@ import sitemap from '@astrojs/sitemap';
 import db from '@astrojs/db';
 
 // https://astro.build/config
+// Force reload for DB schema update (visitorId)
 export default defineConfig({
   output: 'server',
 

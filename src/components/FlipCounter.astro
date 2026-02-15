@@ -1,0 +1,254 @@
+---
+interface Props {
+  id?: string;
+  label?: string;
+  initialValue?: number;
+}
+
+const { id = 'flip-counter', label = 'TOTAL VIEWS', initialValue = 0 } = Astro.props;
+---
+
+<div class="flip-counter-container flex flex-col items-center justify-center p-6 bg-gradient-to-b from-gray-900 to-black rounded-xl border-4 border-gray-800 shadow-2xl relative overflow-hidden group">
+  <!-- Glossy Overlay -->
+  <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none z-20"></div>
+  
+  <!-- Label -->
+  <div class="text-gray-400 text-xs font-bold tracking-[0.3em] uppercase mb-4 text-shadow-sm z-10">{label}</div>
+
+  <!-- Counter Digits -->
+  <div class="flex gap-2 z-10 js-flip-counter" id={id} data-value={initialValue}>
+    <!-- Digits will be injected here by JS -->
+  </div>
+
+  <!-- Bottom Reflection -->
+  <div class="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-white/5 to-transparent pointer-events-none z-0"></div>
+</div>
+
+<style is:global>
+  .flip-card {
+    position: relative;
+    width: 36px;
+    height: 54px;
+    background-color: #1f2937;
+    border-radius: 4px;
+    font-size: 32px;
+    font-weight: bold;
+    color: #e5e7eb;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+    perspective: 100px;
+    line-height: 54px;
+    text-align: center;
+    font-family: 'Courier New', Courier, monospace; /* Monospace for alignment */
+  }
+
+  /* Split Line */
+  .flip-card::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 10;
+    transform: translateY(-50%);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .flip-card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+  }
+  
+  .top, .bottom {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    overflow: hidden;
+    background-color: #1f2937; /* Gray-800 */
+    backface-visibility: hidden;
+  }
+
+  .top {
+    top: 0;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    transform-origin: 50% 100%;
+    border-bottom: 1px solid rgba(0,0,0,0.3);
+  }
+
+  .bottom {
+    bottom: 0;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+    transform-origin: 50% 0%;
+    background-color: #1f2937;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    /* Flex removed to fix alignment with translate */
+  }
+  
+  /* Text alignment adjustment for split halves */
+  .top span {
+     display: block;
+     height: 54px; 
+  }
+  
+  .bottom span {
+     display: block;
+     transform: translateY(-50%); /* Shift up EXACTLY 50% of height */
+     height: 54px;
+  }
+
+  /* Keyframes for the "Flap" effect */
+  .flipping {
+      animation: pulse 0.1s ease-in-out;
+  }
+  
+  @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+  }
+
+  @media (min-width: 640px) {
+    .flip-card { width: 48px; height: 72px; font-size: 42px; line-height: 72px; }
+    .top span, .bottom span { height: 72px; }
+    .bottom span { transform: translateY(-50%); } /* Ensure consistent percentage shift */
+  }
+</style>
+
+<script>
+  class FlipCounter {
+    container: HTMLElement;
+    currentValue: number;
+    targetValue: number;
+    digits: number;
+
+    constructor(el) {
+      this.container = el;
+      this.targetValue = parseInt(el.dataset.value || '0');
+      this.currentValue = 0; // Start at 0
+      this.digits = 7;
+      
+      this.renderInitial(0);
+      this.animateToTarget(); // Start entrance animation
+      
+      // Listen for updates
+      document.addEventListener('analytics-update', (e: any) => {
+        if (e.detail && typeof e.detail.totalViews === 'number') {
+            this.update(e.detail.totalViews);
+        }
+      });
+    }
+
+    pad(num) {
+      return num.toString().padStart(this.digits, '0');
+    }
+
+    createCard(val) {
+      const card = document.createElement('div');
+      card.className = 'flip-card bg-gray-800 text-white rounded shadow-md relative';
+      card.innerHTML = `
+        <div class="top"><span>${val}</span></div>
+        <div class="bottom"><span>${val}</span></div>
+      `;
+      return card;
+    }
+
+    renderInitial(val) {
+      this.container.innerHTML = '';
+      const str = this.pad(val);
+      str.split('').forEach(char => {
+        const card = this.createCard(char);
+        this.container.appendChild(card);
+      });
+    }
+
+    animateToTarget() {
+        const duration = 2000; // 2 seconds to count up
+        const start = 0;
+        const end = this.targetValue;
+        let startTimestamp = null;
+
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            
+            // Ease out quart
+            const ease = 1 - Math.pow(1 - progress, 4);
+            
+            const current = Math.floor(start + (end - start) * ease);
+            this.updateDisplay(current);
+
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+            } else {
+                this.updateDisplay(end);
+            }
+        };
+        window.requestAnimationFrame(step);
+    }
+
+    update(newValue) {
+      // Create a smooth transition even for small updates if needed, 
+      // but usually live updates are +1. 
+      // We'll just update directly for single increments or use the same logic if gap is big.
+      if (newValue === this.currentValue) return;
+      this.targetValue = newValue;
+      this.updateDisplay(newValue);
+    }
+
+    updateDisplay(newValue) {
+      const oldStr = this.pad(this.currentValue);
+      const newStr = this.pad(newValue);
+      this.currentValue = newValue;
+      
+      const cards = this.container.children;
+      // If renderInitial wasn't called properly or children missing
+      if(cards.length !== this.digits) {
+          this.renderInitial(newValue);
+          return;
+      }
+
+      for (let i = 0; i < this.digits; i++) {
+        if (oldStr[i] !== newStr[i]) {
+            this.flipCard(cards[i] as HTMLElement, newStr[i]);
+        }
+      }
+    }
+
+    flipCard(card, newVal) {
+      const topSpan = card.querySelector('.top span');
+      const botSpan = card.querySelector('.bottom span');
+      
+      // Simple update with pulse since full 3D flip without extra DOM elements is complex to get bug-free quickly
+      card.classList.remove('flipping');
+      void card.offsetWidth; // trigger reflow
+      card.classList.add('flipping');
+      
+      if(topSpan) topSpan.textContent = newVal;
+      if(botSpan) botSpan.textContent = newVal;
+    }
+  }
+
+  // Initialize all counters found on the page
+  document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.js-flip-counter').forEach(el => {
+          new FlipCounter(el);
+      });
+  });
+  
+  // Also run immediately in case DOM is ready (e.g. view transitions)
+  document.querySelectorAll('.js-flip-counter').forEach(el => {
+      // Check if already attached to avoid double init if possible, 
+      // though simple class instance replacement is low risk here.
+      if(!(el as any)._flipCounter) { 
+          (el as any)._flipCounter = new FlipCounter(el);
+      }
+  });
+</script>

@@ -1,0 +1,78 @@
+---
+const { slug } = Astro.props;
+---
+
+<script define:vars={{ slug }}>
+  let viewId = null;
+
+  // Helper: Get or Create Visitor ID
+  function getVisitorId() {
+    let id = localStorage.getItem('visitorId');
+    if (!id) {
+        id = crypto.randomUUID();
+        localStorage.setItem('visitorId', id);
+    }
+    return id;
+  }
+
+  // 1. Track Page View
+  async function trackView() {
+    try {
+      const visitorId = getVisitorId();
+      const res = await fetch('/api/analytics/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            type: 'view', 
+            slug,
+            referrer: document.referrer || 'Direct',
+            visitorId
+        })
+      });
+      const data = await res.json();
+      viewId = data.viewId;
+      startHeartbeat();
+    } catch (e) {
+      console.error('Tracking failed:', e);
+    }
+  }
+
+  // 2. Track Time (Heartbeat)
+  function startHeartbeat() {
+    if (!viewId) return;
+    setInterval(async () => {
+      if (document.hidden) return; // Don't track if tab is hidden
+      await fetch('/api/analytics/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'heartbeat', slug, viewId })
+      });
+    }, 5000); // Every 5 seconds
+  }
+
+  // 3. Track Clicks
+  function setupClickTracking() {
+    document.addEventListener('click', async (e) => {
+      const link = e.target.closest('a');
+      if (!link) return;
+      
+      const href = link.getAttribute('href');
+      if (!href) return;
+
+      // Only track external or affiliate links
+      if (href.startsWith('http') || href.startsWith('/go/')) {
+         fetch('/api/analytics/track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'click', slug, link: href })
+         });
+      }
+    });
+  }
+
+  // Init
+  if (slug) {
+      trackView();
+      setupClickTracking();
+  }
+</script>

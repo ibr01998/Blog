@@ -1,10 +1,35 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import FlipCounter from '../../components/FlipCounter.astro';
 import { getCollection } from 'astro:content';
-import { db, Post } from 'astro:db';
+import { db, Post, AnalyticsView, AnalyticsClick, eq, desc } from 'astro:db';
 
 const filePosts = await getCollection('blog');
 const dbPosts = await db.select().from(Post);
+
+// Fetch Analytics Data
+const allViews = await db.select().from(AnalyticsView);
+const allClicks = await db.select().from(AnalyticsClick);
+
+// Helper to aggregate data
+const getStats = (slug: string) => {
+    const views = allViews.filter(v => v.slug === slug);
+    const clicks = allClicks.filter(c => c.slug === slug);
+    
+    const totalViews = views.length;
+    const totalClicks = clicks.length;
+    
+    // Avg Time
+    const totalDuration = views.reduce((acc, curr) => acc + (curr.duration || 0), 0);
+    const avgTime = totalViews > 0 ? Math.round(totalDuration / totalViews) : 0;
+    
+    // Format Time
+    const minutes = Math.floor(avgTime / 60);
+    const seconds = avgTime % 60;
+    const timeString = `${minutes}m ${seconds}s`;
+
+    return { totalViews, totalClicks, avgTime, timeString };
+};
 
 const posts = [
   ...filePosts.map((p) => ({ ...p, source: 'file' })),
@@ -20,29 +45,47 @@ const posts = [
     }
   })),
 ].sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+// Calculate Totals for Top Cards
+const totalSiteViews = allViews.length;
+const totalSiteClicks = allClicks.length;
+const globalTotalDuration = allViews.reduce((acc, curr) => acc + (curr.duration || 0), 0);
+const globalAvgTime = totalSiteViews > 0 ? Math.round(globalTotalDuration / totalSiteViews) : 0;
+const globalMinutes = Math.floor(globalAvgTime / 60);
+const globalSeconds = globalAvgTime % 60;
+
+// Format Total Time
+const totalHours = Math.floor(globalTotalDuration / 3600);
+const totalMinutes = Math.floor((globalTotalDuration % 3600) / 60);
+const totalTimeStr = `${totalHours}u ${totalMinutes}m`;
+
+// Article Stats
+const totalArticles = posts.length;
+const publishedArticles = posts.filter(p => p.data.status === 'published').length;
+const draftArticles = posts.filter(p => p.data.status === 'draft').length;
 ---
 
 <DashboardLayout title="Artikelen" activePage="dashboard">
   
-  <!-- Stats Row -->
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+  <!-- Content Overview Row -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
     <div class="glass p-5 rounded-2xl relative overflow-hidden group">
-      <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-navy" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
         </svg>
       </div>
       <p class="text-xs text-muted uppercase tracking-wide mb-1 font-semibold">Totaal Artikelen</p>
-      <p class="text-3xl font-bold text-navy">{posts.length}</p>
+      <p class="text-3xl font-bold text-navy">{totalArticles}</p>
     </div>
     <div class="glass p-5 rounded-2xl relative overflow-hidden group">
-      <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+       <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       </div>
       <p class="text-xs text-muted uppercase tracking-wide mb-1 font-semibold">Gepubliceerd</p>
-      <p class="text-3xl font-bold text-green-600">{posts.length}</p>
+      <p class="text-3xl font-bold text-green-600">{publishedArticles}</p>
     </div>
     <div class="glass p-5 rounded-2xl relative overflow-hidden group">
       <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -51,7 +94,46 @@ const posts = [
         </svg>
       </div>
       <p class="text-xs text-muted uppercase tracking-wide mb-1 font-semibold">Concept</p>
-      <p class="text-3xl font-bold text-orange-500">0</p>
+      <p class="text-3xl font-bold text-orange-500">{draftArticles}</p>
+    </div>
+  </div>
+
+  <!-- Engagement Stats Row -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    
+    <!-- Total Views (Hero Card - Flip Counter) -->
+    <div class="col-span-1 md:col-span-2">
+       <FlipCounter id="dashboard-total-views" label="TOTAL VIEWS" initialValue={totalSiteViews} />
+    </div>
+
+    <!-- Total Clicks -->
+    <div class="glass p-6 rounded-2xl relative overflow-hidden group bg-gradient-to-br from-white/10 to-green-50/5 hover:border-green-200 transition-colors">
+      <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+        </svg>
+      </div>
+      <p class="text-xs text-muted uppercase tracking-wide mb-1 font-semibold">Totaal Clicks</p>
+      <p class="text-3xl font-bold text-emerald-600" id="total-clicks">{totalSiteClicks}</p>
+    </div>
+
+    <!-- Avg Time & Total Time -->
+    <div class="glass p-6 rounded-2xl relative overflow-hidden group bg-gradient-to-br from-white/10 to-purple-50/5 hover:border-purple-200 transition-colors">
+      <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+         <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <div class="space-y-4">
+          <div>
+            <p class="text-xs text-muted uppercase tracking-wide mb-1 font-semibold">Gem. Leestijd</p>
+            <p class="text-2xl font-bold text-purple-600" id="avg-time">{globalMinutes}m {globalSeconds}s</p>
+          </div>
+          <div class="pt-3 border-t border-dashed border-purple-100">
+             <p class="text-[10px] text-muted uppercase tracking-wide mb-0.5 font-semibold">Totale Tijd</p>
+             <p class="text-lg font-bold text-purple-400" id="total-time">{totalTimeStr}</p>
+          </div>
+      </div>
     </div>
   </div>
 
@@ -87,39 +169,57 @@ const posts = [
         <thead class="bg-navy/5">
           <tr>
             <th class="text-left text-xs font-semibold text-navy uppercase tracking-wider px-6 py-4">Titel</th>
-            <th class="text-left text-xs font-semibold text-navy uppercase tracking-wider px-6 py-4 hidden md:table-cell">Type</th>
-            <th class="text-left text-xs font-semibold text-navy uppercase tracking-wider px-6 py-4 hidden sm:table-cell">Datum</th>
+            <th class="text-left text-xs font-semibold text-navy uppercase tracking-wider px-6 py-4 hidden md:table-cell">Views / Clicks</th>
+             <th class="text-left text-xs font-semibold text-navy uppercase tracking-wider px-6 py-4 hidden md:table-cell">Leestijd</th>
+            <th class="text-left text-xs font-semibold text-navy uppercase tracking-wider px-6 py-4 hidden sm:table-cell">Status</th>
             <th class="text-right text-xs font-semibold text-navy uppercase tracking-wider px-6 py-4">Acties</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-navy/5">
-          {posts.map((post) => (
+          {posts.map((post) => {
+             const stats = getStats(post.slug);
+             return (
             <tr class="hover:bg-navy/5 transition-colors group">
               <td class="px-6 py-4">
                 <div>
                   <p class="font-bold text-navy truncate max-w-xs">{post.data.title}</p>
-                  <p class="text-xs text-muted mt-1 truncate max-w-xs">{post.data.description}</p>
+                   <div class="flex items-center gap-2 mt-1">
+                      <span class="text-xs text-muted truncate max-w-xs">{post.data.pubDate.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}</span>
+                      {post.source === 'file' && (
+                         <span class="inline-flex items-center px-1.5 py-0.5 text-[10px] rounded-full bg-purple-100 text-purple-700 font-medium">File</span>
+                      )}
+                   </div>
                 </div>
               </td>
               <td class="px-6 py-4 hidden md:table-cell">
-                <span class="inline-flex items-center px-2.5 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700 font-medium">
-                  {post.data.article_type || 'comparison'}
-                </span>
-                
-                {post.data.status === 'draft' && (
-                  <span class="inline-flex items-center ml-2 px-2.5 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600 font-medium">
+                 <div class="flex flex-col gap-1">
+                    <div class="flex items-center gap-1 text-xs font-medium text-navy">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        {stats.totalViews}
+                    </div>
+                    <div class="flex items-center gap-1 text-xs font-medium text-green-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
+                        {stats.totalClicks}
+                    </div>
+                 </div>
+              </td>
+               <td class="px-6 py-4 hidden md:table-cell">
+                   <span class="text-xs font-medium text-orange-600 bg-orange-50 px-2 py-1 rounded-md">
+                       {stats.timeString}
+                   </span>
+              </td>
+              <td class="px-6 py-4 hidden sm:table-cell">
+                 {post.data.status === 'draft' ? (
+                  <span class="inline-flex items-center px-2.5 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600 font-medium">
                     Draft
                   </span>
-                )}
-                {post.source === 'file' && (
-                   <span class="inline-flex items-center ml-2 px-2.5 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700 font-medium">
-                    File
+                ) : (
+                    <span class="inline-flex items-center px-2.5 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700 font-medium">
+                    Published
                   </span>
                 )}
               </td>
-              <td class="px-6 py-4 text-muted hidden sm:table-cell font-medium">
-                {post.data.pubDate.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </td>
+              
               <td class="px-6 py-4 text-right">
                 <div class="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
                   <a href={`/blog/${post.slug}`} target="_blank" class="p-2 text-muted hover:text-navy hover:bg-navy/10 rounded-lg transition-colors" title="Bekijk">
@@ -168,14 +268,51 @@ const posts = [
                 </div>
               </td>
             </tr>
-          ))}
+          );
+          })}
         </tbody>
       </table>
     </div>
   )}
   
   <script>
-    // Handle Delete
+    // Count Up Animation
+    async function updateStats() {
+      try {
+        const res = await fetch('/api/analytics/stats');
+        const data = await res.json();
+        
+        if (data.error) return;
+
+        // Update Stats Cards
+        const statElements = {
+           'total-views': data.totalViews,
+           'total-clicks': data.totalClicks,
+           'total-clicks': data.totalClicks,
+           'avg-time': data.avgTimeStr,
+           'total-time': data.totalTimeStr
+        };
+
+        // Dispatch event for FlipCounter
+        document.dispatchEvent(new CustomEvent('analytics-update', { 
+            detail: { totalViews: data.totalViews } 
+        }));
+
+        for (const [id, value] of Object.entries(statElements)) {
+            const el = document.getElementById(id);
+            if (el) el.innerText = value;
+        }
+
+      } catch (e) {
+        // console.error('Failed to update stats', e);
+      }
+    }
+
+    // Update every 5 seconds
+    setInterval(updateStats, 5000);
+    updateStats(); // Run immediately on load
+
+    // DELETE HANDLER
     document.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         if(!confirm('Weet je zeker dat je dit artikel wilt verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
@@ -195,7 +332,7 @@ const posts = [
       });
     });
 
-    // Handle Status Toggle (Publish/Unpublish)
+    // PUBLISH HANDLER
     document.querySelectorAll('.toggle-status-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         const slug = e.currentTarget.dataset.slug;
