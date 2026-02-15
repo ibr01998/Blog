@@ -64,13 +64,11 @@ IMPORTANT: Do NOT include any text, letters, words, or typography in the image. 
             imageBuffer = Buffer.from(b64, 'base64');
 
         } else {
-            // --- Google Imagen 3 (via GenAI SDK) ---
-            // Note: Using 'imagen-3.0-generate-001' or similar model ID available in Google AI Studio
+            // --- Google Imagen 4 (via GenAI SDK) ---
             const genai = new GoogleGenAI({ apiKey: import.meta.env.GOOGLE_GENERATIVE_AI_API_KEY });
 
-            // Just usage example: 'imagen-3.0-generate-001'
             const response = await genai.models.generateImages({
-                model: 'imagen-3.0-generate-001',
+                model: 'imagen-4.0-generate-001',
                 prompt: imagePrompt,
                 config: {
                     numberOfImages: 1,
