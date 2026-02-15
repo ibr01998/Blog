@@ -167,14 +167,25 @@ try {
             Cyclus Uitvoeren
           </button>
 
-          <div id="cycle-result" class="mt-4 hidden">
-            <div id="cycle-loading" class="hidden text-sm text-gray-500">
-              <svg class="inline h-4 w-4 animate-spin mr-2" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-              </svg>
-              Cyclus wordt uitgevoerd...
+          <!-- Progress section (hidden by default) -->
+          <div id="cycle-progress" class="mt-4 hidden">
+            <!-- Progress bar -->
+            <div class="mb-3">
+              <div class="flex items-center justify-between mb-1">
+                <span id="cycle-stage" class="text-xs font-medium text-navy">Starten...</span>
+                <span id="cycle-percent" class="text-xs font-semibold text-navy">0%</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                <div id="cycle-bar" class="h-2.5 rounded-full bg-gradient-to-r from-navy to-blue-500 transition-all duration-500 ease-out" style="width: 0%"></div>
+              </div>
             </div>
+
+            <!-- Live log feed -->
+            <div id="cycle-log" class="bg-gray-900 rounded-lg p-3 text-xs font-mono text-green-400 max-h-48 overflow-y-auto space-y-0.5"></div>
+          </div>
+
+          <!-- Final result (shown after completion) -->
+          <div id="cycle-result" class="mt-4 hidden">
             <div id="cycle-output" class="glass rounded-lg p-4 border border-white/10 text-xs font-mono text-gray-700 whitespace-pre-wrap max-h-64 overflow-auto"></div>
           </div>
         </div>
@@ -294,50 +305,142 @@ try {
     });
   });
 
-  // Run cycle button — non-blocking: fires the request and polls for completion
-  // so the user can navigate away and come back
-  document.getElementById('run-cycle-btn')?.addEventListener('click', () => {
+  // ── Run cycle with SSE progress streaming ──────────────────────────────────
+
+  const STAGE_LABELS: Record<string, string> = {
+    init: 'Configuratie',
+    analyst: 'Markt-Analist',
+    strategist: 'Strateeg',
+    editor: 'Redacteur',
+    writer: 'Schrijver',
+    humanizer: 'Humanizer',
+    seo: 'SEO Optimizer',
+    embedding: 'Opslaan',
+    done: 'Voltooid',
+    error: 'Fout',
+  };
+
+  function formatTime(date: Date): string {
+    return date.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  function appendLog(message: string, type: 'info' | 'error' | 'success' = 'info') {
+    const logDiv = document.getElementById('cycle-log');
+    if (!logDiv) return;
+    const line = document.createElement('div');
+    const colorClass = type === 'error' ? 'text-red-400' : type === 'success' ? 'text-emerald-400' : 'text-green-400';
+    line.className = colorClass;
+    line.textContent = `[${formatTime(new Date())}] ${message}`;
+    logDiv.appendChild(line);
+    logDiv.scrollTop = logDiv.scrollHeight;
+  }
+
+  function updateProgress(progress: number, stage: string) {
+    const bar = document.getElementById('cycle-bar') as HTMLElement;
+    const percent = document.getElementById('cycle-percent');
+    const stageEl = document.getElementById('cycle-stage');
+    if (bar) bar.style.width = `${progress}%`;
+    if (percent) percent.textContent = `${progress}%`;
+    if (stageEl) stageEl.textContent = STAGE_LABELS[stage] ?? stage;
+  }
+
+  function resetCycleUI() {
     const btn = document.getElementById('run-cycle-btn') as HTMLButtonElement;
+    if (btn) { btn.disabled = false; btn.textContent = 'Cyclus Uitvoeren'; }
+    sessionStorage.removeItem('cycle_running');
+  }
+
+  document.getElementById('run-cycle-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('run-cycle-btn') as HTMLButtonElement;
+    const progressDiv = document.getElementById('cycle-progress');
     const resultDiv = document.getElementById('cycle-result');
-    const loadingDiv = document.getElementById('cycle-loading');
     const outputDiv = document.getElementById('cycle-output');
+    const logDiv = document.getElementById('cycle-log');
 
     btn.disabled = true;
     btn.textContent = 'Bezig...';
-    resultDiv?.classList.remove('hidden');
-    loadingDiv?.classList.remove('hidden');
+    progressDiv?.classList.remove('hidden');
+    resultDiv?.classList.add('hidden');
+    if (logDiv) logDiv.innerHTML = '';
     if (outputDiv) outputDiv.textContent = '';
+    updateProgress(0, 'init');
+    appendLog('Cyclus gestart...');
 
-    // Store cycle start time in sessionStorage so status persists across navigations
     sessionStorage.setItem('cycle_running', Date.now().toString());
 
-    // Fire-and-forget: the fetch runs in the background
-    fetch('/api/admin/run-cycle', { method: 'POST' })
-      .then((res) => res.json())
-      .then((data) => {
-        sessionStorage.removeItem('cycle_running');
-        loadingDiv?.classList.add('hidden');
-        if (outputDiv) outputDiv.textContent = JSON.stringify(data, null, 2);
-        btn.disabled = false;
-        btn.textContent = 'Cyclus Uitvoeren';
-      })
-      .catch((err) => {
-        sessionStorage.removeItem('cycle_running');
-        loadingDiv?.classList.add('hidden');
-        if (outputDiv) outputDiv.textContent = `Fout: ${err}`;
-        btn.disabled = false;
-        btn.textContent = 'Cyclus Uitvoeren';
+    try {
+      const response = await fetch('/api/admin/run-cycle', {
+        method: 'POST',
+        headers: { 'Accept': 'text/event-stream' },
       });
+
+      if (!response.ok || !response.body) {
+        const text = await response.text();
+        appendLog(`HTTP fout: ${response.status} ${text}`, 'error');
+        resetCycleUI();
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        let currentEvent = '';
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith('data: ')) {
+            const raw = line.slice(6);
+            try {
+              const data = JSON.parse(raw);
+
+              if (currentEvent === 'progress') {
+                updateProgress(data.progress, data.stage);
+                const logType = data.stage === 'error' ? 'error' as const : 'info' as const;
+                appendLog(data.message, logType);
+              } else if (currentEvent === 'done') {
+                updateProgress(100, 'done');
+                appendLog(data.summary
+                  ? `Voltooid: ${data.summary.articles_produced} artikel(en) in ${Math.round(data.duration_ms / 1000)}s`
+                  : 'Cyclus voltooid.', 'success');
+                resultDiv?.classList.remove('hidden');
+                if (outputDiv) outputDiv.textContent = JSON.stringify(data, null, 2);
+                resetCycleUI();
+              } else if (currentEvent === 'error') {
+                updateProgress(100, 'error');
+                appendLog(`Fout: ${data.error}`, 'error');
+                resetCycleUI();
+              }
+            } catch { /* ignore malformed JSON */ }
+            currentEvent = '';
+          }
+        }
+      }
+
+      // If stream ended without done/error event, reset UI
+      resetCycleUI();
+
+    } catch (err) {
+      appendLog(`Netwerkfout: ${err}`, 'error');
+      resetCycleUI();
+    }
   });
 
   // Restore cycle-running state if user navigated away and came back
   if (sessionStorage.getItem('cycle_running')) {
     const btn = document.getElementById('run-cycle-btn') as HTMLButtonElement;
-    const resultDiv = document.getElementById('cycle-result');
-    const loadingDiv = document.getElementById('cycle-loading');
+    const progressDiv = document.getElementById('cycle-progress');
     if (btn) { btn.disabled = true; btn.textContent = 'Bezig...'; }
-    resultDiv?.classList.remove('hidden');
-    loadingDiv?.classList.remove('hidden');
+    progressDiv?.classList.remove('hidden');
+    appendLog('Cyclus loopt nog (pagina herladen — updates niet meer zichtbaar).');
   }
 
   // Apply evolution suggestions

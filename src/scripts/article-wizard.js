@@ -403,12 +403,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             })
                         });
                         const imgData = await imgRes.json();
-                        if (imgData.success && imgData.imageUrl) {
-                            heroImage = imgData.imageUrl;
+                        if (imgData.success && imgData.url) {
+                            heroImage = imgData.url;
                             // Show preview
                             const previewEl = document.getElementById('hero-image-preview');
                             if (previewEl) {
-                                previewEl.innerHTML = `<img src="${imgData.imageUrl}" alt="Hero" class="rounded-lg max-h-[300px] object-cover w-full" />`;
+                                previewEl.innerHTML = `<img src="${imgData.url}" alt="Hero" class="rounded-lg max-h-[300px] object-cover w-full" />`;
                             }
                         } else {
                             console.warn('Image generation failed:', imgData.error);

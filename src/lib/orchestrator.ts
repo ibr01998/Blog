@@ -39,6 +39,16 @@ import type {
   ArticleOptimized,
 } from './agents/types.ts';
 
+// ─── Progress Callback ───────────────────────────────────────────────────────
+
+export type ProgressEvent = {
+  stage: string;
+  progress: number;   // 0-100
+  message: string;
+};
+
+export type ProgressCallback = (event: ProgressEvent) => void;
+
 // ─── Generic Agent Factory ────────────────────────────────────────────────────
 
 async function loadAgent<T extends BaseAgent>(
@@ -73,11 +83,14 @@ async function ensureUniqueSlug(slug: string): Promise<string> {
 
 // ─── Main Orchestration ───────────────────────────────────────────────────────
 
-export async function runEditorialCycle(): Promise<CycleSummary> {
+export async function runEditorialCycle(onProgress?: ProgressCallback): Promise<CycleSummary> {
+  const emit = onProgress ?? (() => {});
   const cycleId = crypto.randomUUID();
   const startedAt = new Date().toISOString();
 
   // ── Step 1: Guard checks ──────────────────────────────────────────────────
+
+  emit({ stage: 'init', progress: 0, message: 'Configuratie controleren...' });
 
   const configRows = await query<{
     system_paused: boolean;
@@ -116,15 +129,21 @@ export async function runEditorialCycle(): Promise<CycleSummary> {
 
   // ── Step 2: Analyst ───────────────────────────────────────────────────────
 
+  emit({ stage: 'analyst', progress: 5, message: 'Markt-Analist analyseert marktdata en prestaties...' });
+
   const analystAgent = await loadAgent('analyst', AnalystAgent);
   const analystReport = await analystAgent.run();
 
   // ── Step 3: Strategist ────────────────────────────────────────────────────
 
+  emit({ stage: 'strategist', progress: 20, message: 'Strateeg genereert artikel briefings...' });
+
   const strategistAgent = await loadAgent('strategist', StrategistAgent);
   const briefs = await strategistAgent.run(analystReport);
 
   // ── Step 4: Editor ────────────────────────────────────────────────────────
+
+  emit({ stage: 'editor', progress: 35, message: `Redacteur selecteert uit ${briefs.length} briefings...` });
 
   const editorAgent = await loadAgent('editor', EditorAgent);
   const assignments = await editorAgent.run(briefs);
@@ -153,18 +172,31 @@ export async function runEditorialCycle(): Promise<CycleSummary> {
   const articleIds: string[] = [];
   const errors: string[] = [];
 
-  for (const assignment of assignments) {
+  const totalAssignments = assignments.length;
+  const ARTICLE_START = 45;
+  const ARTICLE_END = 95;
+  const perArticleRange = totalAssignments > 0 ? (ARTICLE_END - ARTICLE_START) / totalAssignments : 0;
+
+  for (let i = 0; i < assignments.length; i++) {
+    const assignment = assignments[i];
+    const articleBase = ARTICLE_START + i * perArticleRange;
+    const keyword = assignment.brief.primary_keyword;
+
     try {
       // 5a. Write
+      emit({ stage: 'writer', progress: Math.round(articleBase), message: `Schrijver schrijft artikel ${i + 1}/${totalAssignments}: "${keyword}"` });
       const draft = await writerAgent.run(assignment);
 
       // 5b. Humanize
+      emit({ stage: 'humanizer', progress: Math.round(articleBase + perArticleRange * 0.4), message: `Humanizer verfijnt artikel: "${draft.title}"` });
       const humanized = await humanizerAgent.run(draft);
 
       // 5c. SEO optimize
+      emit({ stage: 'seo', progress: Math.round(articleBase + perArticleRange * 0.7), message: `SEO optimaliseert artikel: "${humanized.title}"` });
       const optimized = await seoAgent.run(humanized);
 
       // 5d. Generate embedding
+      emit({ stage: 'embedding', progress: Math.round(articleBase + perArticleRange * 0.9), message: `Embedding genereren en opslaan: "${optimized.title}"` });
       const embeddingInput = [
         optimized.primary_keyword,
         optimized.title,
@@ -246,6 +278,7 @@ export async function runEditorialCycle(): Promise<CycleSummary> {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       errors.push(`Assignment ${assignment.assignment_id}: ${errorMsg}`);
+      emit({ stage: 'error', progress: Math.round(articleBase + perArticleRange), message: `Fout bij artikel "${keyword}": ${errorMsg}` });
       console.error('[Orchestrator] Pipeline failed for assignment:', assignment.brief.primary_keyword, err);
     }
   }
@@ -271,6 +304,8 @@ export async function runEditorialCycle(): Promise<CycleSummary> {
   }
 
   // ── Step 7: Return summary ────────────────────────────────────────────────
+
+  emit({ stage: 'done', progress: 100, message: `Cyclus voltooid: ${articleIds.length} artikel(en) geproduceerd.` });
 
   const summary: CycleSummary = {
     cycle_id: cycleId,

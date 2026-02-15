@@ -321,19 +321,79 @@ function formatDate(d: string) {
     });
   });
 
+  // Helper: update article card after status change (avoids stale reload)
+  function updateCardStatus(id: string, newReview: string, newStatus?: string) {
+    const card = document.getElementById(`article-${id}`);
+    if (!card) return;
+
+    // Update review badge
+    const badges = card.querySelectorAll('.rounded-full');
+    badges.forEach((badge) => {
+      const text = (badge as HTMLElement).textContent?.trim();
+      if (text === 'pending' || text === 'approved' || text === 'rejected') {
+        (badge as HTMLElement).textContent = newReview;
+        (badge as HTMLElement).className = `text-xs font-semibold px-2 py-0.5 rounded-full ${
+          newReview === 'approved' ? 'bg-green-100 text-green-700' :
+          newReview === 'rejected' ? 'bg-red-100 text-red-700' :
+          'bg-amber-100 text-amber-700'
+        }`;
+      }
+      if (newStatus && (text === 'draft' || text === 'approved' || text === 'published')) {
+        (badge as HTMLElement).textContent = newStatus;
+        (badge as HTMLElement).className = `text-xs px-2 py-0.5 rounded-full ${
+          newStatus === 'published' ? 'bg-green-100 text-green-700' :
+          newStatus === 'approved' ? 'bg-blue-100 text-blue-700' :
+          'bg-gray-100 text-gray-600'
+        }`;
+      }
+    });
+
+    // Remove approve/reject buttons from this card
+    card.querySelectorAll('.approve-btn, .reject-btn').forEach((b) => b.remove());
+
+    // If approved (not published), add a note
+    if (newReview === 'approved' && newStatus !== 'published') {
+      const actionsDiv = card.querySelector('.flex.items-center.gap-2.shrink-0');
+      if (actionsDiv) {
+        const note = document.createElement('span');
+        note.className = 'text-xs text-green-600 font-medium';
+        note.textContent = 'Goedgekeurd — herlaad pagina voor acties';
+        actionsDiv.prepend(note);
+      }
+    }
+
+    // If rejected, dim the card
+    if (newReview === 'rejected') {
+      card.style.opacity = '0.6';
+    }
+  }
+
   // Approve
   document.querySelectorAll<HTMLButtonElement>('.approve-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.articleId;
+      if (!id) return;
       btn.disabled = true;
       btn.textContent = 'Bezig...';
+      // Also disable the reject button on same card
+      const card = document.getElementById(`article-${id}`);
+      const rejectBtn = card?.querySelector('.reject-btn') as HTMLButtonElement;
+      if (rejectBtn) rejectBtn.disabled = true;
+
       const res = await fetch(`/api/admin/articles/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ review_status: 'approved' }),
       });
-      if (res.ok) window.location.reload();
-      else { btn.disabled = false; btn.textContent = 'Goedkeuren'; }
+      if (res.ok) {
+        const data = await res.json();
+        const newStatus = data.article?.status;
+        updateCardStatus(id, 'approved', newStatus);
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Goedkeuren';
+        if (rejectBtn) rejectBtn.disabled = false;
+      }
     });
   });
 
@@ -341,14 +401,25 @@ function formatDate(d: string) {
   document.querySelectorAll<HTMLButtonElement>('.reject-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.articleId;
+      if (!id) return;
       const reason = prompt('Reden voor afwijzing (optioneel):') ?? '';
       btn.disabled = true;
-      await fetch(`/api/admin/articles/${id}`, {
+      // Also disable the approve button on same card
+      const card = document.getElementById(`article-${id}`);
+      const approveBtn = card?.querySelector('.approve-btn') as HTMLButtonElement;
+      if (approveBtn) approveBtn.disabled = true;
+
+      const res = await fetch(`/api/admin/articles/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ review_status: 'rejected', human_notes: reason }),
       });
-      window.location.reload();
+      if (res.ok) {
+        updateCardStatus(id, 'rejected');
+      } else {
+        btn.disabled = false;
+        if (approveBtn) approveBtn.disabled = false;
+      }
     });
   });
 

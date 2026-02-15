@@ -293,8 +293,8 @@ const platforms = await db.select().from(Platform).orderBy(Platform.name);
           });
           const data = await res.json();
           if(data.success) {
-            document.getElementById('hero_image_url').value = data.imageUrl;
-            document.getElementById('current-hero-img').src = data.imageUrl;
+            document.getElementById('hero_image_url').value = data.url;
+            document.getElementById('current-hero-img').src = data.url;
           } else {
             alert('Fout: ' + data.error);
           }

@@ -4,7 +4,9 @@
  * Triggers a full autonomous editorial cycle:
  * Analyst → Strategist → Editor → Writer → Humanizer → SEO → Save drafts
  *
- * Returns a CycleSummary JSON object.
+ * Streams progress via Server-Sent Events (SSE) so the dashboard can show
+ * a live progress bar and log feed. Falls back to JSON for cron/Bearer callers.
+ *
  * This endpoint can take 30-120 seconds — requires Vercel Pro for maxDuration=300.
  *
  * Auth: accepts EITHER
@@ -41,8 +43,56 @@ export const POST: APIRoute = async ({ request }) => {
     }
   }
 
+  // Determine if caller wants SSE (browser dashboard) or plain JSON (cron job)
+  const acceptHeader = request.headers.get('accept') ?? '';
+  const wantsSSE = acceptHeader.includes('text/event-stream');
+
   const startTime = Date.now();
 
+  if (wantsSSE) {
+    // ── SSE streaming mode ──────────────────────────────────────────────────
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        function send(event: string, data: Record<string, unknown>) {
+          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+        }
+
+        try {
+          const summary = await runEditorialCycle((evt) => {
+            send('progress', evt);
+          });
+
+          send('done', {
+            success: true,
+            duration_ms: Date.now() - startTime,
+            summary,
+          });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.error('[run-cycle] Error:', errorMessage);
+          send('error', {
+            success: false,
+            duration_ms: Date.now() - startTime,
+            error: errorMessage,
+          });
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
+  }
+
+  // ── JSON mode (cron jobs, API callers) ──────────────────────────────────
   try {
     const summary = await runEditorialCycle();
 

@@ -115,7 +115,7 @@ IMPORTANT: Do NOT include any text, letters, words, or typography in the image. 
 
         return new Response(JSON.stringify({
             success: true,
-            imageUrl,
+            url: imageUrl,
             provider,
             style,
         }), {
