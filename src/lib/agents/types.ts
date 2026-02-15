@@ -80,6 +80,19 @@ export interface AgentOverrideSuggestion {
   reasoning: string;
 }
 
+export interface ContentStrategyPerformance {
+  content_tier: ContentTier;
+  hook_type: HookType;
+  format_type: FormatType;
+  article_count: number;
+  avg_views: number;
+  avg_ctr: number;
+  avg_time_on_page: number;
+  avg_bounce_rate: number;
+  total_affiliate_clicks: number;
+  avg_conversion_rate: number;
+}
+
 export interface AnalystReport {
   generated_at: string;                   // ISO timestamp
   period_days: number;
@@ -92,6 +105,14 @@ export interface AnalystReport {
   recommended_format_type: FormatType;
   performance_insights: string[];         // human-readable reasoning bullets
   suggested_agent_overrides: AgentOverrideSuggestion[];
+  strategy_performance: ContentStrategyPerformance[];
+  trend_direction: 'improving' | 'stable' | 'declining';
+  best_performing_strategy?: {
+    content_tier: ContentTier;
+    hook_type: HookType;
+    format_type: FormatType;
+    reason: string;
+  };
 }
 
 // ─── Strategist Outputs ───────────────────────────────────────────────────────

@@ -272,6 +272,110 @@ const chartData = {
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- AI CONTENT PRESTATIES SECTION                                          -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <div class="mt-10 mb-6">
+    <h2 class="text-xl font-bold text-navy flex items-center gap-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+      AI Content Prestaties
+    </h2>
+    <p class="text-muted text-sm mt-1">Hoe presteren AI-gegenereerde artikelen? Data wordt gebruikt door de analist agent.</p>
+  </div>
+
+  <!-- AI: Recommendations + Trend -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+
+    <!-- Analyst Recommendations Card -->
+    <div class="glass p-6 rounded-2xl lg:col-span-2" id="ai-recommendations">
+      <h3 class="text-navy font-bold mb-4">Analist Aanbevelingen</h3>
+      <div id="recommendations-content">
+        <p class="text-muted text-sm italic">Laden...</p>
+      </div>
+    </div>
+
+    <!-- Trend Direction Card -->
+    <div class="glass p-6 rounded-2xl" id="ai-totals">
+      <h3 class="text-navy font-bold mb-4">AI Artikel Totalen</h3>
+      <div id="totals-content">
+        <p class="text-muted text-sm italic">Laden...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI: Weekly Trend Chart -->
+  <div class="grid grid-cols-1 mb-6">
+    <div class="glass p-6 rounded-2xl">
+      <h3 class="text-navy font-bold mb-4">Wekelijkse Trend (8 weken)</h3>
+      <div class="relative h-64 w-full">
+        <canvas id="weeklyTrendChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI: Strategy Table + Writer Comparison -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+
+    <!-- Strategy Performance Table -->
+    <div class="glass p-6 rounded-2xl overflow-hidden lg:col-span-2">
+      <h3 class="text-navy font-bold mb-4">Strategie Prestaties</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="strategy-table">
+          <thead class="bg-navy/5 text-navy font-semibold">
+            <tr>
+              <th class="px-3 py-2 text-left">Tier</th>
+              <th class="px-3 py-2 text-left">Hook</th>
+              <th class="px-3 py-2 text-left">Format</th>
+              <th class="px-3 py-2 text-right">Artikelen</th>
+              <th class="px-3 py-2 text-right">Gem. Views</th>
+              <th class="px-3 py-2 text-right">CTR</th>
+              <th class="px-3 py-2 text-right">Gem. Tijd</th>
+              <th class="px-3 py-2 text-right">Bounce</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-navy/5" id="strategy-tbody">
+            <tr><td colspan="8" class="p-4 text-center text-muted italic">Laden...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Writer Performance -->
+    <div class="glass p-6 rounded-2xl">
+      <h3 class="text-navy font-bold mb-4">Schrijver Prestaties</h3>
+      <div id="writer-performance">
+        <p class="text-muted text-sm italic">Laden...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI: Top & Bottom Performers -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+    <!-- Top Performers -->
+    <div class="glass p-6 rounded-2xl">
+      <h3 class="text-navy font-bold mb-4 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-green-500"></span> Beste Artikelen (CTR)
+      </h3>
+      <div class="space-y-3" id="top-performers">
+        <p class="text-muted text-sm italic">Laden...</p>
+      </div>
+    </div>
+
+    <!-- Underperformers -->
+    <div class="glass p-6 rounded-2xl">
+      <h3 class="text-navy font-bold mb-4 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-red-500"></span> Te Verbeteren (Bounce)
+      </h3>
+      <div class="space-y-3" id="underperformers">
+        <p class="text-muted text-sm italic">Laden...</p>
+      </div>
+    </div>
+  </div>
+
   <script is:inline src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script is:inline define:vars={{ chartData }}>
     // Chart Options: No decimals
@@ -436,6 +540,252 @@ const chartData = {
 
     setInterval(updateCharts, 5000);
     updateCharts(); // Run immediately on load
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // AI PERFORMANCE DATA
+    // ═══════════════════════════════════════════════════════════════════════
+
+    let weeklyTrendChart = null;
+
+    function tierBadge(tier) {
+      const colors = { money: 'bg-green-100 text-green-700', authority: 'bg-blue-100 text-blue-700', trend: 'bg-orange-100 text-orange-700' };
+      return `<span class="px-2 py-0.5 text-[10px] rounded-full font-semibold ${colors[tier] || 'bg-gray-100 text-gray-600'}">${tier}</span>`;
+    }
+
+    function formatTime(seconds) {
+      if (!seconds) return '0s';
+      const m = Math.floor(seconds / 60);
+      const s = Math.round(seconds % 60);
+      return m > 0 ? `${m}m ${s}s` : `${s}s`;
+    }
+
+    function ctrColor(ctr) {
+      if (ctr >= 0.05) return 'text-green-600';
+      if (ctr >= 0.02) return 'text-yellow-600';
+      return 'text-red-500';
+    }
+
+    async function loadAIPerformance() {
+      try {
+        const res = await fetch('/api/analytics/ai-performance');
+        const data = await res.json();
+        if (data.error) return;
+
+        // --- Recommendations Card ---
+        const recEl = document.getElementById('recommendations-content');
+        if (recEl && data.recommendations) {
+          const r = data.recommendations;
+          recEl.innerHTML = `
+            <div class="grid grid-cols-3 gap-4 mb-4">
+              <div class="text-center">
+                <p class="text-[10px] text-muted uppercase tracking-wide mb-1">Tier</p>
+                <p class="font-bold text-navy">${r.recommended_tier || '-'}</p>
+              </div>
+              <div class="text-center">
+                <p class="text-[10px] text-muted uppercase tracking-wide mb-1">Hook</p>
+                <p class="font-bold text-navy">${r.recommended_hook || '-'}</p>
+              </div>
+              <div class="text-center">
+                <p class="text-[10px] text-muted uppercase tracking-wide mb-1">Format</p>
+                <p class="font-bold text-navy">${r.recommended_format || '-'}</p>
+              </div>
+            </div>
+            ${r.trend ? `<div class="mb-3 flex items-center gap-2">
+              <span class="text-xs font-semibold uppercase tracking-wide text-muted">Trend:</span>
+              <span class="px-2 py-0.5 text-xs rounded-full font-semibold ${
+                r.trend === 'improving' ? 'bg-green-100 text-green-700' :
+                r.trend === 'declining' ? 'bg-red-100 text-red-700' :
+                'bg-gray-100 text-gray-600'
+              }">${r.trend}</span>
+            </div>` : ''}
+            ${r.insights ? `<div class="text-sm text-muted space-y-1 border-t border-navy/5 pt-3 mt-3">
+              ${r.insights.split(' | ').map(i => `<p class="leading-snug">• ${i}</p>`).join('')}
+            </div>` : ''}
+            <p class="text-[10px] text-muted mt-3">${r.generated_at ? new Date(r.generated_at).toLocaleString('nl-NL') : ''}</p>
+          `;
+        } else if (recEl) {
+          recEl.innerHTML = '<p class="text-muted text-sm italic">Nog geen analist rapport beschikbaar. Voer een cyclus uit.</p>';
+        }
+
+        // --- Totals Card ---
+        const totEl = document.getElementById('totals-content');
+        if (totEl && data.totals) {
+          const t = data.totals;
+          totEl.innerHTML = `
+            <div class="space-y-4">
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-muted">Artikelen</span>
+                <span class="text-lg font-bold text-navy">${t.total_articles}</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-muted">Totaal Views</span>
+                <span class="text-lg font-bold text-blue-600">${t.total_views}</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-muted">Affiliate Clicks</span>
+                <span class="text-lg font-bold text-green-600">${t.total_affiliate_clicks}</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-muted">Gem. CTR</span>
+                <span class="text-lg font-bold ${ctrColor(t.avg_ctr)}">${(t.avg_ctr * 100).toFixed(1)}%</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-muted">Gem. Leestijd</span>
+                <span class="text-lg font-bold text-purple-600">${formatTime(t.avg_time_on_page)}</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-muted">Gem. Bounce</span>
+                <span class="text-lg font-bold text-orange-500">${(t.avg_bounce_rate * 100).toFixed(0)}%</span>
+              </div>
+            </div>
+          `;
+        }
+
+        // --- Weekly Trend Chart ---
+        if (data.weeklyTrend && data.weeklyTrend.length > 0) {
+          const labels = data.weeklyTrend.map(w => {
+            const d = new Date(w.week_start);
+            return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+          });
+          const viewsData = data.weeklyTrend.map(w => w.avg_views);
+          const ctrData = data.weeklyTrend.map(w => (w.avg_ctr * 100));
+
+          const ctx = document.getElementById('weeklyTrendChart');
+          if (ctx) {
+            if (weeklyTrendChart) weeklyTrendChart.destroy();
+            weeklyTrendChart = new Chart(ctx, {
+              type: 'line',
+              data: {
+                labels,
+                datasets: [
+                  {
+                    label: 'Gem. Views',
+                    data: viewsData,
+                    borderColor: '#3B82F6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    yAxisID: 'y'
+                  },
+                  {
+                    label: 'CTR %',
+                    data: ctrData,
+                    borderColor: '#10B981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.4,
+                    fill: false,
+                    yAxisID: 'y1'
+                  }
+                ]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                  y: { beginAtZero: true, position: 'left', grid: { color: 'rgba(0,0,0,0.05)' }, title: { display: true, text: 'Views' } },
+                  y1: { beginAtZero: true, position: 'right', grid: { display: false }, title: { display: true, text: 'CTR %' } },
+                  x: { grid: { display: false } }
+                }
+              }
+            });
+          }
+        }
+
+        // --- Strategy Table ---
+        const tbody = document.getElementById('strategy-tbody');
+        if (tbody && data.strategyBreakdown) {
+          if (data.strategyBreakdown.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-muted italic">Nog geen strategie data. Sync metrics na publicatie.</td></tr>';
+          } else {
+            tbody.innerHTML = data.strategyBreakdown.map(s => `
+              <tr class="hover:bg-navy/5">
+                <td class="px-3 py-2">${tierBadge(s.content_tier)}</td>
+                <td class="px-3 py-2 text-xs font-medium">${s.hook_type}</td>
+                <td class="px-3 py-2 text-xs font-medium">${s.format_type}</td>
+                <td class="px-3 py-2 text-right">${s.article_count}</td>
+                <td class="px-3 py-2 text-right">${s.avg_views.toFixed(0)}</td>
+                <td class="px-3 py-2 text-right font-semibold ${ctrColor(s.avg_ctr)}">${(s.avg_ctr * 100).toFixed(1)}%</td>
+                <td class="px-3 py-2 text-right text-muted font-mono text-xs">${formatTime(s.avg_time_on_page)}</td>
+                <td class="px-3 py-2 text-right text-muted">${(s.avg_bounce_rate * 100).toFixed(0)}%</td>
+              </tr>
+            `).join('');
+          }
+        }
+
+        // --- Writer Performance ---
+        const writerEl = document.getElementById('writer-performance');
+        if (writerEl && data.writerPerformance) {
+          if (data.writerPerformance.length === 0) {
+            writerEl.innerHTML = '<p class="text-muted text-sm italic">Geen schrijver data.</p>';
+          } else {
+            writerEl.innerHTML = data.writerPerformance.map(w => `
+              <div class="mb-4 last:mb-0">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="text-sm font-medium text-navy truncate">${w.writer_name}</span>
+                  <span class="text-xs text-muted">${w.total_articles} art.</span>
+                </div>
+                <div class="w-full bg-navy/5 rounded-full h-2 mb-2">
+                  <div class="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full" style="width: ${Math.min(100, w.performance_score * 100)}%"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-muted">
+                  <span>CTR: ${(w.avg_ctr * 100).toFixed(1)}%</span>
+                  <span>Tijd: ${formatTime(w.avg_time_on_page)}</span>
+                  <span>Clicks: ${w.total_affiliate_clicks}</span>
+                </div>
+              </div>
+            `).join('');
+          }
+        }
+
+        // --- Top Performers ---
+        const topEl = document.getElementById('top-performers');
+        if (topEl && data.topPerformers) {
+          if (data.topPerformers.length === 0) {
+            topEl.innerHTML = '<p class="text-muted text-sm italic">Nog geen data.</p>';
+          } else {
+            topEl.innerHTML = data.topPerformers.map((a, i) => `
+              <div class="flex items-center justify-between text-sm">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="text-muted w-4 flex-shrink-0">${i+1}.</span>
+                  <span class="font-medium text-navy truncate">${a.title}</span>
+                </div>
+                <div class="flex items-center gap-3 flex-shrink-0 ml-2">
+                  ${tierBadge(a.content_tier)}
+                  <span class="font-semibold ${ctrColor(a.ctr)}">${(a.ctr * 100).toFixed(1)}%</span>
+                </div>
+              </div>
+            `).join('');
+          }
+        }
+
+        // --- Underperformers ---
+        const bottomEl = document.getElementById('underperformers');
+        if (bottomEl && data.underperformers) {
+          if (data.underperformers.length === 0) {
+            bottomEl.innerHTML = '<p class="text-muted text-sm italic">Nog geen data.</p>';
+          } else {
+            bottomEl.innerHTML = data.underperformers.map((a, i) => `
+              <div class="flex items-center justify-between text-sm">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="text-muted w-4 flex-shrink-0">${i+1}.</span>
+                  <span class="font-medium text-navy truncate">${a.title}</span>
+                </div>
+                <div class="flex items-center gap-3 flex-shrink-0 ml-2">
+                  <span class="text-orange-500 font-semibold">${(a.bounce_rate * 100).toFixed(0)}% bounce</span>
+                </div>
+              </div>
+            `).join('');
+          }
+        }
+
+      } catch(e) {
+        console.error('AI performance load error:', e);
+      }
+    }
+
+    loadAIPerformance();
+    setInterval(loadAIPerformance, 30000); // Refresh every 30s
 
   </script>
 

@@ -4,6 +4,8 @@
  * Responsibilities:
  *  - Query article_metrics + agents for writer performance
  *  - Query affiliate_links for conversion performance
+ *  - Query content_strategy_metrics for strategy effectiveness
+ *  - Compare recent vs older performance for trend analysis
  *  - Update performance_score for each writer agent
  *  - Use LLM to interpret data and produce recommendations
  *  - Generate evolution override suggestions for weak agents
@@ -18,6 +20,7 @@ import type {
   AnalystReport,
   WriterPerformance,
   AffiliateLinkPerformance,
+  ContentStrategyPerformance,
   ContentTier,
   HookType,
   FormatType,
@@ -27,7 +30,7 @@ const analystOutputSchema = z.object({
   recommended_content_tier: z.enum(['money', 'authority', 'trend']),
   recommended_hook_type: z.enum(['fear', 'curiosity', 'authority', 'benefit', 'story']),
   recommended_format_type: z.enum(['comparison', 'review', 'bonus', 'trust', 'fee', 'guide']),
-  performance_insights: z.array(z.string()).min(2).max(8),
+  performance_insights: z.array(z.string()),
   suggested_agent_overrides: z.array(z.object({
     agent_id: z.string(),
     suggested_overrides: z.object({
@@ -39,6 +42,13 @@ const analystOutputSchema = z.object({
     }),
     reasoning: z.string(),
   })),
+  best_performing_strategy: z.object({
+    content_tier: z.enum(['money', 'authority', 'trend']),
+    hook_type: z.enum(['fear', 'curiosity', 'authority', 'benefit', 'story']),
+    format_type: z.enum(['comparison', 'review', 'bonus', 'trust', 'fee', 'guide']),
+    reason: z.string(),
+  }).nullable(),
+  trend_direction: z.enum(['improving', 'stable', 'declining']),
 });
 
 export class AnalystAgent extends BaseAgent {
@@ -84,7 +94,51 @@ export class AnalystAgent extends BaseAgent {
       ORDER BY al.avg_conversion_rate DESC
     `);
 
-    // 3. Update performance scores for writer agents based on metrics
+    // 3. Query content strategy performance (which tier/hook/format combos work best)
+    const strategyStats = await query<ContentStrategyPerformance>(`
+      SELECT
+        content_tier, hook_type, format_type,
+        article_count, avg_views, avg_ctr,
+        avg_time_on_page, avg_bounce_rate,
+        total_affiliate_clicks, avg_conversion_rate
+      FROM content_strategy_metrics
+      WHERE computed_at = (SELECT MAX(computed_at) FROM content_strategy_metrics)
+      ORDER BY avg_ctr DESC
+    `);
+
+    // 4. Trend analysis: compare recent articles vs older ones
+    const trendData = await query<{
+      period: string;
+      avg_views: number;
+      avg_ctr: number;
+      avg_time: number;
+      article_count: number;
+    }>(`
+      SELECT
+        'recent' as period,
+        COALESCE(AVG(m.views), 0)::float as avg_views,
+        COALESCE(AVG(m.ctr), 0)::float as avg_ctr,
+        COALESCE(AVG(m.avg_time_on_page), 0)::float as avg_time,
+        COUNT(*)::int as article_count
+      FROM articles a
+      JOIN article_metrics m ON m.article_id = a.id
+      WHERE a.status = 'published'
+        AND a.created_at > NOW() - INTERVAL '14 days'
+      UNION ALL
+      SELECT
+        'older' as period,
+        COALESCE(AVG(m.views), 0)::float,
+        COALESCE(AVG(m.ctr), 0)::float,
+        COALESCE(AVG(m.avg_time_on_page), 0)::float,
+        COUNT(*)::int
+      FROM articles a
+      JOIN article_metrics m ON m.article_id = a.id
+      WHERE a.status = 'published'
+        AND a.created_at <= NOW() - INTERVAL '14 days'
+        AND a.created_at > NOW() - INTERVAL '60 days'
+    `);
+
+    // 5. Update performance scores for writer agents based on metrics
     for (const w of writerStats) {
       const score = Math.min(1.0, Math.max(0.0,
         (w.avg_ctr * 0.4) + (w.avg_conversion_rate * 0.6)
@@ -95,8 +149,11 @@ export class AnalystAgent extends BaseAgent {
       );
     }
 
-    // 4. Ask the LLM to interpret the data and make strategic recommendations
-    const hasData = writerStats.length > 0 || affiliateStats.length > 0;
+    // 6. Ask the LLM to interpret all data and make strategic recommendations
+    const hasData = writerStats.some(w => w.total_articles > 0);
+    const hasStrategyData = strategyStats.length > 0;
+    const recentTrend = trendData.find(t => t.period === 'recent');
+    const olderTrend = trendData.find(t => t.period === 'older');
 
     const llmOutput = await this.callObject({
       schema: analystOutputSchema,
@@ -104,7 +161,7 @@ export class AnalystAgent extends BaseAgent {
       systemPrompt: this.buildSystemPrompt(),
       userPrompt: `
 Analyze the following performance data for a Dutch crypto affiliate blog (ShortNews.tech).
-${!hasData ? 'NOTE: This is the first run — there is no performance data yet. Use defaults and recommend starting with money-tier content.' : ''}
+${!hasData ? 'NOTE: This is an early-stage blog with limited data. Use defaults and recommend starting with money-tier content.' : ''}
 
 WRITER PERFORMANCE DATA:
 ${JSON.stringify(writerStats, null, 2)}
@@ -112,13 +169,24 @@ ${JSON.stringify(writerStats, null, 2)}
 AFFILIATE LINK PERFORMANCE:
 ${JSON.stringify(affiliateStats, null, 2)}
 
+${hasStrategyData ? `CONTENT STRATEGY PERFORMANCE (which tier/hook/format combo works best):
+${JSON.stringify(strategyStats, null, 2)}` : 'CONTENT STRATEGY PERFORMANCE: No data yet — first cycle.'}
+
+TREND ANALYSIS (recent 14 days vs prior 14-60 days):
+- Recent period: ${recentTrend ? `${recentTrend.article_count} articles, avg ${recentTrend.avg_views.toFixed(1)} views, ${(recentTrend.avg_ctr * 100).toFixed(1)}% CTR, ${recentTrend.avg_time.toFixed(0)}s avg time` : 'No recent articles'}
+- Older period: ${olderTrend ? `${olderTrend.article_count} articles, avg ${olderTrend.avg_views.toFixed(1)} views, ${(olderTrend.avg_ctr * 100).toFixed(1)}% CTR, ${olderTrend.avg_time.toFixed(0)}s avg time` : 'No older articles'}
+
 Based on this data:
 1. Recommend the optimal content_tier, hook_type, and format_type for the next editorial cycle
 2. Provide 3-6 specific performance insights (what is working, what is not)
 3. Suggest behavior overrides for any underperforming agents (only if data shows clear issues)
-4. Focus on Dutch crypto market: NL/BE traders, platforms BitMEX/Bybit/Binance/Kraken
+4. Identify the best_performing_strategy combination (if strategy data exists, otherwise null)
+5. Determine trend_direction: are metrics improving, stable, or declining?
+6. Focus on Dutch crypto market: NL/BE traders, platforms BitMEX/Bybit/Binance/Kraken
 
 If data is empty or insufficient, recommend money tier with benefit hook and comparison format as safe defaults.
+Set trend_direction to "stable" if insufficient data.
+Set best_performing_strategy to null if no strategy data exists.
 `,
     });
 
@@ -134,9 +202,12 @@ If data is empty or insufficient, recommend money tier with benefit hook and com
       recommended_format_type: llmOutput.recommended_format_type,
       performance_insights: llmOutput.performance_insights,
       suggested_agent_overrides: llmOutput.suggested_agent_overrides,
+      strategy_performance: strategyStats,
+      trend_direction: llmOutput.trend_direction,
+      best_performing_strategy: llmOutput.best_performing_strategy ?? undefined,
     };
 
-    // 5. Log evolution suggestions separately for admin review
+    // 7. Log evolution suggestions separately for admin review
     for (const suggestion of llmOutput.suggested_agent_overrides) {
       await this.log({
         stage: 'evolution:suggestion',
@@ -146,18 +217,22 @@ If data is empty or insufficient, recommend money tier with benefit hook and com
       });
     }
 
-    // 6. Log the main analyst report
+    // 8. Log the main analyst report
     await this.log({
       stage: 'analyst:report',
       inputSummary: {
         writer_count: writerStats.length,
         affiliate_count: affiliateStats.length,
+        strategy_combos: strategyStats.length,
         has_data: hasData,
+        trend_direction: llmOutput.trend_direction,
       },
       decisionSummary: {
         recommended_tier: report.recommended_content_tier,
         recommended_hook: report.recommended_hook_type,
         recommended_format: report.recommended_format_type,
+        best_strategy: llmOutput.best_performing_strategy,
+        trend: llmOutput.trend_direction,
       },
       reasoningSummary: report.performance_insights.join(' | '),
     });
@@ -169,20 +244,26 @@ If data is empty or insufficient, recommend money tier with benefit hook and com
     const tone = (this.mergedConfig as any).tone ?? 'analytical';
     return `You are an editorial performance analyst for ShortNews, a Dutch crypto affiliate blog.
 
-Your role: analyze article performance metrics and affiliate conversion data to guide content strategy.
+Your role: analyze article performance metrics, content strategy data, and affiliate conversion data to guide content strategy.
 Tone: ${tone}.
 
 CONTEXT:
 - Blog: ShortNews.tech — Dutch-language crypto content for NL/BE market
 - Monetization: affiliate programs (BitMEX, Bybit, Binance, Kraken)
-- Primary KPIs: CTR (click-through rate), affiliate_clicks, conversion_count, avg_time_on_page
+- Primary KPIs: CTR (click-through rate), affiliate_clicks, avg_time_on_page, bounce_rate
 - Content tiers: money (conversion), authority (educational), trend (timely)
+- Hook types: fear, curiosity, authority, benefit, story
+- Format types: comparison, review, bonus, trust, fee, guide
 
 ANALYSIS PRINCIPLES:
 - Focus on CTR × conversion as primary quality signal
 - High time-on-page with low CTR = engaging but not converting (authority content issue)
 - Low time-on-page = poor content or wrong audience targeting
+- High bounce rate (>0.7) = article fails to hook readers
 - Conversion rate > 0.05 per view = excellent affiliate performance
-- Be specific in insights — no generic advice`;
+- Compare strategy combinations to find what works: which tier + hook + format produces the best CTR
+- Look at trend direction: are we improving week-over-week?
+- Be specific in insights — no generic advice
+- When suggesting agent overrides, reference specific data points`;
   }
 }

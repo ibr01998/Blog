@@ -175,6 +175,24 @@ CREATE INDEX IF NOT EXISTS idx_agent_logs_stage ON agent_logs(stage);
 CREATE INDEX IF NOT EXISTS idx_article_metrics_article_id ON article_metrics(article_id);
 CREATE INDEX IF NOT EXISTS idx_affiliate_links_country ON affiliate_links(country);
 
+-- content_strategy_metrics: Aggregated performance by content strategy combination
+CREATE TABLE IF NOT EXISTS content_strategy_metrics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  content_tier TEXT NOT NULL,
+  hook_type TEXT NOT NULL,
+  format_type TEXT NOT NULL,
+  article_count INT NOT NULL DEFAULT 0,
+  avg_views FLOAT NOT NULL DEFAULT 0,
+  avg_ctr FLOAT NOT NULL DEFAULT 0,
+  avg_time_on_page FLOAT NOT NULL DEFAULT 0,
+  avg_bounce_rate FLOAT NOT NULL DEFAULT 0,
+  total_affiliate_clicks INT NOT NULL DEFAULT 0,
+  avg_conversion_rate FLOAT NOT NULL DEFAULT 0,
+  computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_csm_computed ON content_strategy_metrics(computed_at DESC);
+
 -- Migrations: add columns that may not exist on older deployments (safe to re-run)
 ALTER TABLE articles ADD COLUMN IF NOT EXISTS image_url TEXT;
 `;

@@ -127,6 +127,29 @@ export async function runEditorialCycle(onProgress?: ProgressCallback): Promise<
     );
   }
 
+  // ── Step 1b: Sync Astro DB analytics → Postgres article_metrics ─────────
+
+  emit({ stage: 'sync', progress: 3, message: 'Metrics synchroniseren (Astro DB → Postgres)...' });
+
+  try {
+    const origin = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : ((import.meta as any).env?.SITE ?? 'http://localhost:4321');
+    const cronSecret = (import.meta as any).env?.CRON_SECRET ?? process.env.CRON_SECRET ?? '';
+
+    await fetch(`${origin}/api/analytics/sync-metrics`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${cronSecret}`,
+        'x-internal-sync': 'true',
+        'Content-Type': 'application/json',
+      },
+    });
+  } catch (syncErr) {
+    // Non-fatal: analyst will work with stale data if sync fails
+    console.warn('[Orchestrator] Metrics sync failed (non-fatal):', syncErr);
+  }
+
   // ── Step 2: Analyst ───────────────────────────────────────────────────────
 
   emit({ stage: 'analyst', progress: 5, message: 'Markt-Analist analyseert marktdata en prestaties...' });
