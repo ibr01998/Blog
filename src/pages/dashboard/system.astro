@@ -1,0 +1,410 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { query } from '../../lib/db/postgres.ts';
+
+interface SystemConfig {
+  id: number;
+  system_paused: boolean;
+  auto_publish_enabled: boolean;
+  max_articles_per_week: number;
+  enable_multi_agent: boolean;
+  enable_auto_evolution: boolean;
+}
+
+// Fetch system config
+let config: SystemConfig | null = null;
+let configError = '';
+
+try {
+  const rows = await query<SystemConfig>('SELECT * FROM system_config WHERE id = 1 LIMIT 1');
+  config = rows[0] ?? null;
+} catch (err) {
+  configError = err instanceof Error ? err.message : 'Database niet beschikbaar';
+}
+
+// Fetch pending evolution suggestions
+let evolutionSuggestions: any[] = [];
+try {
+  evolutionSuggestions = await query(
+    `SELECT al.*, ag.name as agent_name, ag.role as agent_role
+     FROM agent_logs al
+     LEFT JOIN agents ag ON al.agent_id = ag.id
+     WHERE al.stage = 'evolution:suggestion'
+     ORDER BY al.created_at DESC
+     LIMIT 20`
+  );
+} catch {
+  // Silently ignore if tables don't exist yet
+}
+---
+
+<DashboardLayout title="Systeem Configuratie" activePage="system">
+  <div class="space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-xl font-bold text-navy">Systeem Configuratie</h2>
+        <p class="text-sm text-gray-500 mt-1">Beheer de AI editorial engine instellingen en schakelknoppen.</p>
+      </div>
+      {config && (
+        <span class={`text-xs font-semibold px-3 py-1 rounded-full ${config.system_paused ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+          {config.system_paused ? 'GEPAUZEERD' : 'ACTIEF'}
+        </span>
+      )}
+    </div>
+
+    {configError && (
+      <div class="glass rounded-xl p-4 border border-red-200">
+        <p class="text-sm text-red-600">
+          <strong>Database fout:</strong> {configError}
+        </p>
+        <p class="text-xs text-gray-500 mt-1">Voer eerst <code class="bg-gray-100 px-1 rounded">POST /api/admin/migrate</code> uit.</p>
+      </div>
+    )}
+
+    {config && (
+      <>
+        <!-- System Controls -->
+        <div class="glass rounded-xl border border-white/20 p-6">
+          <h3 class="text-sm font-semibold text-navy mb-4">Schakelknoppen</h3>
+
+          <div class="space-y-4" id="config-form">
+            <!-- System Paused -->
+            <div class="flex items-center justify-between py-3 border-b border-white/10">
+              <div>
+                <p class="text-sm font-medium text-gray-800">Systeem pauzeren</p>
+                <p class="text-xs text-gray-500">Stopt alle nieuwe redactionele cycli direct.</p>
+              </div>
+              <label class="relative inline-flex cursor-pointer items-center">
+                <input type="checkbox" class="config-toggle sr-only" data-key="system_paused"
+                       checked={config.system_paused} />
+                <div class="toggle-track h-6 w-11 rounded-full bg-gray-200 transition-colors peer-checked:bg-red-500"></div>
+                <div class="toggle-dot absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow transition-transform"></div>
+              </label>
+            </div>
+
+            <!-- Auto Publish -->
+            <div class="flex items-center justify-between py-3 border-b border-white/10">
+              <div>
+                <p class="text-sm font-medium text-gray-800">Automatisch publiceren</p>
+                <p class="text-xs text-gray-500">Publiceert goedgekeurde artikelen direct naar de blog.</p>
+              </div>
+              <label class="relative inline-flex cursor-pointer items-center">
+                <input type="checkbox" class="config-toggle sr-only" data-key="auto_publish_enabled"
+                       checked={config.auto_publish_enabled} />
+                <div class="toggle-track h-6 w-11 rounded-full bg-gray-200 transition-colors"></div>
+                <div class="toggle-dot absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow transition-transform"></div>
+              </label>
+            </div>
+
+            <!-- Multi-Agent -->
+            <div class="flex items-center justify-between py-3 border-b border-white/10">
+              <div>
+                <p class="text-sm font-medium text-gray-800">Multi-agent modus</p>
+                <p class="text-xs text-gray-500">Schakelt het volledige Analyst→SEO pipeline in.</p>
+              </div>
+              <label class="relative inline-flex cursor-pointer items-center">
+                <input type="checkbox" class="config-toggle sr-only" data-key="enable_multi_agent"
+                       checked={config.enable_multi_agent} />
+                <div class="toggle-track h-6 w-11 rounded-full bg-gray-200 transition-colors"></div>
+                <div class="toggle-dot absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow transition-transform"></div>
+              </label>
+            </div>
+
+            <!-- Auto Evolution -->
+            <div class="flex items-center justify-between py-3 border-b border-white/10">
+              <div>
+                <p class="text-sm font-medium text-gray-800">Auto-evolutie</p>
+                <p class="text-xs text-gray-500">Analyst-suggesties worden automatisch toegepast (geen goedkeuring vereist).</p>
+              </div>
+              <label class="relative inline-flex cursor-pointer items-center">
+                <input type="checkbox" class="config-toggle sr-only" data-key="enable_auto_evolution"
+                       checked={config.enable_auto_evolution} />
+                <div class="toggle-track h-6 w-11 rounded-full bg-gray-200 transition-colors"></div>
+                <div class="toggle-dot absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow transition-transform"></div>
+              </label>
+            </div>
+
+            <!-- Max articles per week -->
+            <div class="flex items-center justify-between py-3">
+              <div>
+                <p class="text-sm font-medium text-gray-800">Max artikelen per week</p>
+                <p class="text-xs text-gray-500">Limiet voor automatische artikel generatie per kalenderweek.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <input
+                  type="number"
+                  id="max_articles_input"
+                  class="w-16 text-center border border-gray-200 rounded-lg py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-navy/30"
+                  value={config.max_articles_per_week}
+                  min="1"
+                  max="20"
+                />
+                <button id="save-max-btn" class="text-xs bg-navy text-white px-3 py-1.5 rounded-lg hover:bg-navy/90 transition-colors">
+                  Opslaan
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Run Cycle -->
+        <div class="glass rounded-xl border border-white/20 p-6">
+          <h3 class="text-sm font-semibold text-navy mb-2">Redactionele Cyclus</h3>
+          <p class="text-xs text-gray-500 mb-4">
+            Start een volledige AI redactionele cyclus: Analyst → Strateeg → Redacteur → Schrijver → Humanizer → SEO.
+            Dit kan 1-3 minuten duren.
+          </p>
+
+          <button id="run-cycle-btn"
+            class="inline-flex items-center gap-2 bg-navy text-white text-sm font-semibold py-2.5 px-5 rounded-lg hover:bg-navy/90 transition-all disabled:opacity-50"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Cyclus Uitvoeren
+          </button>
+
+          <div id="cycle-result" class="mt-4 hidden">
+            <div id="cycle-loading" class="hidden text-sm text-gray-500">
+              <svg class="inline h-4 w-4 animate-spin mr-2" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              Cyclus wordt uitgevoerd...
+            </div>
+            <div id="cycle-output" class="glass rounded-lg p-4 border border-white/10 text-xs font-mono text-gray-700 whitespace-pre-wrap max-h-64 overflow-auto"></div>
+          </div>
+        </div>
+      </>
+    )}
+
+    <!-- Evolution Suggestions Queue -->
+    {evolutionSuggestions.length > 0 && (
+      <div class="glass rounded-xl border border-white/20 p-6">
+        <h3 class="text-sm font-semibold text-navy mb-4">Evolutie Suggesties</h3>
+        <p class="text-xs text-gray-500 mb-4">
+          De Analyst heeft gedragsaanpassingen voorgesteld voor onderstaande agents.
+          {config?.enable_auto_evolution ? 'Auto-evolutie staat aan — worden automatisch toegepast.' : 'Keur handmatig goed of wijs af.'}
+        </p>
+        <div class="space-y-3">
+          {evolutionSuggestions.map((s) => (
+            <div class="flex items-start gap-3 p-3 bg-amber-50/50 rounded-lg border border-amber-200/50">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-xs font-semibold text-amber-800">{s.agent_name ?? 'Onbekend'}</span>
+                  <span class="text-xs text-gray-400">({s.agent_role})</span>
+                </div>
+                <p class="text-xs text-gray-600">{s.reasoning_summary}</p>
+                {s.decision_summary && (
+                  <pre class="text-xs text-gray-500 mt-1 bg-white/60 rounded p-1 overflow-auto max-h-20">
+                    {typeof s.decision_summary === 'string' ? s.decision_summary : JSON.stringify(s.decision_summary, null, 2)}
+                  </pre>
+                )}
+              </div>
+              {!config?.enable_auto_evolution && s.agent_id && (
+                <button
+                  class="apply-evolution-btn shrink-0 text-xs bg-navy text-white px-3 py-1.5 rounded-lg hover:bg-navy/90"
+                  data-agent-id={s.agent_id}
+                  data-log-id={s.id}
+                  data-overrides={JSON.stringify(s.decision_summary?.suggested_overrides ?? {})}
+                >
+                  Toepassen
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+  </div>
+</DashboardLayout>
+
+<style>
+  .config-toggle:checked + .toggle-track {
+    background-color: rgb(27 45 79);
+  }
+  .config-toggle:checked ~ .toggle-dot {
+    transform: translateX(20px);
+  }
+  .toggle-track {
+    position: relative;
+  }
+  .toggle-dot {
+    position: absolute;
+  }
+  label {
+    position: relative;
+  }
+</style>
+
+<script>
+  // Toggle switches — save immediately on change
+  document.querySelectorAll<HTMLInputElement>('.config-toggle').forEach((toggle) => {
+    // Sync initial visual state
+    const track = toggle.nextElementSibling as HTMLElement;
+    const dot = track?.nextElementSibling as HTMLElement;
+    if (toggle.checked) {
+      track?.classList.add('!bg-navy');
+      dot?.style.setProperty('transform', 'translateX(20px)');
+    }
+
+    toggle.addEventListener('change', async () => {
+      const key = toggle.dataset.key;
+      const value = toggle.checked;
+      if (!key) return;
+
+      // Update visual
+      const t = toggle.nextElementSibling as HTMLElement;
+      const d = t?.nextElementSibling as HTMLElement;
+      if (value) {
+        t?.classList.add('!bg-navy');
+        d?.style.setProperty('transform', 'translateX(20px)');
+      } else {
+        t?.classList.remove('!bg-navy');
+        d?.style.setProperty('transform', 'translateX(0px)');
+      }
+
+      try {
+        await fetch('/api/admin/system', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ [key]: value }),
+        });
+      } catch (err) {
+        console.error('Failed to save config:', err);
+        toggle.checked = !value; // Revert on failure
+      }
+    });
+  });
+
+  // Max articles per week save button
+  document.getElementById('save-max-btn')?.addEventListener('click', async () => {
+    const input = document.getElementById('max_articles_input') as HTMLInputElement;
+    const value = parseInt(input.value);
+    if (isNaN(value) || value < 1) return;
+
+    await fetch('/api/admin/system', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ max_articles_per_week: value }),
+    });
+  });
+
+  // Run cycle button — non-blocking: fires the request and polls for completion
+  // so the user can navigate away and come back
+  document.getElementById('run-cycle-btn')?.addEventListener('click', () => {
+    const btn = document.getElementById('run-cycle-btn') as HTMLButtonElement;
+    const resultDiv = document.getElementById('cycle-result');
+    const loadingDiv = document.getElementById('cycle-loading');
+    const outputDiv = document.getElementById('cycle-output');
+
+    btn.disabled = true;
+    btn.textContent = 'Bezig...';
+    resultDiv?.classList.remove('hidden');
+    loadingDiv?.classList.remove('hidden');
+    if (outputDiv) outputDiv.textContent = '';
+
+    // Store cycle start time in sessionStorage so status persists across navigations
+    sessionStorage.setItem('cycle_running', Date.now().toString());
+
+    // Fire-and-forget: the fetch runs in the background
+    fetch('/api/admin/run-cycle', { method: 'POST' })
+      .then((res) => res.json())
+      .then((data) => {
+        sessionStorage.removeItem('cycle_running');
+        loadingDiv?.classList.add('hidden');
+        if (outputDiv) outputDiv.textContent = JSON.stringify(data, null, 2);
+        btn.disabled = false;
+        btn.textContent = 'Cyclus Uitvoeren';
+      })
+      .catch((err) => {
+        sessionStorage.removeItem('cycle_running');
+        loadingDiv?.classList.add('hidden');
+        if (outputDiv) outputDiv.textContent = `Fout: ${err}`;
+        btn.disabled = false;
+        btn.textContent = 'Cyclus Uitvoeren';
+      });
+  });
+
+  // Restore cycle-running state if user navigated away and came back
+  if (sessionStorage.getItem('cycle_running')) {
+    const btn = document.getElementById('run-cycle-btn') as HTMLButtonElement;
+    const resultDiv = document.getElementById('cycle-result');
+    const loadingDiv = document.getElementById('cycle-loading');
+    if (btn) { btn.disabled = true; btn.textContent = 'Bezig...'; }
+    resultDiv?.classList.remove('hidden');
+    loadingDiv?.classList.remove('hidden');
+  }
+
+  // Apply evolution suggestions
+  document.querySelectorAll<HTMLButtonElement>('.apply-evolution-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const agentId = btn.dataset.agentId;
+      const logId = btn.dataset.logId;
+      let overrides: Record<string, unknown>;
+      try {
+        overrides = JSON.parse(btn.dataset.overrides ?? '{}');
+      } catch {
+        alert('Ongeldig JSON in suggesties. Controleer de agent logs.');
+        return;
+      }
+
+      // Strip null values — only send overrides that actually have a value
+      const cleanOverrides = Object.fromEntries(
+        Object.entries(overrides).filter(([, v]) => v !== null)
+      );
+
+      btn.disabled = true;
+      btn.textContent = 'Toepassen...';
+
+      try {
+        // 1. Apply overrides to the agent
+        const res = await fetch(`/api/admin/agents/${agentId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ behavior_overrides: cleanOverrides }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: res.statusText }));
+          alert(`Fout bij toepassen: ${err.error ?? res.statusText}`);
+          btn.textContent = 'Toepassen';
+          btn.disabled = false;
+          return;
+        }
+
+        // 2. Mark the log as applied so it doesn't reappear
+        if (logId) {
+          await fetch('/api/admin/logs', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: logId, stage: 'evolution:applied' }),
+          });
+        }
+
+        // 3. Fade out and remove the suggestion card
+        const card = btn.closest('.flex.items-start') as HTMLElement;
+        if (card) {
+          card.style.transition = 'opacity 0.3s, max-height 0.3s';
+          card.style.opacity = '0';
+          card.style.maxHeight = card.scrollHeight + 'px';
+          setTimeout(() => {
+            card.style.maxHeight = '0';
+            card.style.overflow = 'hidden';
+            card.style.padding = '0';
+            card.style.margin = '0';
+            card.style.border = 'none';
+          }, 300);
+          setTimeout(() => card.remove(), 600);
+        }
+      } catch (err) {
+        alert(`Netwerkfout: ${err}`);
+        btn.textContent = 'Toepassen';
+        btn.disabled = false;
+      }
+    });
+  });
+</script>

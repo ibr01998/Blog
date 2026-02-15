@@ -1,0 +1,442 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { query } from '../../lib/db/postgres.ts';
+
+const params = Astro.url.searchParams;
+const statusFilter = params.get('status') ?? '';
+const reviewFilter = params.get('review_status') ?? '';
+const limit = 20;
+const offset = parseInt(params.get('offset') ?? '0');
+
+interface ArticleRow {
+  id: string;
+  title: string;
+  slug: string;
+  content_tier: string;
+  primary_keyword: string;
+  format_type: string;
+  word_count: number;
+  meta_description: string;
+  status: string;
+  review_status: string;
+  image_url: string | null;
+  human_notes: string | null;
+  published_at: string | null;
+  created_at: string;
+  writer_name: string | null;
+}
+
+let articles: ArticleRow[] = [];
+let total = 0;
+let dbError = '';
+
+try {
+  const conditions: string[] = [];
+  const values: unknown[] = [];
+  let paramIdx = 1;
+
+  if (statusFilter) {
+    conditions.push(`a.status = $${paramIdx++}`);
+    values.push(statusFilter);
+  }
+  if (reviewFilter) {
+    conditions.push(`a.review_status = $${paramIdx++}`);
+    values.push(reviewFilter);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const countRows = await query<{ count: string }>(
+    `SELECT COUNT(*) as count FROM articles a ${where}`,
+    values
+  );
+  total = parseInt(countRows[0]?.count ?? '0');
+
+  articles = await query<ArticleRow>(
+    `SELECT a.id, a.title, a.slug, a.content_tier, a.primary_keyword,
+            a.format_type, a.word_count, a.meta_description,
+            a.status, a.review_status, a.image_url, a.human_notes, a.published_at, a.created_at,
+            ag.name as writer_name
+     FROM articles a
+     LEFT JOIN agents ag ON a.writer_id = ag.id
+     ${where}
+     ORDER BY
+       CASE a.review_status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END,
+       a.created_at DESC
+     LIMIT $${paramIdx++} OFFSET $${paramIdx++}`,
+    [...values, limit, offset]
+  );
+} catch (err) {
+  dbError = err instanceof Error ? err.message : 'Database niet beschikbaar';
+}
+
+const TIER_COLORS: Record<string, string> = {
+  money: 'bg-green-100 text-green-800',
+  authority: 'bg-blue-100 text-blue-800',
+  trend: 'bg-orange-100 text-orange-800',
+};
+
+const REVIEW_COLORS: Record<string, string> = {
+  pending: 'bg-amber-100 text-amber-700',
+  approved: 'bg-green-100 text-green-700',
+  rejected: 'bg-red-100 text-red-700',
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  draft: 'bg-gray-100 text-gray-600',
+  approved: 'bg-blue-100 text-blue-700',
+  published: 'bg-green-100 text-green-700',
+};
+
+function formatDate(d: string) {
+  return new Date(d).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+---
+
+<DashboardLayout title="AI Artikelen" activePage="ai-articles">
+  <div class="space-y-6">
+
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-xl font-bold text-navy">AI Artikelen</h2>
+        <p class="text-sm text-gray-500 mt-1">
+          Beoordeel en publiceer AI-gegenereerde artikelen.
+          {total > 0 && <span class="font-medium">{total} artikelen.</span>}
+        </p>
+      </div>
+    </div>
+
+    {dbError && (
+      <div class="glass rounded-xl p-4 border border-red-200">
+        <p class="text-sm text-red-600"><strong>Fout:</strong> {dbError}</p>
+        <p class="text-xs text-gray-500 mt-1">Voer eerst <code class="bg-gray-100 px-1 rounded">POST /api/admin/migrate</code> uit.</p>
+      </div>
+    )}
+
+    <!-- Filters -->
+    <form method="GET" action="/dashboard/ai-articles" class="glass rounded-xl border border-white/20 p-4">
+      <div class="flex flex-wrap gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">Status</label>
+          <select name="status" class="text-sm border border-gray-200 rounded-lg py-1.5 px-2 bg-white focus:outline-none">
+            <option value="">Alle</option>
+            <option value="draft" selected={statusFilter === 'draft'}>Concept</option>
+            <option value="approved" selected={statusFilter === 'approved'}>Goedgekeurd</option>
+            <option value="published" selected={statusFilter === 'published'}>Gepubliceerd</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">Review status</label>
+          <select name="review_status" class="text-sm border border-gray-200 rounded-lg py-1.5 px-2 bg-white focus:outline-none">
+            <option value="">Alle</option>
+            <option value="pending" selected={reviewFilter === 'pending'}>In behandeling</option>
+            <option value="approved" selected={reviewFilter === 'approved'}>Goedgekeurd</option>
+            <option value="rejected" selected={reviewFilter === 'rejected'}>Afgewezen</option>
+          </select>
+        </div>
+        <div class="flex items-end gap-2">
+          <button type="submit" class="text-xs bg-navy text-white px-4 py-1.5 rounded-lg hover:bg-navy/90">Filteren</button>
+          <a href="/dashboard/ai-articles" class="text-xs border border-gray-200 text-gray-600 px-4 py-1.5 rounded-lg hover:bg-gray-50">Reset</a>
+        </div>
+      </div>
+    </form>
+
+    <!-- Articles List -->
+    {!dbError && articles.length === 0 && (
+      <div class="text-center py-16 text-gray-400">
+        <p class="text-sm">Geen artikelen gevonden.</p>
+        <p class="text-xs mt-1">Start een redactionele cyclus via <a href="/dashboard/system" class="text-navy hover:underline">Systeem</a> om artikelen te genereren.</p>
+      </div>
+    )}
+
+    {!dbError && articles.length > 0 && (
+      <div class="space-y-4">
+        {articles.map((article) => (
+          <div class="glass rounded-xl border border-white/20 p-5" id={`article-${article.id}`}>
+            <!-- Header row -->
+            <div class="flex items-start gap-3 mb-3">
+              <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                  <span class={`text-xs font-semibold px-2 py-0.5 rounded-full ${TIER_COLORS[article.content_tier] ?? 'bg-gray-100 text-gray-600'}`}>
+                    {article.content_tier}
+                  </span>
+                  <span class={`text-xs font-semibold px-2 py-0.5 rounded-full ${REVIEW_COLORS[article.review_status] ?? ''}`}>
+                    {article.review_status}
+                  </span>
+                  <span class={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[article.status] ?? ''}`}>
+                    {article.status}
+                  </span>
+                </div>
+                <h3 class="text-sm font-semibold text-navy leading-tight">{article.title}</h3>
+                <p class="text-xs text-gray-500 mt-0.5">
+                  {article.primary_keyword} · {article.word_count ? `${article.word_count} woorden` : '–'} · {article.writer_name ?? 'Onbekend'} · {formatDate(article.created_at)}
+                </p>
+              </div>
+
+              <!-- Action buttons -->
+              <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                <button
+                  class="preview-btn text-xs border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+                  data-article-id={article.id}
+                >
+                  Preview
+                </button>
+
+                {article.review_status === 'pending' && (
+                  <>
+                    <button
+                      class="approve-btn text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700"
+                      data-article-id={article.id}
+                    >
+                      Goedkeuren
+                    </button>
+                    <button
+                      class="reject-btn text-xs bg-red-500 text-white px-3 py-1.5 rounded-lg hover:bg-red-600"
+                      data-article-id={article.id}
+                    >
+                      Afwijzen
+                    </button>
+                  </>
+                )}
+
+                {article.review_status === 'approved' && article.status !== 'published' && (
+                  <>
+                    <button
+                      class="generate-image-btn text-xs border border-navy text-navy px-3 py-1.5 rounded-lg hover:bg-navy/5"
+                      data-article-id={article.id}
+                      data-title={article.title}
+                      data-keyword={article.primary_keyword}
+                      data-slug={article.slug}
+                    >
+                      {article.image_url ? 'Afbeelding hergenereren' : 'Genereer Afbeelding'}
+                    </button>
+                    <button
+                      class="publish-btn text-xs bg-navy text-white px-3 py-1.5 rounded-lg hover:bg-navy/90"
+                      data-article-id={article.id}
+                      data-has-image={article.image_url ? 'true' : 'false'}
+                    >
+                      Publiceer
+                    </button>
+                  </>
+                )}
+
+                {article.image_url && (
+                  <span class="text-xs text-green-600" title={article.image_url}>Afbeelding ✓</span>
+                )}
+
+                {article.status === 'published' && (
+                  <a
+                    href={`/${article.slug}`}
+                    target="_blank"
+                    class="text-xs text-navy hover:underline px-2"
+                  >
+                    Bekijk
+                  </a>
+                )}
+              </div>
+            </div>
+
+            <!-- Meta description -->
+            {article.meta_description && (
+              <p class="text-xs text-gray-500 mb-3 italic">{article.meta_description}</p>
+            )}
+
+            <!-- Notes field -->
+            <div class="flex gap-2">
+              <textarea
+                class="notes-textarea flex-1 text-xs border border-gray-200 rounded-lg p-2 h-12 resize-none focus:outline-none focus:ring-1 focus:ring-navy/30 placeholder-gray-300"
+                data-article-id={article.id}
+                placeholder="Redactionele notities toevoegen..."
+              >{article.human_notes ?? ''}</textarea>
+              <button
+                class="save-notes-btn self-start text-xs border border-gray-200 text-gray-600 px-2 py-1.5 rounded-lg hover:bg-gray-50 whitespace-nowrap"
+                data-article-id={article.id}
+              >
+                Opslaan
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+
+    <!-- Pagination -->
+    {total > limit && (
+      <div class="flex justify-between text-sm text-gray-500">
+        <span>{offset + 1}–{Math.min(offset + limit, total)} van {total}</span>
+        <div class="flex gap-2">
+          {offset > 0 && (
+            <a href={`?offset=${offset - limit}&status=${statusFilter}&review_status=${reviewFilter}`}
+               class="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-xs">Vorige</a>
+          )}
+          {offset + limit < total && (
+            <a href={`?offset=${offset + limit}&status=${statusFilter}&review_status=${reviewFilter}`}
+               class="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-xs">Volgende</a>
+          )}
+        </div>
+      </div>
+    )}
+  </div>
+
+  <!-- Preview Modal -->
+  <dialog id="preview-modal" class="rounded-2xl shadow-2xl max-w-3xl w-full mx-auto p-0 backdrop:bg-black/50">
+    <div class="flex items-center justify-between p-4 border-b">
+      <h2 id="preview-title" class="text-sm font-semibold text-navy">Artikel Preview</h2>
+      <button id="close-modal" class="text-gray-400 hover:text-gray-700">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div id="preview-content" class="p-6 overflow-y-auto max-h-[70vh] text-sm text-gray-700 prose prose-sm max-w-none">
+      <div class="text-gray-400 text-center py-4">Laden...</div>
+    </div>
+  </dialog>
+</DashboardLayout>
+
+<script>
+  const modal = document.getElementById('preview-modal') as HTMLDialogElement;
+  const previewTitle = document.getElementById('preview-title');
+  const previewContent = document.getElementById('preview-content');
+
+  // Close modal
+  document.getElementById('close-modal')?.addEventListener('click', () => modal.close());
+  modal?.addEventListener('click', (e) => { if (e.target === modal) modal.close(); });
+
+  // Preview
+  document.querySelectorAll<HTMLButtonElement>('.preview-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.articleId;
+      modal.showModal();
+      if (previewContent) previewContent.innerHTML = '<div class="text-center text-gray-400">Laden...</div>';
+
+      const res = await fetch(`/api/admin/articles/${id}`);
+      const data = await res.json();
+      if (data.article) {
+        if (previewTitle) previewTitle.textContent = data.article.title;
+        if (previewContent) {
+          previewContent.innerHTML = `<pre class="whitespace-pre-wrap text-xs font-mono text-gray-600 bg-gray-50 p-4 rounded-lg overflow-auto">${data.article.article_markdown ?? 'Geen content'}</pre>`;
+        }
+      }
+    });
+  });
+
+  // Approve
+  document.querySelectorAll<HTMLButtonElement>('.approve-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.articleId;
+      btn.disabled = true;
+      btn.textContent = 'Bezig...';
+      const res = await fetch(`/api/admin/articles/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ review_status: 'approved' }),
+      });
+      if (res.ok) window.location.reload();
+      else { btn.disabled = false; btn.textContent = 'Goedkeuren'; }
+    });
+  });
+
+  // Reject
+  document.querySelectorAll<HTMLButtonElement>('.reject-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.articleId;
+      const reason = prompt('Reden voor afwijzing (optioneel):') ?? '';
+      btn.disabled = true;
+      await fetch(`/api/admin/articles/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ review_status: 'rejected', human_notes: reason }),
+      });
+      window.location.reload();
+    });
+  });
+
+  // Generate image
+  document.querySelectorAll<HTMLButtonElement>('.generate-image-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const articleId = btn.dataset.articleId;
+      const title = btn.dataset.title ?? '';
+      const keyword = btn.dataset.keyword ?? '';
+      const slug = btn.dataset.slug ?? '';
+
+      btn.disabled = true;
+      btn.textContent = 'Genereren...';
+
+      try {
+        // Call the existing image generation endpoint (uses Google Imagen by default — free/cheap)
+        const imgRes = await fetch('/api/generate/image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, keyword, slug, provider: 'google', style: 'halftone' }),
+        });
+        const imgData = await imgRes.json();
+
+        if (!imgRes.ok || !imgData.url) {
+          alert(`Afbeelding genereren mislukt: ${imgData.error ?? 'Onbekende fout'}`);
+          btn.textContent = 'Genereer Afbeelding';
+          btn.disabled = false;
+          return;
+        }
+
+        // Save image_url to the article
+        await fetch(`/api/admin/articles/${articleId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image_url: imgData.url }),
+        });
+
+        window.location.reload();
+      } catch (err) {
+        alert(`Fout: ${err}`);
+        btn.textContent = 'Genereer Afbeelding';
+        btn.disabled = false;
+      }
+    });
+  });
+
+  // Manual publish — warn if no image
+  document.querySelectorAll<HTMLButtonElement>('.publish-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.articleId;
+      const hasImage = btn.dataset.hasImage === 'true';
+
+      if (!hasImage) {
+        const proceed = confirm(
+          'Dit artikel heeft nog geen afbeelding.\n\n' +
+          'Weet je zeker dat je zonder afbeelding wilt publiceren?\n' +
+          'Je kunt eerst op "Genereer Afbeelding" klikken.'
+        );
+        if (!proceed) return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Publiceren...';
+      const res = await fetch(`/api/admin/articles/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'published' }),
+      });
+      if (res.ok) window.location.reload();
+      else { btn.disabled = false; btn.textContent = 'Publiceer'; }
+    });
+  });
+
+  // Save notes
+  document.querySelectorAll<HTMLButtonElement>('.save-notes-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.articleId;
+      const textarea = document.querySelector<HTMLTextAreaElement>(`.notes-textarea[data-article-id="${id}"]`);
+      if (!textarea) return;
+
+      btn.textContent = 'Opslaan...';
+      await fetch(`/api/admin/articles/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ human_notes: textarea.value }),
+      });
+      btn.textContent = 'Opgeslagen!';
+      setTimeout(() => { btn.textContent = 'Opslaan'; }, 2000);
+    });
+  });
+</script>

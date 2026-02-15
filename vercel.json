@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/admin/run-cycle",
+      "schedule": "0 8 * * 1,4"
+    }
+  ]
+}

@@ -1,0 +1,131 @@
+---
+/**
+ * AgentLogViewer — Reusable agent reasoning log table.
+ *
+ * Renders a table of agent_logs with expandable reasoning_summary rows.
+ * Used by dashboard/agent-logs.astro and dashboard/agents.astro.
+ *
+ * Props:
+ *   logs          — Array of agent log rows
+ *   showAgentName — Whether to show the agent name column (default: true)
+ *   showArticleId — Whether to show the article ID column (default: false)
+ */
+
+interface LogRow {
+  id: string;
+  agent_id: string;
+  article_id?: string | null;
+  stage: string;
+  input_summary: Record<string, unknown> | string;
+  decision_summary: Record<string, unknown> | string;
+  reasoning_summary?: string | null;
+  created_at: string;
+  agent_name?: string;
+  agent_role?: string;
+}
+
+interface Props {
+  logs: LogRow[];
+  showAgentName?: boolean;
+  showArticleId?: boolean;
+}
+
+const { logs, showAgentName = true, showArticleId = false } = Astro.props;
+
+function formatStage(stage: string): { label: string; color: string } {
+  const stageMap: Record<string, { label: string; color: string }> = {
+    'analyst:report': { label: 'Analyst', color: 'bg-blue-100 text-blue-800' },
+    'strategist:briefs': { label: 'Strateeg', color: 'bg-purple-100 text-purple-800' },
+    'editor:assignments': { label: 'Editor', color: 'bg-amber-100 text-amber-800' },
+    'editor:rejected_cooldown': { label: 'Afgewezen (cooldown)', color: 'bg-red-100 text-red-700' },
+    'editor:rejected_similarity': { label: 'Afgewezen (overeenkomst)', color: 'bg-orange-100 text-orange-700' },
+    'editor:quota_reached': { label: 'Quota bereikt', color: 'bg-gray-100 text-gray-600' },
+    'writer:draft': { label: 'Schrijver', color: 'bg-green-100 text-green-800' },
+    'humanizer:pass': { label: 'Humanizer', color: 'bg-teal-100 text-teal-800' },
+    'seo:optimized': { label: 'SEO', color: 'bg-indigo-100 text-indigo-800' },
+    'evolution:suggestion': { label: 'Evolutie suggestie', color: 'bg-pink-100 text-pink-800' },
+  };
+  return stageMap[stage] ?? { label: stage, color: 'bg-gray-100 text-gray-600' };
+}
+
+function formatJson(val: Record<string, unknown> | string): string {
+  if (typeof val === 'string') {
+    try {
+      return JSON.stringify(JSON.parse(val), null, 2);
+    } catch {
+      return val;
+    }
+  }
+  return JSON.stringify(val, null, 2);
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleString('nl-NL', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+---
+
+{logs.length === 0 ? (
+  <div class="text-center py-12 text-gray-400 text-sm">
+    Geen logs gevonden.
+  </div>
+) : (
+  <div class="space-y-2">
+    {logs.map((log) => {
+      const { label, color } = formatStage(log.stage);
+      return (
+        <details class="glass rounded-lg border border-white/20 group">
+          <summary class="flex items-center gap-3 p-4 cursor-pointer select-none list-none hover:bg-white/5 rounded-lg transition-colors">
+            <span class={`text-xs font-semibold px-2 py-0.5 rounded-full ${color}`}>
+              {label}
+            </span>
+            {showAgentName && log.agent_name && (
+              <span class="text-sm text-gray-600 font-medium">{log.agent_name}</span>
+            )}
+            {log.reasoning_summary && (
+              <span class="text-sm text-gray-500 flex-1 truncate">{log.reasoning_summary}</span>
+            )}
+            {showArticleId && log.article_id && (
+              <span class="text-xs text-gray-400 font-mono">{log.article_id.slice(0, 8)}...</span>
+            )}
+            <span class="text-xs text-gray-400 ml-auto shrink-0">{formatDate(log.created_at)}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 group-open:rotate-180 transition-transform shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </summary>
+
+          <div class="px-4 pb-4 space-y-3 border-t border-white/10 pt-3">
+            {log.reasoning_summary && (
+              <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Redenering</p>
+                <p class="text-sm text-gray-700">{log.reasoning_summary}</p>
+              </div>
+            )}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Input</p>
+                <pre class="text-xs bg-gray-50 rounded p-2 overflow-auto max-h-40 text-gray-600">{formatJson(log.input_summary as any)}</pre>
+              </div>
+              <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Beslissing</p>
+                <pre class="text-xs bg-gray-50 rounded p-2 overflow-auto max-h-40 text-gray-600">{formatJson(log.decision_summary as any)}</pre>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-4 text-xs text-gray-400">
+              <span>ID: <code class="font-mono">{log.id.slice(0, 12)}...</code></span>
+              {log.article_id && (
+                <span>Artikel: <code class="font-mono">{log.article_id.slice(0, 8)}...</code></span>
+              )}
+            </div>
+          </div>
+        </details>
+      );
+    })}
+  </div>
+)}

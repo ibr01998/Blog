@@ -11,8 +11,11 @@ const SESSION_TOKEN = 'authenticated'; // simple token for v1
 export const onRequest = defineMiddleware(async (context, next) => {
     const { pathname } = context.url;
 
-    // Only protect /dashboard routes (except /dashboard/login and API routes)
-    if (!pathname.startsWith('/dashboard')) {
+    // Only protect /dashboard routes and /api/admin routes
+    const isDashboard = pathname.startsWith('/dashboard');
+    const isAdminApi = pathname.startsWith('/api/admin');
+
+    if (!isDashboard && !isAdminApi) {
         return next();
     }
 
@@ -21,11 +24,26 @@ export const onRequest = defineMiddleware(async (context, next) => {
         return next();
     }
 
+    // Allow Vercel Cron requests with valid CRON_SECRET to bypass session auth
+    if (isAdminApi && pathname === '/api/admin/run-cycle') {
+        const cronSecret = (import.meta as any).env?.CRON_SECRET ?? process.env.CRON_SECRET;
+        const authHeader = context.request.headers.get('authorization');
+        if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+            return next();
+        }
+    }
+
     // Check for session cookie
     const session = context.cookies.get(COOKIE_NAME);
 
     if (!session || session.value !== SESSION_TOKEN) {
-        // Redirect to login
+        // API routes return 401 JSON; dashboard routes redirect to login
+        if (isAdminApi) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
         return context.redirect('/dashboard/login');
     }
 

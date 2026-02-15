@@ -1,0 +1,102 @@
+---
+/**
+ * AffiliateCTA — Dynamic affiliate CTA component
+ *
+ * Queries the affiliate_links Postgres table for the best match
+ * by country + priority_score and renders a tracking-enabled CTA button.
+ *
+ * Props:
+ *   platformType? — filter by commission type ('cpa' | 'revenue_share' | 'hybrid')
+ *   country       — 'NL' (default) or 'BE'
+ *   articleId     — UUID of the article (for click tracking)
+ *   anchor?       — Override CTA button text
+ */
+
+interface Props {
+  platformType?: string;
+  country?: string;
+  articleId: string;
+  anchor?: string;
+}
+
+const { platformType, country = 'NL', articleId, anchor } = Astro.props;
+
+import { query } from '../lib/db/postgres.ts';
+
+interface AffiliateLinkRow {
+  id: string;
+  platform_name: string;
+  affiliate_url: string;
+  country: string;
+  priority_score: number;
+  avg_conversion_rate: number;
+}
+
+let best: AffiliateLinkRow | null = null;
+
+try {
+  const links = await query<AffiliateLinkRow>(
+    `SELECT id, platform_name, affiliate_url, country, priority_score, avg_conversion_rate
+     FROM affiliate_links
+     WHERE country = $1 AND is_active = true
+     ORDER BY priority_score DESC, avg_conversion_rate DESC
+     LIMIT 1`,
+    [country]
+  );
+  best = links[0] ?? null;
+} catch (err) {
+  // Gracefully degrade if Postgres not configured yet
+  console.warn('[AffiliateCTA] Postgres query failed, no CTA rendered:', err);
+}
+
+const ctaText = anchor ?? (best ? `Open een ${best.platform_name} account` : 'Bekijk de beste exchange');
+---
+
+{best && (
+  <div class="affiliate-cta-block glass rounded-xl p-5 border border-navy/10 my-6">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+      <div class="flex-1">
+        <p class="text-sm font-semibold text-navy">{best.platform_name}</p>
+        <p class="text-xs text-gray-500 mt-0.5">Bezoek via onze affiliatelink</p>
+      </div>
+      <a
+        href={best.affiliate_url}
+        target="_blank"
+        rel="noopener noreferrer sponsored"
+        class="cta-affiliate-link inline-flex items-center gap-2 bg-navy text-white text-sm font-semibold py-2.5 px-5 rounded-lg hover:bg-navy/90 active:scale-95 transition-all whitespace-nowrap"
+        data-article-id={articleId}
+        data-platform={best.platform_name}
+        data-affiliate-id={best.id}
+      >
+        {ctaText}
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+        </svg>
+      </a>
+    </div>
+    <p class="text-xs text-gray-400 mt-3">
+      * Dit is een affiliate link. We ontvangen een commissie als je je aanmeldt.
+    </p>
+  </div>
+)}
+
+<script>
+  // Track clicks for analytics — fire-and-forget, never blocks the user
+  document.querySelectorAll<HTMLAnchorElement>('.cta-affiliate-link').forEach((link) => {
+    link.addEventListener('click', () => {
+      const articleId = link.dataset.articleId;
+      const platform = link.dataset.platform;
+      if (!articleId || !platform) return;
+
+      fetch('/api/trackAffiliateClick', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ article_id: articleId, platform_name: platform }),
+        // keepalive ensures the request completes even if page unloads
+        keepalive: true,
+      }).catch(() => {
+        // Silently ignore tracking errors
+      });
+    });
+  });
+</script>

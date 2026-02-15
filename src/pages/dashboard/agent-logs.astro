@@ -1,0 +1,168 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import AgentLogViewer from '../../components/AgentLogViewer.astro';
+import { query } from '../../lib/db/postgres.ts';
+
+const params = Astro.url.searchParams;
+const agentId = params.get('agent_id') ?? '';
+const articleId = params.get('article_id') ?? '';
+const stage = params.get('stage') ?? '';
+const limit = Math.min(parseInt(params.get('limit') ?? '50'), 200);
+const offset = parseInt(params.get('offset') ?? '0');
+
+let logs: any[] = [];
+let total = 0;
+let agents: { id: string; name: string; role: string }[] = [];
+let dbError = '';
+
+try {
+  // Fetch all agents for the filter dropdown
+  agents = await query<{ id: string; name: string; role: string }>(
+    `SELECT id, name, role FROM agents ORDER BY role, name`
+  );
+
+  // Build filter conditions
+  const conditions: string[] = [];
+  const values: unknown[] = [];
+  let paramIdx = 1;
+
+  if (agentId) {
+    conditions.push(`al.agent_id = $${paramIdx++}`);
+    values.push(agentId);
+  }
+  if (articleId) {
+    conditions.push(`al.article_id = $${paramIdx++}`);
+    values.push(articleId);
+  }
+  if (stage) {
+    conditions.push(`al.stage ILIKE $${paramIdx++}`);
+    values.push(`%${stage}%`);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const countRows = await query<{ count: string }>(
+    `SELECT COUNT(*) as count FROM agent_logs al ${where}`,
+    values
+  );
+  total = parseInt(countRows[0]?.count ?? '0');
+
+  logs = await query(
+    `SELECT al.id, al.agent_id, al.article_id, al.stage,
+            al.input_summary, al.decision_summary, al.reasoning_summary,
+            al.created_at,
+            ag.name as agent_name, ag.role as agent_role
+     FROM agent_logs al
+     LEFT JOIN agents ag ON al.agent_id = ag.id
+     ${where}
+     ORDER BY al.created_at DESC
+     LIMIT $${paramIdx++} OFFSET $${paramIdx++}`,
+    [...values, limit, offset]
+  );
+} catch (err) {
+  dbError = err instanceof Error ? err.message : 'Database niet beschikbaar';
+}
+
+const STAGE_OPTIONS = [
+  { value: '', label: 'Alle stages' },
+  { value: 'analyst:report', label: 'Analyst rapport' },
+  { value: 'strategist:briefs', label: 'Strateeg briefs' },
+  { value: 'editor:assignments', label: 'Redacteur opdrachten' },
+  { value: 'editor:rejected', label: 'Redacteur afwijzingen' },
+  { value: 'writer:draft', label: 'Schrijver concept' },
+  { value: 'humanizer:pass', label: 'Humanizer pass' },
+  { value: 'seo:optimized', label: 'SEO optimalisatie' },
+  { value: 'evolution:suggestion', label: 'Evolutie suggesties' },
+];
+---
+
+<DashboardLayout title="Agent Logs" activePage="agent-logs">
+  <div class="space-y-6">
+
+    <div>
+      <h2 class="text-xl font-bold text-navy">Agent Reasoning Logs</h2>
+      <p class="text-sm text-gray-500 mt-1">
+        Volledig audit trail van alle agent beslissingen.
+        {total > 0 && <span class="font-medium">{total} logs gevonden.</span>}
+      </p>
+    </div>
+
+    {dbError && (
+      <div class="glass rounded-xl p-4 border border-red-200">
+        <p class="text-sm text-red-600"><strong>Fout:</strong> {dbError}</p>
+      </div>
+    )}
+
+    <!-- Filters -->
+    <form method="GET" action="/dashboard/agent-logs" class="glass rounded-xl border border-white/20 p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">Agent</label>
+          <select name="agent_id" class="w-full text-sm border border-gray-200 rounded-lg py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-navy/30 bg-white">
+            <option value="">Alle agents</option>
+            {agents.map((a) => (
+              <option value={a.id} selected={agentId === a.id}>{a.name} ({a.role})</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">Stage</label>
+          <select name="stage" class="w-full text-sm border border-gray-200 rounded-lg py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-navy/30 bg-white">
+            {STAGE_OPTIONS.map((opt) => (
+              <option value={opt.value} selected={stage === opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">Artikel ID</label>
+          <input
+            name="article_id"
+            type="text"
+            value={articleId}
+            placeholder="UUID..."
+            class="w-full text-sm border border-gray-200 rounded-lg py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-navy/30"
+          />
+        </div>
+      </div>
+      <div class="flex gap-2 mt-3">
+        <button type="submit" class="text-xs bg-navy text-white px-4 py-1.5 rounded-lg hover:bg-navy/90">
+          Filteren
+        </button>
+        <a href="/dashboard/agent-logs" class="text-xs border border-gray-200 text-gray-600 px-4 py-1.5 rounded-lg hover:bg-gray-50">
+          Reset
+        </a>
+      </div>
+    </form>
+
+    <!-- Logs -->
+    {!dbError && (
+      <AgentLogViewer logs={logs} showAgentName={true} showArticleId={true} />
+    )}
+
+    <!-- Pagination -->
+    {total > limit && (
+      <div class="flex justify-between items-center text-sm text-gray-500">
+        <span>Pagina {Math.floor(offset / limit) + 1} van {Math.ceil(total / limit)}</span>
+        <div class="flex gap-2">
+          {offset > 0 && (
+            <a
+              href={`/dashboard/agent-logs?${new URLSearchParams({ ...(agentId ? { agent_id: agentId } : {}), ...(stage ? { stage } : {}), limit: String(limit), offset: String(Math.max(0, offset - limit)) }).toString()}`}
+              class="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-xs"
+            >
+              Vorige
+            </a>
+          )}
+          {offset + limit < total && (
+            <a
+              href={`/dashboard/agent-logs?${new URLSearchParams({ ...(agentId ? { agent_id: agentId } : {}), ...(stage ? { stage } : {}), limit: String(limit), offset: String(offset + limit) }).toString()}`}
+              class="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-xs"
+            >
+              Volgende
+            </a>
+          )}
+        </div>
+      </div>
+    )}
+
+  </div>
+</DashboardLayout>

@@ -1,0 +1,265 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import AgentLogViewer from '../../components/AgentLogViewer.astro';
+import { query } from '../../lib/db/postgres.ts';
+
+interface AgentRow {
+  id: string;
+  name: string;
+  role: string;
+  personality_config: Record<string, unknown>;
+  behavior_overrides: Record<string, unknown>;
+  performance_score: number;
+  article_slots: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+let agents: AgentRow[] = [];
+let dbError = '';
+
+try {
+  agents = await query<AgentRow>(
+    `SELECT id, name, role, personality_config, behavior_overrides,
+            performance_score, article_slots, is_active, created_at
+     FROM agents ORDER BY role, performance_score DESC`
+  );
+} catch (err) {
+  dbError = err instanceof Error ? err.message : 'Database niet beschikbaar';
+}
+
+const selectedAgentId = Astro.url.searchParams.get('agent_id');
+
+// If viewing a specific agent's logs, fetch them
+let agentLogs: any[] = [];
+if (selectedAgentId) {
+  try {
+    agentLogs = await query(
+      `SELECT al.*, ag.name as agent_name, ag.role as agent_role
+       FROM agent_logs al
+       LEFT JOIN agents ag ON al.agent_id = ag.id
+       WHERE al.agent_id = $1
+       ORDER BY al.created_at DESC
+       LIMIT 30`,
+      [selectedAgentId]
+    );
+  } catch {}
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  analyst: 'Analyst',
+  strategist: 'Strateeg',
+  editor: 'Redacteur',
+  writer: 'Schrijver',
+  humanizer: 'Humanizer',
+  seo: 'SEO',
+};
+
+const ROLE_COLORS: Record<string, string> = {
+  analyst: 'bg-blue-100 text-blue-800',
+  strategist: 'bg-purple-100 text-purple-800',
+  editor: 'bg-amber-100 text-amber-800',
+  writer: 'bg-green-100 text-green-800',
+  humanizer: 'bg-teal-100 text-teal-800',
+  seo: 'bg-indigo-100 text-indigo-800',
+};
+---
+
+<DashboardLayout title="AI Agents" activePage="agents">
+  <div class="space-y-6">
+
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-xl font-bold text-navy">AI Agents</h2>
+        <p class="text-sm text-gray-500 mt-1">Beheer agent persoonlijkheden, gedragsregels en prestatiescores.</p>
+      </div>
+      {agents.length === 0 && !dbError && (
+        <a href="#" id="migrate-btn"
+           class="text-xs bg-navy text-white px-3 py-1.5 rounded-lg hover:bg-navy/90">
+          Database Initialiseren
+        </a>
+      )}
+    </div>
+
+    {dbError && (
+      <div class="glass rounded-xl p-4 border border-red-200">
+        <p class="text-sm text-red-600"><strong>Fout:</strong> {dbError}</p>
+        <p class="text-xs text-gray-500 mt-1">
+          Voer <code class="bg-gray-100 px-1 rounded">POST /api/admin/migrate</code> uit om de database te initialiseren.
+        </p>
+      </div>
+    )}
+
+    <!-- Agent Grid -->
+    {agents.length > 0 && (
+      <div class="space-y-4">
+        {agents.map((agent) => (
+          <div class={`glass rounded-xl border border-white/20 p-5 transition-all ${!agent.is_active ? 'opacity-50' : ''}`} id={`agent-${agent.id}`}>
+            <div class="flex items-start gap-4">
+              <!-- Agent Info -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class={`text-xs font-semibold px-2 py-0.5 rounded-full ${ROLE_COLORS[agent.role] ?? 'bg-gray-100 text-gray-600'}`}>
+                    {ROLE_LABELS[agent.role] ?? agent.role}
+                  </span>
+                  <h3 class="text-sm font-semibold text-navy">{agent.name}</h3>
+                  {!agent.is_active && (
+                    <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Inactief</span>
+                  )}
+                </div>
+
+                <!-- Performance Score Bar -->
+                <div class="flex items-center gap-2 mt-2">
+                  <span class="text-xs text-gray-500 w-24">Prestatie</span>
+                  <div class="flex-1 bg-gray-100 rounded-full h-1.5">
+                    <div
+                      class="bg-navy rounded-full h-1.5 transition-all"
+                      style={`width: ${Math.round(agent.performance_score * 100)}%`}
+                    ></div>
+                  </div>
+                  <span class="text-xs font-mono text-gray-600 w-10 text-right">
+                    {(agent.performance_score * 100).toFixed(0)}%
+                  </span>
+                </div>
+
+                <div class="text-xs text-gray-400 mt-1">
+                  Artikel slots: {agent.article_slots}
+                </div>
+              </div>
+
+              <!-- Controls -->
+              <div class="flex items-center gap-2 shrink-0">
+                <a
+                  href={`/dashboard/agent-logs?agent_id=${agent.id}`}
+                  class="text-xs text-gray-500 hover:text-navy px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  Logs
+                </a>
+                <button
+                  class="toggle-active-btn text-xs px-3 py-1.5 rounded-lg border transition-colors font-medium"
+                  data-agent-id={agent.id}
+                  data-is-active={String(agent.is_active)}
+                  style={agent.is_active ? 'border-color: rgb(209 213 219); color: rgb(107 114 128);' : 'background: rgb(27 45 79); color: white;'}
+                >
+                  {agent.is_active ? 'Bevriezen' : 'Activeren'}
+                </button>
+              </div>
+            </div>
+
+            <!-- Behavior Overrides Editor -->
+            <div class="mt-4 pt-4 border-t border-white/10">
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                Gedragsregels (behavior_overrides)
+              </label>
+              <div class="flex gap-2">
+                <textarea
+                  class="overrides-textarea flex-1 text-xs font-mono bg-gray-50 border border-gray-200 rounded-lg p-2 h-24 resize-none focus:outline-none focus:ring-1 focus:ring-navy/30"
+                  data-agent-id={agent.id}
+                  placeholder='{}'
+                >{JSON.stringify(agent.behavior_overrides ?? {}, null, 2)}</textarea>
+                <button
+                  class="save-overrides-btn self-start text-xs bg-navy text-white px-3 py-1.5 rounded-lg hover:bg-navy/90 transition-colors whitespace-nowrap"
+                  data-agent-id={agent.id}
+                >
+                  Opslaan
+                </button>
+              </div>
+              <p class="text-xs text-gray-400 mt-1">
+                Mogelijke sleutels: reduce_hype, increase_assertiveness, lower_wordcount, avoid_platform, keyword_density_target
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+
+    <!-- Agent Logs Section (when viewing specific agent) -->
+    {selectedAgentId && agentLogs.length > 0 && (
+      <div class="glass rounded-xl border border-white/20 p-6">
+        <h3 class="text-sm font-semibold text-navy mb-4">
+          Recente Logs — {agents.find(a => a.id === selectedAgentId)?.name ?? selectedAgentId}
+        </h3>
+        <AgentLogViewer logs={agentLogs} showAgentName={false} showArticleId={true} />
+      </div>
+    )}
+
+  </div>
+</DashboardLayout>
+
+<script>
+  // Toggle active/frozen state
+  document.querySelectorAll<HTMLButtonElement>('.toggle-active-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const agentId = btn.dataset.agentId;
+      const currentlyActive = btn.dataset.isActive === 'true';
+      const newActive = !currentlyActive;
+
+      btn.disabled = true;
+
+      try {
+        await fetch(`/api/admin/agents/${agentId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_active: newActive }),
+        });
+        window.location.reload();
+      } catch (err) {
+        console.error('Failed to toggle agent:', err);
+        btn.disabled = false;
+      }
+    });
+  });
+
+  // Save behavior_overrides
+  document.querySelectorAll<HTMLButtonElement>('.save-overrides-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const agentId = btn.dataset.agentId;
+      const textarea = document.querySelector<HTMLTextAreaElement>(`.overrides-textarea[data-agent-id="${agentId}"]`);
+      if (!textarea || !agentId) return;
+
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = JSON.parse(textarea.value || '{}');
+      } catch {
+        textarea.style.borderColor = 'rgb(239 68 68)';
+        setTimeout(() => { textarea.style.borderColor = ''; }, 2000);
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Bezig...';
+
+      try {
+        const res = await fetch(`/api/admin/agents/${agentId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ behavior_overrides: parsed }),
+        });
+        if (res.ok) {
+          btn.textContent = 'Opgeslagen!';
+          setTimeout(() => { btn.textContent = 'Opslaan'; btn.disabled = false; }, 2000);
+        } else {
+          throw new Error('Save failed');
+        }
+      } catch {
+        btn.textContent = 'Fout';
+        btn.disabled = false;
+      }
+    });
+  });
+
+  // Migrate button
+  document.getElementById('migrate-btn')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const btn = e.target as HTMLAnchorElement;
+    btn.textContent = 'Initialiseren...';
+    try {
+      const res = await fetch('/api/admin/migrate', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) window.location.reload();
+      else alert('Migratie mislukt: ' + data.error);
+    } catch {
+      alert('Verbindingsfout');
+    }
+  });
+</script>

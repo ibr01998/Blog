@@ -1,0 +1,290 @@
+/**
+ * Editorial Cycle Orchestrator
+ *
+ * runEditorialCycle() — the main function that wires all 6 agents together.
+ *
+ * Stages:
+ *   1. Check system_config (paused? quota reached?)
+ *   2. Analyst → AnalystReport
+ *   3. Strategist(report) → 10 ArticleBriefs
+ *   4. Editor(briefs) → ArticleAssignments (max 3)
+ *   5. For each assignment:
+ *      a. Writer → ArticleDraft
+ *      b. Humanizer → ArticleHumanized
+ *      c. SEO → ArticleOptimized
+ *      d. Generate embedding vector
+ *      e. Check slug uniqueness in Postgres (Astro DB check happens in API route)
+ *      f. INSERT to articles table
+ *      g. Backfill agent_logs.article_id for this cycle's logs
+ *   6. (Optional) Apply evolution suggestions if enable_auto_evolution = true
+ *   7. Return CycleSummary
+ *
+ * IMPORTANT: This file does NOT import 'astro:db'.
+ * The Post table dual-write (on publish) lives in /api/admin/articles/[id].ts.
+ */
+
+import { query } from './db/postgres.ts';
+import { generateEmbedding } from './embeddings.ts';
+import { BaseAgent } from './agents/base.ts';
+import { AnalystAgent } from './agents/analyst.ts';
+import { StrategistAgent } from './agents/strategist.ts';
+import { EditorAgent } from './agents/editor.ts';
+import { WriterAgent } from './agents/writer.ts';
+import { HumanizerAgent } from './agents/humanizer.ts';
+import { SEOAgent } from './agents/seo.ts';
+import type {
+  AgentRole,
+  AgentRecord,
+  CycleSummary,
+  ArticleOptimized,
+} from './agents/types.ts';
+
+// ─── Generic Agent Factory ────────────────────────────────────────────────────
+
+async function loadAgent<T extends BaseAgent>(
+  role: AgentRole,
+  AgentClass: new (record: AgentRecord) => T
+): Promise<T> {
+  const record = await BaseAgent.loadByRole(role);
+  return new AgentClass(record);
+}
+
+// ─── Slug Uniqueness ──────────────────────────────────────────────────────────
+
+/**
+ * Ensure the slug is unique in the articles table.
+ * The Astro DB Post table check happens in the API route that does the dual-write.
+ * If slug exists, appends -2, -3, etc.
+ */
+async function ensureUniqueSlug(slug: string): Promise<string> {
+  let candidate = slug;
+  let suffix = 2;
+  while (true) {
+    const existing = await query(
+      `SELECT id FROM articles WHERE slug = $1 LIMIT 1`,
+      [candidate]
+    );
+    if (existing.length === 0) return candidate;
+    candidate = `${slug}-${suffix}`;
+    suffix++;
+    if (suffix > 20) throw new Error(`Could not generate unique slug for: ${slug}`);
+  }
+}
+
+// ─── Main Orchestration ───────────────────────────────────────────────────────
+
+export async function runEditorialCycle(): Promise<CycleSummary> {
+  const cycleId = crypto.randomUUID();
+  const startedAt = new Date().toISOString();
+
+  // ── Step 1: Guard checks ──────────────────────────────────────────────────
+
+  const configRows = await query<{
+    system_paused: boolean;
+    max_articles_per_week: number;
+    auto_publish_enabled: boolean;
+    enable_auto_evolution: boolean;
+  }>('SELECT * FROM system_config WHERE id = 1 LIMIT 1');
+
+  const cfg = configRows[0];
+
+  if (!cfg) {
+    throw new Error('system_config row (id=1) not found. Run /api/admin/migrate first.');
+  }
+
+  if (cfg.system_paused) {
+    throw new Error('System is paused via system_config.system_paused = true. Resume in /dashboard/system.');
+  }
+
+  // Count articles produced since the start of the current week
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay() + (weekStart.getDay() === 0 ? -6 : 1));
+  weekStart.setHours(0, 0, 0, 0);
+
+  const weeklyRows = await query<{ count: string }>(
+    `SELECT COUNT(*) as count FROM articles WHERE created_at >= $1`,
+    [weekStart.toISOString()]
+  );
+  const currentWeeklyCount = parseInt(weeklyRows[0]?.count ?? '0');
+
+  if (currentWeeklyCount >= cfg.max_articles_per_week) {
+    throw new Error(
+      `Weekly article quota reached (${currentWeeklyCount}/${cfg.max_articles_per_week}). ` +
+      `Resets on Monday. Adjust max_articles_per_week in /dashboard/system if needed.`
+    );
+  }
+
+  // ── Step 2: Analyst ───────────────────────────────────────────────────────
+
+  const analystAgent = await loadAgent('analyst', AnalystAgent);
+  const analystReport = await analystAgent.run();
+
+  // ── Step 3: Strategist ────────────────────────────────────────────────────
+
+  const strategistAgent = await loadAgent('strategist', StrategistAgent);
+  const briefs = await strategistAgent.run(analystReport);
+
+  // ── Step 4: Editor ────────────────────────────────────────────────────────
+
+  const editorAgent = await loadAgent('editor', EditorAgent);
+  const assignments = await editorAgent.run(briefs);
+
+  if (assignments.length === 0) {
+    return {
+      cycle_id: cycleId,
+      started_at: startedAt,
+      completed_at: new Date().toISOString(),
+      analyst_report: analystReport,
+      briefs_generated: briefs.length,
+      assignments_made: 0,
+      articles_produced: 0,
+      articles_skipped_cooldown: briefs.length,
+      articles_skipped_similarity: 0,
+      article_ids: [],
+    };
+  }
+
+  // ── Step 5: Per-assignment pipeline ──────────────────────────────────────
+
+  const writerAgent = await loadAgent('writer', WriterAgent);
+  const humanizerAgent = await loadAgent('humanizer', HumanizerAgent);
+  const seoAgent = await loadAgent('seo', SEOAgent);
+
+  const articleIds: string[] = [];
+  const errors: string[] = [];
+
+  for (const assignment of assignments) {
+    try {
+      // 5a. Write
+      const draft = await writerAgent.run(assignment);
+
+      // 5b. Humanize
+      const humanized = await humanizerAgent.run(draft);
+
+      // 5c. SEO optimize
+      const optimized = await seoAgent.run(humanized);
+
+      // 5d. Generate embedding
+      const embeddingInput = [
+        optimized.primary_keyword,
+        optimized.title,
+        optimized.article_markdown.substring(0, 2000),
+      ].join(' ');
+      const embedding = await generateEmbedding(embeddingInput);
+
+      // 5e. Pre-generate article UUID and ensure unique slug
+      const articleId = crypto.randomUUID();
+      const uniqueSlug = await ensureUniqueSlug(optimized.slug);
+
+      // 5f. INSERT to articles table
+      // NOTE: embedding must be cast as ::vector — pass JSON.stringify(array)
+      await query(
+        `INSERT INTO articles (
+          id, title, slug, language, writer_id,
+          content_tier, primary_keyword, intent, hook_type, format_type,
+          word_count, article_markdown, meta_description, meta_title,
+          embedding, status, review_status
+        ) VALUES (
+          $1, $2, $3, $4, $5,
+          $6, $7, $8, $9, $10,
+          $11, $12, $13, $14,
+          $15::vector, $16, $17
+        )`,
+        [
+          articleId,
+          optimized.title,
+          uniqueSlug,
+          'nl',
+          assignment.writer_id,
+          assignment.brief.content_tier,
+          optimized.primary_keyword,
+          assignment.brief.intent,
+          assignment.brief.hook_type,
+          assignment.brief.format_type,
+          optimized.word_count,
+          optimized.article_markdown,
+          optimized.meta_description,
+          optimized.meta_title,
+          JSON.stringify(embedding),   // pgvector accepts JSON array string cast to ::vector
+          'draft',
+          'pending',
+        ]
+      );
+
+      articleIds.push(articleId);
+
+      // 5g. Backfill article_id in agent_logs for this cycle's entries
+      // Updates recent NULL article_id entries for the writer agent (within last 15 minutes)
+      await query(
+        `UPDATE agent_logs
+         SET article_id = $1
+         WHERE article_id IS NULL
+           AND agent_id = $2
+           AND created_at > NOW() - INTERVAL '15 minutes'`,
+        [articleId, assignment.writer_id]
+      );
+
+      // Also backfill for humanizer and SEO agents
+      const helperAgents = [humanizerAgent.id, seoAgent.id];
+      for (const agentId of helperAgents) {
+        await query(
+          `UPDATE agent_logs
+           SET article_id = $1
+           WHERE article_id IS NULL
+             AND agent_id = $2
+             AND created_at > NOW() - INTERVAL '15 minutes'`,
+          [articleId, agentId]
+        );
+      }
+
+      // Create initial article_metrics row for tracking
+      await query(
+        `INSERT INTO article_metrics (article_id) VALUES ($1)`,
+        [articleId]
+      );
+
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      errors.push(`Assignment ${assignment.assignment_id}: ${errorMsg}`);
+      console.error('[Orchestrator] Pipeline failed for assignment:', assignment.brief.primary_keyword, err);
+    }
+  }
+
+  // ── Step 6: Auto-evolution (if enabled) ──────────────────────────────────
+
+  if (cfg.enable_auto_evolution && analystReport.suggested_agent_overrides.length > 0) {
+    for (const suggestion of analystReport.suggested_agent_overrides) {
+      try {
+        // Only update if agent exists and suggestion has meaningful overrides
+        if (suggestion.agent_id && Object.keys(suggestion.suggested_overrides).length > 0) {
+          await query(
+            `UPDATE agents
+             SET behavior_overrides = behavior_overrides || $1::jsonb
+             WHERE id = $2`,
+            [JSON.stringify(suggestion.suggested_overrides), suggestion.agent_id]
+          );
+        }
+      } catch (err) {
+        console.warn('[Orchestrator] Auto-evolution update failed for agent:', suggestion.agent_id, err);
+      }
+    }
+  }
+
+  // ── Step 7: Return summary ────────────────────────────────────────────────
+
+  const summary: CycleSummary = {
+    cycle_id: cycleId,
+    started_at: startedAt,
+    completed_at: new Date().toISOString(),
+    analyst_report: analystReport,
+    briefs_generated: briefs.length,
+    assignments_made: assignments.length,
+    articles_produced: articleIds.length,
+    articles_skipped_cooldown: briefs.length - assignments.length,
+    articles_skipped_similarity: 0, // tracked internally by EditorAgent
+    article_ids: articleIds,
+    error: errors.length > 0 ? errors.join('; ') : undefined,
+  };
+
+  return summary;
+}
