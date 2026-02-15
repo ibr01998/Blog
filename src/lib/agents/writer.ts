@@ -105,7 +105,7 @@ export class WriterAgent extends BaseAgent {
 
     const draft = await this.callObject({
       schema: draftSchema,
-      model: 'gpt-4o',
+      model: 'anthropic:claude-sonnet-4-5-20250929',
       systemPrompt: this.buildSystemPrompt(subtype, brief.content_tier),
       userPrompt: `
 Schrijf een volledig Nederlands crypto artikel voor ShortNews.tech.

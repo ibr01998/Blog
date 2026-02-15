@@ -9,14 +9,37 @@
 
 import { generateText, generateObject } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import type { ZodSchema } from 'zod';
 
-// Lazily create the provider on each call so the API key is read at request
+// Lazily create providers on each call so API keys are read at request
 // time (not at module-load time), which avoids SSR module-caching edge cases.
 function getOpenAIProvider() {
   return createOpenAI({
     apiKey: (import.meta as any).env?.OPENAI_API_KEY ?? process.env.OPENAI_API_KEY,
   });
+}
+
+function getAnthropicProvider() {
+  return createAnthropic({
+    apiKey: (import.meta as any).env?.ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_API_KEY,
+  });
+}
+
+/**
+ * Resolve a model string to a Vercel AI SDK model instance.
+ * Supports prefixed format: "anthropic:model-id" or "openai:model-id".
+ * Unprefixed strings default to OpenAI for backwards compatibility.
+ */
+function resolveModel(model: string) {
+  if (model.startsWith('anthropic:')) {
+    return getAnthropicProvider()(model.slice('anthropic:'.length));
+  }
+  if (model.startsWith('openai:')) {
+    return getOpenAIProvider()(model.slice('openai:'.length));
+  }
+  // Default: OpenAI (backwards compatible)
+  return getOpenAIProvider()(model);
 }
 import { query } from '../db/postgres.ts';
 import type { AgentRole, AgentRecord, PersonalityConfig, BehaviorOverrides } from './types.ts';
@@ -75,7 +98,7 @@ export class BaseAgent {
     maxTokens?: number;
   }): Promise<string> {
     const result = await generateText({
-      model: getOpenAIProvider()(params.model ?? 'gpt-4o'),
+      model: resolveModel(params.model ?? 'gpt-4o'),
       system: params.systemPrompt,
       prompt: params.userPrompt,
       // maxTokens: accepted at runtime but type definition varies by SDK version
@@ -95,7 +118,7 @@ export class BaseAgent {
     model?: string;
   }): Promise<T> {
     const result = await generateObject({
-      model: getOpenAIProvider()(params.model ?? 'gpt-4o'),
+      model: resolveModel(params.model ?? 'gpt-4o'),
       system: params.systemPrompt,
       prompt: params.userPrompt,
       schema: params.schema,

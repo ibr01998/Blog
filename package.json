@@ -9,6 +9,7 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.44",
     "@ai-sdk/google": "^3.0.26",
     "@ai-sdk/openai": "^3.0.27",
     "@astrojs/check": "^0.9.6",
