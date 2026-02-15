@@ -69,7 +69,7 @@ const draftSchema = z.object({
   slug: z.string().regex(/^[a-z0-9-]+$/, 'slug must be lowercase with hyphens only'),
   meta_description: z.string().max(160),
   article_markdown: z.string().min(500),
-  word_count: z.number().int().min(300),
+  word_count: z.number().int(),
   internal_links: z.array(z.object({
     anchor: z.string(),
     href: z.string(),
@@ -79,7 +79,7 @@ const draftSchema = z.object({
     platform: z.string(),
     anchor: z.string(),
   })).min(1).max(4),
-  estimated_reading_time_minutes: z.number().int().min(1),
+  estimated_reading_time_minutes: z.number().int(),
 });
 
 export class WriterAgent extends BaseAgent {
