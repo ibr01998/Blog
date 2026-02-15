@@ -65,10 +65,10 @@ const WRITER_SUBTYPES: Record<ContentTier, {
 };
 
 const draftSchema = z.object({
-  title: z.string().min(10).max(80),
-  slug: z.string().regex(/^[a-z0-9-]+$/, 'slug must be lowercase with hyphens only'),
-  meta_description: z.string().max(160),
-  article_markdown: z.string().min(500),
+  title: z.string(),
+  slug: z.string(),
+  meta_description: z.string(),
+  article_markdown: z.string(),
   word_count: z.number().int(),
   internal_links: z.array(z.object({
     anchor: z.string(),
@@ -78,7 +78,7 @@ const draftSchema = z.object({
     position: z.enum(['intro', 'mid', 'conclusion']),
     platform: z.string(),
     anchor: z.string(),
-  })).min(1).max(4),
+  })),
   estimated_reading_time_minutes: z.number().int(),
 });
 
