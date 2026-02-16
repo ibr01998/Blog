@@ -65,6 +65,25 @@ try {
 
     {config && (
       <>
+        <!-- Deployment Checklist -->
+        <div class="glass rounded-xl border border-white/20 p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-sm font-semibold text-navy">Deployment Checklist</h3>
+              <p class="text-xs text-gray-500 mt-0.5">Taken die na elke deployment uitgevoerd moeten worden.</p>
+            </div>
+            <button id="refresh-deploy-btn" class="text-xs text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Vernieuwen
+            </button>
+          </div>
+          <div id="deploy-checklist" class="space-y-3">
+            <div class="text-xs text-gray-400 animate-pulse">Status laden...</div>
+          </div>
+        </div>
+
         <!-- System Controls -->
         <div class="glass rounded-xl border border-white/20 p-6">
           <h3 class="text-sm font-semibold text-navy mb-4">Schakelknoppen</h3>
@@ -539,6 +558,78 @@ try {
     progressDiv?.classList.remove('hidden');
     appendLog('Cyclus loopt nog (pagina herladen — updates niet meer zichtbaar).');
   }
+
+  // ── Deployment Checklist ──────────────────────────────────────────────────
+  async function loadDeployStatus() {
+    const container = document.getElementById('deploy-checklist');
+    if (!container) return;
+
+    try {
+      const res = await fetch('/api/admin/deployment-status');
+      const data = await res.json();
+
+      if (!res.ok || !data.checks?.length) {
+        container.innerHTML = `<p class="text-xs text-red-500">Fout bij laden: ${data.error ?? res.statusText}</p>`;
+        return;
+      }
+
+      const allDone = data.checks.every((c: any) => c.ok);
+
+      container.innerHTML = data.checks.map((check: any) => `
+        <div class="flex items-center justify-between gap-3 py-2.5 border-b border-white/10 last:border-0">
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="shrink-0 flex items-center justify-center w-6 h-6 rounded-full ${check.ok ? 'bg-green-100' : 'bg-amber-100'}">
+              ${check.ok
+                ? `<svg class="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>`
+                : `<svg class="w-3.5 h-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>`
+              }
+            </span>
+            <div class="min-w-0">
+              <p class="text-sm font-medium ${check.ok ? 'text-gray-700' : 'text-gray-900'}">${check.label}</p>
+              <p class="text-xs text-gray-500 truncate">${check.description}</p>
+            </div>
+          </div>
+          ${!check.ok
+            ? `<button
+                class="deploy-action-btn shrink-0 text-xs bg-navy text-white px-3 py-1.5 rounded-lg hover:bg-navy/90 transition-colors whitespace-nowrap"
+                data-method="${check.action.method}"
+                data-url="${check.action.url}"
+                data-id="${check.id}"
+              >${check.actionLabel}</button>`
+            : `<span class="shrink-0 text-xs text-green-600 font-medium">Klaar</span>`
+          }
+        </div>
+      `).join('') + (allDone
+        ? `<p class="text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2 mt-2">✓ Alles up-to-date na de laatste deployment.</p>`
+        : `<p class="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mt-2">Voer de openstaande taken uit voor een correcte werking.</p>`
+      );
+
+      // Attach button handlers
+      container.querySelectorAll<HTMLButtonElement>('.deploy-action-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          btn.textContent = 'Bezig...';
+          try {
+            const resp = await fetch(btn.dataset.url!, { method: btn.dataset.method!, credentials: 'include' });
+            const result = await resp.json();
+            if (!resp.ok) throw new Error(result.error ?? resp.statusText);
+            // Refresh the checklist to show updated status
+            await loadDeployStatus();
+          } catch (err) {
+            btn.disabled = false;
+            btn.textContent = btn.dataset.id === 'metricsSync' ? 'Sync Nu' : 'Migreer Nu';
+            alert(`Actie mislukt: ${err}`);
+          }
+        });
+      });
+
+    } catch (err) {
+      container.innerHTML = `<p class="text-xs text-red-500">Netwerk fout: ${err}</p>`;
+    }
+  }
+
+  loadDeployStatus();
+  document.getElementById('refresh-deploy-btn')?.addEventListener('click', loadDeployStatus);
 
   // Apply evolution suggestions
   document.querySelectorAll<HTMLButtonElement>('.apply-evolution-btn').forEach((btn) => {
