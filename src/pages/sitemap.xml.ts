@@ -8,7 +8,13 @@ export async function GET(context) {
   const collectionPosts = await getCollection('blog');
 
   // 2. Get DB Posts (only published)
-  const dbPosts = await db.select().from(Post).where(eq(Post.status, 'published')).orderBy(desc(Post.pubDate));
+  let dbPosts: any[] = [];
+  try {
+    dbPosts = await db.select().from(Post).where(eq(Post.status, 'published')).orderBy(desc(Post.pubDate));
+  } catch (error) {
+    console.error('Sitemap: Error fetching DB posts:', error);
+    // Continue without DB posts to ensure sitemap still generates
+  }
 
   // 3. Define Static Pages
   const staticPages = [
