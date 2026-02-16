@@ -157,3 +157,62 @@ body.bg-dashboard {
   height: 1px;
   background: var(--border-color);
 }
+
+/* ========================
+   DARK MODE
+   ======================== */
+
+html.dark {
+  /* Remap palette colors so Tailwind utilities (text-navy, bg-navy/10, etc.)
+     automatically render correctly on dark backgrounds */
+  --color-navy: #c8d8f0;
+  --color-navy-light: #a0b8d8;
+  --color-navy-dark: #8098c0;
+  --color-cream: #0f1d33;
+  --color-cream-dark: #0a1524;
+
+  /* Semantic tokens */
+  --bg-main: #0f1d33;
+  --bg-card: #162844;
+  --text-main: #c8d8f0;
+  --text-muted: #7a92a8;
+  --border-color: #1e3d6b;
+  --primary: #c8d8f0;
+  --primary-fg: #0f1d33;
+
+  /* Halftone dots — subtle on dark */
+  --dot-color: rgba(58, 90, 145, 0.25);
+}
+
+/* Glass card — dark frosted variant */
+html.dark .glass {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow:
+    0 4px 30px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Dashboard body background in dark mode */
+html.dark body.bg-dashboard {
+  background-color: #0f1d33;
+  background-image:
+    radial-gradient(at 100% 0%, rgba(42, 66, 112, 0.2) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(15, 29, 51, 0.25) 0px, transparent 50%);
+}
+
+/* Primary action button — keep it a visible dark-blue on dark backgrounds */
+html.dark .bg-navy {
+  background-color: #2a5298 !important;
+}
+html.dark .hover\:bg-navy\/90:hover {
+  background-color: #234a8a !important;
+}
+
+/* Sidebar link hover/active — flip to cream-tinted highlights */
+html.dark .sidebar-link:hover {
+  background: rgba(200, 216, 240, 0.07) !important;
+}
+html.dark .sidebar-link.active {
+  background: rgba(200, 216, 240, 0.12) !important;
+}
