@@ -6,7 +6,6 @@ import vercel from '@astrojs/vercel';
 
 import mdx from '@astrojs/mdx';
 
-import sitemap from '@astrojs/sitemap';
 
 import db from '@astrojs/db';
 
@@ -27,5 +26,5 @@ export default defineConfig({
     },
   }),
 
-  integrations: [mdx(), sitemap(), db()]
+  integrations: [mdx(), db()]
 });
