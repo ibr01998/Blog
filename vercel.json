@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/admin/run-research",
+      "schedule": "0 2 * * *"
+    },
+    {
       "path": "/api/admin/run-cycle",
       "schedule": "0 8 * * 1,4"
     }

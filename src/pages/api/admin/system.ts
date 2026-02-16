@@ -15,6 +15,7 @@ interface SystemConfig {
   max_articles_per_week: number;
   enable_multi_agent: boolean;
   enable_auto_evolution: boolean;
+  enable_research_agent: boolean;
 }
 
 export const GET: APIRoute = async () => {
@@ -51,6 +52,7 @@ export const PUT: APIRoute = async ({ request }) => {
       max_articles_per_week,
       enable_multi_agent,
       enable_auto_evolution,
+      enable_research_agent,
     } = body;
 
     await query(
@@ -59,7 +61,8 @@ export const PUT: APIRoute = async ({ request }) => {
         auto_publish_enabled = COALESCE($2, auto_publish_enabled),
         max_articles_per_week = COALESCE($3, max_articles_per_week),
         enable_multi_agent = COALESCE($4, enable_multi_agent),
-        enable_auto_evolution = COALESCE($5, enable_auto_evolution)
+        enable_auto_evolution = COALESCE($5, enable_auto_evolution),
+        enable_research_agent = COALESCE($6, enable_research_agent)
        WHERE id = 1`,
       [
         system_paused ?? null,
@@ -67,6 +70,7 @@ export const PUT: APIRoute = async ({ request }) => {
         max_articles_per_week ?? null,
         enable_multi_agent ?? null,
         enable_auto_evolution ?? null,
+        enable_research_agent ?? null,
       ]
     );
 

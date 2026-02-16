@@ -9,6 +9,7 @@ interface SystemConfig {
   max_articles_per_week: number;
   enable_multi_agent: boolean;
   enable_auto_evolution: boolean;
+  enable_research_agent: boolean;
 }
 
 // Fetch system config
@@ -20,6 +21,24 @@ try {
   config = rows[0] ?? null;
 } catch (err) {
   configError = err instanceof Error ? err.message : 'Database niet beschikbaar';
+}
+
+// Fetch latest market research
+interface ResearchSummary {
+  research_date: string;
+  insights_summary: string;
+  recommended_keywords: string[];
+  keyword_opportunities: { keyword: string; content_gap: boolean }[];
+}
+let latestResearch: ResearchSummary | null = null;
+try {
+  const researchRows = await query<ResearchSummary>(
+    `SELECT research_date, insights_summary, recommended_keywords, keyword_opportunities
+     FROM market_research ORDER BY research_date DESC LIMIT 1`
+  );
+  latestResearch = researchRows[0] ?? null;
+} catch {
+  // Table not migrated yet
 }
 
 // Fetch pending evolution suggestions
@@ -218,6 +237,56 @@ try {
           <!-- Final result (shown after completion) -->
           <div id="cycle-result" class="mt-4 hidden">
             <div id="cycle-output" class="glass rounded-lg p-4 border border-white/10 text-xs font-mono text-gray-700 whitespace-pre-wrap max-h-64 overflow-auto"></div>
+          </div>
+        </div>
+        <!-- Research Agent -->
+        <div class="glass rounded-xl border border-white/20 p-6">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-semibold text-navy">Research Agent</h3>
+            <label class="relative inline-flex cursor-pointer items-center">
+              <input type="checkbox" class="config-toggle sr-only" data-key="enable_research_agent"
+                     checked={config.enable_research_agent} />
+              <div class="toggle-track h-6 w-11 rounded-full bg-gray-200 transition-colors"></div>
+              <div class="toggle-dot absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow transition-transform"></div>
+            </label>
+          </div>
+          <p class="text-xs text-gray-500 mb-4">
+            Dagelijkse marktanalyse via Tavily API. Voedt de Strateeg met zoektrends en contentkansen.
+            Draait automatisch om 02:00 UTC.
+          </p>
+
+          {latestResearch ? (
+            <div class="bg-blue-50/60 rounded-lg p-3 mb-4 border border-blue-100/80">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-blue-800">Laatste analyse</span>
+                <span class="text-xs text-blue-600">{latestResearch.research_date}</span>
+              </div>
+              <p class="text-xs text-gray-600 mb-2">{latestResearch.insights_summary}</p>
+              <div class="flex items-center gap-2 text-xs text-gray-500">
+                <span class="bg-white/80 rounded px-2 py-0.5 border border-blue-100">
+                  {(latestResearch.keyword_opportunities as any[])?.filter((k: any) => k.content_gap).length ?? 0} contentkansen
+                </span>
+                <span class="bg-white/80 rounded px-2 py-0.5 border border-blue-100">
+                  {latestResearch.recommended_keywords?.length ?? 0} keywords
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div class="bg-gray-50 rounded-lg p-3 mb-4 border border-gray-200">
+              <p class="text-xs text-gray-500 italic">Nog geen onderzoeksdata. Klik "Run Nu" om te starten of wacht op de dagelijkse cron (02:00 UTC).</p>
+            </div>
+          )}
+
+          <div class="flex items-center gap-3">
+            <button id="run-research-btn"
+              class="inline-flex items-center gap-2 bg-teal-600 text-white text-sm font-semibold py-2.5 px-5 rounded-lg hover:bg-teal-700 transition-all disabled:opacity-50"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              Run Nu
+            </button>
+            <span id="research-status" class="text-xs text-gray-400"></span>
           </div>
         </div>
       </>
@@ -709,5 +778,42 @@ try {
         btn.disabled = false;
       }
     });
+  });
+
+  // ── Run Research button ───────────────────────────────────────────────────
+  document.getElementById('run-research-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('run-research-btn') as HTMLButtonElement;
+    const status = document.getElementById('research-status');
+
+    btn.disabled = true;
+    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> Bezig...`;
+    if (status) { status.textContent = 'Marktonderzoek uitvoeren...'; status.className = 'text-xs text-gray-400'; }
+
+    try {
+      const res = await fetch('/api/admin/run-research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        const cached = data.cached ? ' (al gedaan vandaag)' : '';
+        if (status) {
+          status.textContent = `Voltooid${cached}: ${data.keywords_found} keywords — ${data.date} (${Math.round((data.duration_ms ?? 0) / 1000)}s)`;
+          status.className = 'text-xs text-teal-600 font-medium';
+        }
+      } else {
+        if (status) {
+          status.textContent = `Fout: ${data.error}`;
+          status.className = 'text-xs text-red-500';
+        }
+      }
+    } catch (err) {
+      if (status) { status.textContent = `Netwerkfout: ${err}`; status.className = 'text-xs text-red-500'; }
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg> Run Nu`;
+    }
   });
 </script>

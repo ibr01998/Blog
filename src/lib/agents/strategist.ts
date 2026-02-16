@@ -11,7 +11,8 @@
 
 import { z } from 'zod';
 import { BaseAgent } from './base.ts';
-import type { AgentRecord, AnalystReport, ArticleBrief } from './types.ts';
+import { query } from '../db/postgres.ts';
+import type { AgentRecord, AnalystReport, ArticleBrief, MarketResearchRow } from './types.ts';
 import { classifyIntent } from '../../data/templates.ts';
 
 const briefItemSchema = z.object({
@@ -31,8 +32,8 @@ const strategistOutputSchema = z.object({
   briefs: z.array(briefItemSchema).length(5),
 });
 
-// Dutch crypto topic seeds — strategist uses these as creative starting points
-const CRYPTO_TOPIC_SEEDS = [
+// Dutch crypto topic seeds — fallback when no recent market_research data exists
+const FALLBACK_TOPIC_SEEDS = [
   'bybit review 2026',
   'binance vs kraken nederland',
   'bitmex fees uitleg',
@@ -58,6 +59,46 @@ export class StrategistAgent extends BaseAgent {
   async run(report: AnalystReport): Promise<ArticleBrief[]> {
     const bestAffiliate = report.best_affiliate?.platform_name ?? 'Bybit';
 
+    // ── Fetch latest market research (within 7 days) ──────────────────────
+    let marketResearch: MarketResearchRow | null = null;
+    try {
+      const rows = await query<MarketResearchRow>(
+        `SELECT * FROM market_research
+         WHERE research_date >= CURRENT_DATE - INTERVAL '7 days'
+         ORDER BY research_date DESC LIMIT 1`
+      );
+      marketResearch = rows[0] ?? null;
+    } catch {
+      // Table not migrated yet or unavailable — fall back to static seeds
+    }
+
+    // Prefer research-driven keywords; fall back to static seeds
+    const keywordSeeds: string[] = (marketResearch?.recommended_keywords?.length)
+      ? marketResearch.recommended_keywords
+      : FALLBACK_TOPIC_SEEDS;
+
+    // Build research context block for the LLM prompt
+    const researchContext = marketResearch
+      ? `
+MARKET RESEARCH DATA (${marketResearch.research_date} — Tavily competitor analysis):
+Summary: ${marketResearch.insights_summary}
+
+Trending Topics:
+${marketResearch.trending_topics.slice(0, 5).map((t) =>
+  `- "${t.keyword}" (score: ${t.trend_score.toFixed(2)}): ${t.reason}`
+).join('\n')}
+
+Keyword Opportunities (content gaps marked with ⚡):
+${marketResearch.keyword_opportunities.slice(0, 5).map((k) =>
+  `- ${k.content_gap ? '⚡' : '·'} "${k.keyword}" | angle: ${k.suggested_angle} | format: ${k.suggested_format}`
+).join('\n')}
+
+Competitor Patterns:
+- Title patterns: ${marketResearch.competitor_patterns.common_title_patterns?.join(', ') || 'n/a'}
+- Popular formats: ${marketResearch.competitor_patterns.popular_formats?.join(', ') || 'n/a'}
+`
+      : `NOTE: No recent market research available. Using static keyword seeds as fallback.`;
+
     const result = await this.callObject({
       schema: strategistOutputSchema,
       model: 'gpt-4o-mini',
@@ -80,8 +121,10 @@ BEST PERFORMING AFFILIATE: ${bestAffiliate} — prioritize in money-tier content
 
 AVAILABLE PLATFORMS: BitMEX, Bybit, Binance, Kraken
 
-TOPIC SEED IDEAS (use as inspiration — vary and improve these):
-${CRYPTO_TOPIC_SEEDS.map((t, i) => `${i + 1}. ${t}`).join('\n')}
+${researchContext}
+
+TOPIC SEED IDEAS (use as creative starting points — vary and improve these):
+${keywordSeeds.map((t, i) => `${i + 1}. ${t}`).join('\n')}
 
 REQUIREMENTS:
 - All primary_keywords must be Dutch search queries
@@ -90,6 +133,7 @@ REQUIREMENTS:
 - target_platforms: relevant exchange slugs (bitmex/bybit/binance/kraken)
 - reasoning: 1-2 sentences explaining why this brief will convert or rank
 - Spread keywords across all 4 platforms — no single platform dominating
+${marketResearch ? '- PRIORITIZE ⚡ content gap opportunities over general seeds' : ''}
 `,
     });
 
@@ -112,13 +156,15 @@ REQUIREMENTS:
         analyst_tier: report.recommended_content_tier,
         best_affiliate: bestAffiliate,
         insights_count: report.performance_insights.length,
+        research_used: marketResearch !== null,
+        research_date: marketResearch?.research_date ?? null,
       },
       decisionSummary: {
         brief_count: briefs.length,
         tier_distribution: tierCount,
         keywords: briefs.map((b) => b.primary_keyword),
       },
-      reasoningSummary: `Generated ${briefs.length} briefs. Tier distribution: money=${tierCount.money ?? 0}, authority=${tierCount.authority ?? 0}, trend=${tierCount.trend ?? 0}. Best affiliate prioritized: ${bestAffiliate}.`,
+      reasoningSummary: `Generated ${briefs.length} briefs. Research data ${marketResearch ? `used (${marketResearch.research_date})` : 'not available — used fallback seeds'}. Tier: money=${tierCount.money ?? 0}, authority=${tierCount.authority ?? 0}, trend=${tierCount.trend ?? 0}. Best affiliate: ${bestAffiliate}.`,
     });
 
     return briefs;

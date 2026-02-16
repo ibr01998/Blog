@@ -12,7 +12,8 @@ export type AgentRole =
   | 'editor'
   | 'writer'
   | 'humanizer'
-  | 'seo';
+  | 'seo'
+  | 'researcher';
 
 export type ContentTier = 'money' | 'authority' | 'trend';
 export type HookType = 'fear' | 'curiosity' | 'authority' | 'benefit' | 'story';
@@ -200,4 +201,28 @@ export interface CycleSummary {
   articles_skipped_similarity: number;
   article_ids: string[];
   error?: string;
+}
+
+// ─── Research Agent Outputs ───────────────────────────────────────────────────
+
+export interface MarketResearchRow {
+  id: string;
+  research_date: string;
+  search_results: Record<string, unknown>;
+  trending_topics: { keyword: string; trend_score: number; reason: string }[];
+  keyword_opportunities: {
+    keyword: string;
+    content_gap: boolean;
+    suggested_angle: string;
+    suggested_format: FormatType;
+    suggested_hook: HookType;
+  }[];
+  competitor_patterns: {
+    common_title_patterns: string[];
+    popular_formats: string[];
+    avg_article_approach: string;
+  };
+  recommended_keywords: string[];
+  insights_summary: string;
+  created_at: string;
 }

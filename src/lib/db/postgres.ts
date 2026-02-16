@@ -195,6 +195,28 @@ CREATE INDEX IF NOT EXISTS idx_csm_computed ON content_strategy_metrics(computed
 
 -- Migrations: add columns that may not exist on older deployments (safe to re-run)
 ALTER TABLE articles ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+-- market_research: Daily external research snapshots (Tavily + LLM extraction)
+CREATE TABLE IF NOT EXISTS market_research (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  research_date DATE NOT NULL,
+  search_results JSONB NOT NULL DEFAULT '{}',
+  trending_topics JSONB NOT NULL DEFAULT '[]',
+  keyword_opportunities JSONB NOT NULL DEFAULT '[]',
+  competitor_patterns JSONB NOT NULL DEFAULT '{}',
+  recommended_keywords TEXT[] NOT NULL DEFAULT '{}',
+  insights_summary TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_market_research_date ON market_research(research_date DESC);
+
+-- Allow researcher role in agents table (fixes CHECK constraint on existing DBs)
+ALTER TABLE agents DROP CONSTRAINT IF EXISTS agents_role_check;
+ALTER TABLE agents ADD CONSTRAINT agents_role_check
+  CHECK (role IN ('analyst','strategist','editor','writer','humanizer','seo','researcher'));
+
+-- Add enable_research_agent toggle to system_config
+ALTER TABLE system_config ADD COLUMN IF NOT EXISTS enable_research_agent BOOLEAN NOT NULL DEFAULT true;
 `;
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
@@ -277,6 +299,18 @@ export const SEED_AGENTS = [
     },
     performance_score: 0.5,
     article_slots: 1,
+  },
+  {
+    name: 'Markt-Onderzoeker',
+    role: 'researcher',
+    personality_config: {
+      tone: 'analytical',
+      writing_style: 'data-driven',
+      preferred_formats: [],
+    },
+    behavior_overrides: {},
+    performance_score: 0.5,
+    article_slots: 0,
   },
 ];
 
