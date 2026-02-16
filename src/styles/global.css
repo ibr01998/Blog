@@ -113,6 +113,7 @@ body.bg-dashboard {
 
 /* Glassmorphism card — frosted glass */
 @layer base {
+  /* Light mode */
   .glass {
     background: rgba(255, 255, 255, 0.35) !important;
     -webkit-backdrop-filter: blur(6px) !important;
@@ -121,6 +122,18 @@ body.bg-dashboard {
     box-shadow:
       0 4px 30px rgba(0, 0, 0, 0.06),
       inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  }
+
+  /* Dark mode — must be in same @layer so specificity wins over the rule above */
+  html.dark .glass {
+    background: rgba(27, 32, 48, 0.93) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow:
+      0 2px 6px rgba(0, 0, 0, 0.55),
+      0 8px 24px rgba(0, 0, 0, 0.30),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
 }
 
@@ -181,18 +194,6 @@ html.dark {
 
   /* Halftone dots — subtle texture so backdrop-blur has something to blur */
   --dot-color: rgba(55, 85, 150, 0.18);
-}
-
-/* Glass panels — clearly elevated dark surface matching reference */
-html.dark .glass {
-  background: rgba(27, 32, 48, 0.93) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.55),
-    0 8px 24px rgba(0, 0, 0, 0.30),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 /* Dashboard body */
