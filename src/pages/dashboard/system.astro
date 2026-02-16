@@ -355,6 +355,13 @@ try {
     return date.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
 
+  function clearLog() {
+    const logDiv = document.getElementById('cycle-log');
+    const outputDiv = document.getElementById('cycle-output');
+    if (logDiv) logDiv.innerHTML = '';
+    if (outputDiv) outputDiv.textContent = '';
+  }
+
   function appendLog(message: string, type: 'info' | 'error' | 'success' = 'info') {
     const logDiv = document.getElementById('cycle-log');
     if (!logDiv) return;
