@@ -184,13 +184,13 @@ html.dark {
   --dot-color: rgba(58, 90, 145, 0.25);
 }
 
-/* Glass card — dark frosted variant */
+/* Glass card — dark frosted variant (more visible than 0.06) */
 html.dark .glass {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.09) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
   box-shadow:
-    0 4px 30px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 4px 30px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 /* Dashboard body background in dark mode */
@@ -215,4 +215,77 @@ html.dark .sidebar-link:hover {
 }
 html.dark .sidebar-link.active {
   background: rgba(200, 216, 240, 0.12) !important;
+}
+
+/* ---- Article content: fix hardcoded dark colors ---- */
+
+/* Paragraphs and list items have hardcoded #3a4a5c — override */
+html.dark .article-content p,
+html.dark .article-content ul,
+html.dark .article-content ol,
+html.dark .article-content li {
+  color: #b8cde0;
+}
+
+html.dark .article-content p:first-of-type {
+  color: var(--text-main);
+}
+
+/* Headings, strong, blockquote */
+html.dark .article-content h2,
+html.dark .article-content h3,
+html.dark .article-content h4,
+html.dark .article-content strong,
+html.dark .article-content blockquote p {
+  color: var(--text-main);
+}
+
+html.dark .article-content blockquote {
+  border-left-color: rgba(200, 216, 240, 0.4);
+  color: var(--text-main);
+}
+
+/* Links */
+html.dark .article-content a {
+  color: #90b8e0;
+  text-decoration-color: rgba(144, 184, 224, 0.4);
+}
+
+/* List markers */
+html.dark .article-content li::marker {
+  color: var(--text-muted);
+}
+
+/* Tables */
+html.dark .article-content thead {
+  background: rgba(200, 216, 240, 0.14);
+  color: var(--text-main);
+}
+html.dark .article-content th {
+  color: var(--text-main);
+}
+html.dark .article-content td {
+  color: #b8cde0;
+  border-bottom-color: rgba(200, 216, 240, 0.1);
+}
+html.dark .table-wrapper {
+  border-color: rgba(200, 216, 240, 0.12);
+}
+
+/* Images */
+html.dark .article-content img {
+  border-color: rgba(200, 216, 240, 0.15);
+}
+
+/* Dividers */
+html.dark .article-content hr {
+  background: rgba(200, 216, 240, 0.12);
+}
+
+/* ---- TL;DR / details summary — fix bg-white/50 glowing in dark ---- */
+html.dark details.glass summary {
+  background: rgba(200, 216, 240, 0.08) !important;
+}
+html.dark details.glass summary:hover {
+  background: rgba(200, 216, 240, 0.13) !important;
 }
