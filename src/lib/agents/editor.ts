@@ -22,7 +22,7 @@ import type {
 const COOLDOWN_DAYS = 60;
 const SIMILARITY_THRESHOLD = 0.30; // cosine DISTANCE threshold — below this means "too similar"
 const DEFAULT_MAX_PER_WEEK = 3;
-const MAX_PER_CYCLE = 3; // Hard cap: never produce more than 3 articles per cycle run
+const MAX_PER_CYCLE = 1; // 1 article per cycle — Claude Sonnet writer takes ~110s, Vercel limit is 300s
 
 interface WriterAgentRow {
   id: string;

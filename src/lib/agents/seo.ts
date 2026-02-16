@@ -34,6 +34,7 @@ export class SEOAgent extends BaseAgent {
     const result = await this.callObject({
       schema: seoOutputSchema,
       model: 'gpt-4o-mini',
+      maxTokens: 4000,
       systemPrompt: this.buildSystemPrompt(targetDensity),
       userPrompt: `
 Optimaliseer het volgende artikel voor Nederlandse zoekmachines.
