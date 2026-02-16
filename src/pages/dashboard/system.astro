@@ -490,7 +490,7 @@ try {
       try {
         const response = await fetch('/api/admin/run-cycle', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Accept': 'text/event-stream' },
           credentials: 'include',
         });
 
@@ -499,11 +499,11 @@ try {
           continue;
         }
 
-        // Read SSE stream to completion
+        // Read SSE stream to completion — same pattern as the 1-article button
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
-        let currentEvent = '';
+        let sseEvent = '';    // tracks the current `event:` name
         let cycleArticles = 0;
 
         while (true) {
@@ -514,22 +514,27 @@ try {
           buffer = lines.pop() ?? '';
 
           for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              currentEvent += line.slice(6);
-            } else if (line === '' && currentEvent) {
+            if (line.startsWith('event: ')) {
+              sseEvent = line.slice(7).trim();
+            } else if (line.startsWith('data: ')) {
+              const raw = line.slice(6);
               try {
-                const data = JSON.parse(currentEvent);
-                if (data.message) appendLog(`[${i}] ${data.message}`);
-                if (data.type === 'done' && data.summary) {
-                  cycleArticles = data.summary.articles_produced ?? 0;
+                const data = JSON.parse(raw);
+                if (sseEvent === 'progress') {
+                  updateProgress(
+                    Math.round(((i - 1) / totalCycles) * 100 + (data.progress ?? 0) / totalCycles),
+                    data.stage
+                  );
+                  appendLog(`[${i}] ${data.message}`);
+                } else if (sseEvent === 'done') {
+                  cycleArticles = data.summary?.articles_produced ?? 0;
                   articlesProduced += cycleArticles;
                   appendLog(`[${i}] Voltooid: ${cycleArticles} artikel(en)`, cycleArticles > 0 ? 'success' : undefined);
-                }
-                if (data.type === 'error') {
+                } else if (sseEvent === 'error') {
                   appendLog(`[${i}] Fout: ${data.error}`, 'error');
                 }
-              } catch { /* ignore */ }
-              currentEvent = '';
+              } catch { /* ignore malformed JSON */ }
+              sseEvent = '';
             }
           }
         }

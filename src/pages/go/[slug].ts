@@ -7,14 +7,17 @@ export const GET: APIRoute = async ({ params, redirect }) => {
 
     if (!slug) return new Response('Not found', { status: 404 });
 
+    // Normalise to lowercase so /go/Bybit and /go/bybit both work
+    const normSlug = slug.toLowerCase();
+
     // 1. Check DB Platforms
-    const platform = await db.select().from(Platform).where(eq(Platform.slug, slug)).get();
+    const platform = await db.select().from(Platform).where(eq(Platform.slug, normSlug)).get();
     if (platform && platform.affiliateLink) {
         return redirect(platform.affiliateLink, 307);
     }
 
     // 2. Check Static Affiliates (fallback — uses env var, then hardcoded url)
-    const affiliate = affiliates.find(a => a.slug === slug);
+    const affiliate = affiliates.find(a => a.slug === normSlug);
     if (affiliate) {
         const url = getAffiliateUrl(affiliate.id);
         if (url) {

@@ -50,7 +50,15 @@ interface ArticleRow {
  * Write an approved/published article to the Astro DB Post table
  * so it appears in the existing public-facing blog.
  */
+/** Extract unique /go/{slug} platform slugs from article markdown */
+function extractPlatformSlugs(markdown: string): string[] {
+  const matches = [...markdown.matchAll(/\/go\/([a-zA-Z0-9_-]+)/g)];
+  return [...new Set(matches.map((m) => m[1].toLowerCase()))];
+}
+
 async function publishToPostTable(article: ArticleRow): Promise<void> {
+  const platforms = extractPlatformSlugs(article.article_markdown);
+
   await db.insert(Post).values({
     slug: article.slug,
     title: article.title,
@@ -61,7 +69,7 @@ async function publishToPostTable(article: ArticleRow): Promise<void> {
     seo_title: article.meta_title || article.title,
     article_type: article.format_type as any,
     heroImage: article.image_url || '',
-    platforms: [],
+    platforms,
     status: 'published',
   }).onConflictDoUpdate({
     target: Post.slug,
@@ -70,6 +78,7 @@ async function publishToPostTable(article: ArticleRow): Promise<void> {
       title: article.title,
       description: article.meta_description || '',
       heroImage: article.image_url || '',
+      platforms,
       status: 'published',
     },
   });
