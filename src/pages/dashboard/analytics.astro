@@ -140,7 +140,28 @@ const chartData = {
 ---
 
 <DashboardLayout title="Uitgebreide Analytics" activePage="analytics">
-  
+
+  <!-- Tab Bar -->
+  <div class="flex items-center gap-3 mb-8">
+    <button id="btn-site" onclick="switchTab('site')"
+      class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all bg-navy text-white shadow-md">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+      Site Analytics
+    </button>
+    <button id="btn-ai" onclick="switchTab('ai')"
+      class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all glass text-muted hover:opacity-100">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+      AI Analytics
+    </button>
+  </div>
+
+  <!-- ═══════════ PANEL: SITE ANALYTICS ═══════════ -->
+  <div id="panel-site">
+
   <!-- Hero Stats Row -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <!-- Total Views (Flip Counter) -->
@@ -272,11 +293,12 @@ const chartData = {
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- AI CONTENT PRESTATIES SECTION                                          -->
-  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  </div><!-- /panel-site -->
 
-  <div class="mt-10 mb-6">
+  <!-- ═══════════ PANEL: AI ANALYTICS ═══════════ -->
+  <div id="panel-ai" style="display:none">
+
+  <div class="mt-0 mb-6">
     <h2 class="text-xl font-bold text-navy flex items-center gap-2">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -376,8 +398,33 @@ const chartData = {
     </div>
   </div>
 
+  </div><!-- /panel-ai -->
+
   <script is:inline src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script is:inline define:vars={{ chartData }}>
+
+    // ─── Tab switching ───────────────────────────────────────────────────────
+    const ACTIVE_CLASSES   = 'flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all bg-navy text-white shadow-md';
+    const INACTIVE_CLASSES = 'flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all glass text-muted hover:opacity-100';
+
+    function switchTab(tab) {
+      ['site', 'ai'].forEach(t => {
+        const panel = document.getElementById('panel-' + t);
+        const btn   = document.getElementById('btn-' + t);
+        const isActive = t === tab;
+        panel.style.display = isActive ? 'block' : 'none';
+        btn.className = isActive ? ACTIVE_CLASSES : INACTIVE_CLASSES;
+      });
+      // Chart.js needs a resize tick after the container becomes visible
+      setTimeout(() => {
+        if (tab === 'site') {
+          [mainChart, deviceChart, referrerChart].forEach(c => c && c.resize());
+        } else {
+          if (typeof weeklyTrendChart !== 'undefined' && weeklyTrendChart) weeklyTrendChart.resize();
+        }
+      }, 50);
+    }
+
     // Chart Options: No decimals
     const commonOptions = {
         responsive: true,
