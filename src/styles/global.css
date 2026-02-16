@@ -184,21 +184,24 @@ html.dark {
   --dot-color: rgba(58, 90, 145, 0.25);
 }
 
-/* Glass card — dark frosted variant (more visible than 0.06) */
+/* Glass card — true transparent dark glass (navy tint, not white tint) */
 html.dark .glass {
-  background: rgba(255, 255, 255, 0.09) !important;
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  background: rgba(30, 55, 90, 0.45) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow:
-    0 4px 30px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-/* Dashboard body background in dark mode */
+/* Dashboard body background in dark mode —
+   must cancel the !important props from the light-mode rule */
 html.dark body.bg-dashboard {
-  background-color: #0f1d33;
-  background-image:
-    radial-gradient(at 100% 0%, rgba(42, 66, 112, 0.2) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, rgba(15, 29, 51, 0.25) 0px, transparent 50%);
+  background-color: #0f1d33 !important;
+  background-image: none !important;
+  background-attachment: scroll !important;
+  background-size: auto !important;
 }
 
 /* Primary action button — keep it a visible dark-blue on dark backgrounds */
@@ -280,6 +283,14 @@ html.dark .article-content img {
 /* Dividers */
 html.dark .article-content hr {
   background: rgba(200, 216, 240, 0.12);
+}
+
+/* ---- Hero image duotone — screen blend with remapped light navy washes it out ---- */
+html.dark .duotone-navy::before {
+  opacity: 0;
+}
+html.dark .duotone-navy img {
+  mix-blend-mode: normal;
 }
 
 /* ---- TL;DR / details summary — fix bg-white/50 glowing in dark ---- */
