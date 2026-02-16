@@ -163,48 +163,53 @@ body.bg-dashboard {
    ======================== */
 
 html.dark {
-  /* Remap palette colors so Tailwind utilities (text-navy, bg-navy/10, etc.)
-     automatically render correctly on dark backgrounds */
-  --color-navy: #c8d8f0;
-  --color-navy-light: #a0b8d8;
-  --color-navy-dark: #8098c0;
-  --color-cream: #0f1d33;
-  --color-cream-dark: #0a1524;
+  /* Palette — light tones for Tailwind text/bg utilities */
+  --color-navy: #d4e0f0;
+  --color-navy-light: #a8c0da;
+  --color-navy-dark: #8aaac8;
+  --color-cream: #0d1117;
+  --color-cream-dark: #090c11;
 
   /* Semantic tokens */
-  --bg-main: #0f1d33;
-  --bg-card: #162844;
-  --text-main: #c8d8f0;
-  --text-muted: #7a92a8;
-  --border-color: #1e3d6b;
-  --primary: #c8d8f0;
-  --primary-fg: #0f1d33;
+  --bg-main: #0d1117;       /* near-black background */
+  --bg-card: #161c2a;       /* elevated surface */
+  --text-main: #e2e8f0;     /* near-white */
+  --text-muted: #8892a4;    /* readable muted */
+  --border-color: #1e2d42;
+  --primary: #e2e8f0;
+  --primary-fg: #0d1117;
 
-  /* Halftone dots — subtle on dark */
-  --dot-color: rgba(58, 90, 145, 0.25);
+  /* Halftone dots — near-invisible on dark */
+  --dot-color: rgba(40, 70, 120, 0.10);
 }
 
-/* Glass card — true transparent dark glass (navy tint, not white tint) */
+/* Glass panels — dark elevated surface, matches reference aesthetic */
 html.dark .glass {
-  background: rgba(30, 55, 90, 0.45) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgba(22, 28, 42, 0.92) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    0 1px 3px rgba(0, 0, 0, 0.4),
+    0 4px 20px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-/* Dashboard body background in dark mode —
-   must cancel the !important props from the light-mode rule */
+/* Dashboard body — clean flat dark, cancel light-mode !important overrides */
 html.dark body.bg-dashboard {
-  background-color: #0f1d33 !important;
+  background-color: #0d1117 !important;
   background-image: none !important;
   background-attachment: scroll !important;
   background-size: auto !important;
 }
 
-/* Primary action button — keep it a visible dark-blue on dark backgrounds */
+/* Blog body — keep the very subtle halftone on dark for texture */
+html.dark body:not(.bg-dashboard) {
+  background-color: var(--bg-main);
+  background-image: radial-gradient(circle, var(--dot-color) var(--dot-size), transparent var(--dot-size));
+}
+
+/* Primary action button */
 html.dark .bg-navy {
   background-color: #2a5298 !important;
 }
@@ -212,29 +217,27 @@ html.dark .hover\:bg-navy\/90:hover {
   background-color: #234a8a !important;
 }
 
-/* Sidebar link hover/active — flip to cream-tinted highlights */
+/* Sidebar link hover/active */
 html.dark .sidebar-link:hover {
-  background: rgba(200, 216, 240, 0.07) !important;
+  background: rgba(226, 232, 240, 0.06) !important;
 }
 html.dark .sidebar-link.active {
-  background: rgba(200, 216, 240, 0.12) !important;
+  background: rgba(226, 232, 240, 0.10) !important;
 }
 
-/* ---- Article content: fix hardcoded dark colors ---- */
+/* ---- Article body: hardcoded dark colors must be overridden ---- */
 
-/* Paragraphs and list items have hardcoded #3a4a5c — override */
 html.dark .article-content p,
 html.dark .article-content ul,
 html.dark .article-content ol,
 html.dark .article-content li {
-  color: #b8cde0;
+  color: #c0cdd8;
 }
 
 html.dark .article-content p:first-of-type {
   color: var(--text-main);
 }
 
-/* Headings, strong, blockquote */
 html.dark .article-content h2,
 html.dark .article-content h3,
 html.dark .article-content h4,
@@ -244,48 +247,43 @@ html.dark .article-content blockquote p {
 }
 
 html.dark .article-content blockquote {
-  border-left-color: rgba(200, 216, 240, 0.4);
-  color: var(--text-main);
+  border-left-color: rgba(212, 224, 240, 0.35);
+  color: var(--text-muted);
 }
 
-/* Links */
 html.dark .article-content a {
-  color: #90b8e0;
-  text-decoration-color: rgba(144, 184, 224, 0.4);
+  color: #7eb3e0;
+  text-decoration-color: rgba(126, 179, 224, 0.4);
 }
 
-/* List markers */
 html.dark .article-content li::marker {
   color: var(--text-muted);
 }
 
-/* Tables */
 html.dark .article-content thead {
-  background: rgba(200, 216, 240, 0.14);
+  background: rgba(212, 224, 240, 0.08);
   color: var(--text-main);
 }
 html.dark .article-content th {
   color: var(--text-main);
 }
 html.dark .article-content td {
-  color: #b8cde0;
-  border-bottom-color: rgba(200, 216, 240, 0.1);
+  color: #c0cdd8;
+  border-bottom-color: rgba(212, 224, 240, 0.08);
 }
 html.dark .table-wrapper {
-  border-color: rgba(200, 216, 240, 0.12);
+  border-color: rgba(212, 224, 240, 0.10);
 }
 
-/* Images */
 html.dark .article-content img {
-  border-color: rgba(200, 216, 240, 0.15);
+  border-color: rgba(212, 224, 240, 0.12);
 }
 
-/* Dividers */
 html.dark .article-content hr {
-  background: rgba(200, 216, 240, 0.12);
+  background: rgba(212, 224, 240, 0.10);
 }
 
-/* ---- Hero image duotone — screen blend with remapped light navy washes it out ---- */
+/* ---- Hero image: screen blend with remapped light navy washes it out ---- */
 html.dark .duotone-navy::before {
   opacity: 0;
 }
@@ -293,10 +291,10 @@ html.dark .duotone-navy img {
   mix-blend-mode: normal;
 }
 
-/* ---- TL;DR / details summary — fix bg-white/50 glowing in dark ---- */
+/* ---- TL;DR summary: bg-white/50 glows on dark background ---- */
 html.dark details.glass summary {
-  background: rgba(200, 216, 240, 0.08) !important;
+  background: rgba(226, 232, 240, 0.05) !important;
 }
 html.dark details.glass summary:hover {
-  background: rgba(200, 216, 240, 0.13) !important;
+  background: rgba(226, 232, 240, 0.09) !important;
 }
