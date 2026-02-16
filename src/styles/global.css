@@ -299,3 +299,50 @@ html.dark details.glass summary {
 html.dark details.glass summary:hover {
   background: rgba(226, 232, 240, 0.09) !important;
 }
+
+/* ---- Form inputs: bg-white/50 is too bright in dark mode ---- */
+html.dark input:not([type="checkbox"]):not([type="radio"]),
+html.dark textarea,
+html.dark select {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: rgba(136, 150, 168, 0.5) !important;
+}
+/* Select arrow stays visible */
+html.dark select option {
+  background-color: var(--bg-card);
+  color: var(--text-main);
+}
+
+/* ---- Gray text utilities: hardcoded in dashboard pages ---- */
+html.dark .text-gray-400,
+html.dark .text-gray-500,
+html.dark .text-gray-600,
+html.dark .text-gray-700 {
+  color: var(--text-muted) !important;
+}
+
+/* ---- Evolution suggestions card: amber hardcoded colors ---- */
+html.dark .bg-amber-50\/50 {
+  background-color: rgba(180, 120, 30, 0.12) !important;
+}
+html.dark .border-amber-200\/50 {
+  border-color: rgba(180, 120, 30, 0.25) !important;
+}
+html.dark .text-amber-800 {
+  color: #fbbf24 !important;
+}
+/* Pre/code blocks inside evolution cards */
+html.dark .bg-white\/60 {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+html.dark .bg-white\/50 {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+html.dark .bg-white {
+  background-color: var(--bg-card) !important;
+}
