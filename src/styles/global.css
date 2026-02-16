@@ -163,47 +163,47 @@ body.bg-dashboard {
    ======================== */
 
 html.dark {
-  /* Palette — light tones for Tailwind text/bg utilities */
+  /* Palette — light tones for Tailwind utilities */
   --color-navy: #d4e0f0;
   --color-navy-light: #a8c0da;
   --color-navy-dark: #8aaac8;
-  --color-cream: #0d1117;
-  --color-cream-dark: #090c11;
+  --color-cream: #090c15;
+  --color-cream-dark: #060810;
 
   /* Semantic tokens */
-  --bg-main: #0d1117;       /* near-black background */
-  --bg-card: #161c2a;       /* elevated surface */
-  --text-main: #e2e8f0;     /* near-white */
-  --text-muted: #8892a4;    /* readable muted */
-  --border-color: #1e2d42;
-  --primary: #e2e8f0;
-  --primary-fg: #0d1117;
+  --bg-main: #090c15;        /* very dark near-black */
+  --bg-card: #1b2030;        /* clearly elevated surface */
+  --text-main: #e8edf5;      /* crisp near-white */
+  --text-muted: #8896a8;     /* readable muted */
+  --border-color: #252d3f;
+  --primary: #e8edf5;
+  --primary-fg: #090c15;
 
-  /* Halftone dots — near-invisible on dark */
-  --dot-color: rgba(40, 70, 120, 0.10);
+  /* Halftone dots — subtle texture so backdrop-blur has something to blur */
+  --dot-color: rgba(55, 85, 150, 0.18);
 }
 
-/* Glass panels — dark elevated surface, matches reference aesthetic */
+/* Glass panels — clearly elevated dark surface matching reference */
 html.dark .glass {
-  background: rgba(22, 28, 42, 0.92) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
-  backdrop-filter: blur(8px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  background: rgba(27, 32, 48, 0.93) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.4),
-    0 4px 20px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    0 2px 6px rgba(0, 0, 0, 0.55),
+    0 8px 24px rgba(0, 0, 0, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-/* Dashboard body — clean flat dark, cancel light-mode !important overrides */
+/* Dashboard body */
 html.dark body.bg-dashboard {
-  background-color: #0d1117 !important;
-  background-image: none !important;
+  background-color: #090c15 !important;
+  background-image: radial-gradient(circle, rgba(55, 85, 150, 0.14) var(--dot-size), transparent var(--dot-size)) !important;
+  background-size: var(--dot-spacing) var(--dot-spacing) !important;
   background-attachment: scroll !important;
-  background-size: auto !important;
 }
 
-/* Blog body — keep the very subtle halftone on dark for texture */
+/* Blog body */
 html.dark body:not(.bg-dashboard) {
   background-color: var(--bg-main);
   background-image: radial-gradient(circle, var(--dot-color) var(--dot-size), transparent var(--dot-size));
