@@ -1,3 +1,5 @@
+export const prerender = false;
+
 import { getCollection } from 'astro:content';
 import { db, Post, eq, desc } from 'astro:db';
 
