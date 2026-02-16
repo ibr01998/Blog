@@ -7,7 +7,10 @@
       "Bash(wc:*)",
       "Bash(grep:*)",
       "Bash(node -e \"\nconst { neon } = require\\(''@neondatabase/serverless''\\);\nconst sql = neon\\(''postgresql://neondb_owner:npg_4CpK6jhGsYSN@ep-lingering-night-ag7kpvct-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require''\\);\n\\(async \\(\\) => {\n  const articles = await sql\\(''SELECT id, title, status, review_status, created_at FROM articles ORDER BY created_at DESC''\\);\n  console.log\\(''Total articles:'', articles.length\\);\n  articles.forEach\\(a => console.log\\(''-'', a.title, ''|'', a.status, ''|'', a.review_status, ''|'', a.created_at\\)\\);\n}\\)\\(\\).catch\\(e => console.error\\(e\\)\\);\n\")",
-      "Bash(node -e \"\nconst { neon } = require\\(''@neondatabase/serverless''\\);\nconst sql = neon\\(''postgresql://neondb_owner:npg_4CpK6jhGsYSN@ep-lingering-night-ag7kpvct-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require''\\);\n\\(async \\(\\) => {\n  const articles = await sql.query\\(''SELECT id, title, status, review_status, created_at FROM articles ORDER BY created_at DESC''\\);\n  console.log\\(''Total articles:'', articles.length\\);\n  articles.forEach\\(a => console.log\\(''-'', a.title, ''|'', a.status, ''|'', a.review_status, ''|'', a.created_at\\)\\);\n}\\)\\(\\).catch\\(e => console.error\\(e\\)\\);\n\")"
+      "Bash(node -e \"\nconst { neon } = require\\(''@neondatabase/serverless''\\);\nconst sql = neon\\(''postgresql://neondb_owner:npg_4CpK6jhGsYSN@ep-lingering-night-ag7kpvct-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require''\\);\n\\(async \\(\\) => {\n  const articles = await sql.query\\(''SELECT id, title, status, review_status, created_at FROM articles ORDER BY created_at DESC''\\);\n  console.log\\(''Total articles:'', articles.length\\);\n  articles.forEach\\(a => console.log\\(''-'', a.title, ''|'', a.status, ''|'', a.review_status, ''|'', a.created_at\\)\\);\n}\\)\\(\\).catch\\(e => console.error\\(e\\)\\);\n\")",
+      "WebFetch(domain:shortnews.tech)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
