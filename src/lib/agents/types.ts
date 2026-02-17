@@ -216,11 +216,14 @@ export interface MarketResearchRow {
     suggested_angle: string;
     suggested_format: FormatType;
     suggested_hook: HookType;
+    estimated_competition?: 'low' | 'medium' | 'high';
   }[];
   competitor_patterns: {
     common_title_patterns: string[];
     popular_formats: string[];
     avg_article_approach: string;
+    missing_angles?: string[];
+    high_performing_titles?: string[];
   };
   recommended_keywords: string[];
   insights_summary: string;
