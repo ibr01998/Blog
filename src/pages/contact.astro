@@ -5,25 +5,27 @@ const description = 'Neem contact op met ShortNews. Vragen, suggesties of samenw
 ---
 
 <Layout title={title} description={description}>
-  <div class="container mx-auto px-6 py-16 max-w-2xl">
-    <span class="date-badge mb-6 inline-block">Contact</span>
-    <h1 class="text-4xl font-extrabold text-navy mb-3 leading-tight">Neem contact op</h1>
-    <p class="text-sm mb-10" style="color: var(--text-muted)">
-      Gebruik het onderstaande formulier voor vragen, feedback of samenwerkingsverzoeken.
-      Wij reageren doorgaans binnen 2 werkdagen.
-    </p>
+  <div class="page-outer">
+    <div class="page-card">
 
-    <!-- Success message (hidden by default) -->
-    <div id="form-success" class="contact-alert contact-alert--success" style="display:none" role="alert">
-      <strong>Bericht verzonden!</strong> Bedankt voor uw bericht. Wij nemen zo snel mogelijk contact met u op.
-    </div>
+      <span class="date-badge mb-6 inline-block">Contact</span>
+      <h1 class="text-4xl font-extrabold text-navy mb-3 leading-tight">Neem contact op</h1>
+      <p class="text-sm mb-8 meta-text">
+        Gebruik het onderstaande formulier voor vragen, feedback of samenwerkingsverzoeken.
+        Wij reageren doorgaans binnen 2 werkdagen.
+      </p>
 
-    <!-- Error message (hidden by default) -->
-    <div id="form-error" class="contact-alert contact-alert--error" style="display:none" role="alert">
-      <strong>Er is iets misgegaan.</strong> Controleer uw gegevens en probeer het opnieuw.
-    </div>
+      <!-- Success message (hidden by default) -->
+      <div id="form-success" class="contact-alert contact-alert--success" style="display:none" role="alert">
+        <strong>Bericht verzonden!</strong> Bedankt voor uw bericht. Wij nemen zo snel mogelijk contact met u op.
+      </div>
 
-    <form id="contact-form" class="contact-form" novalidate>
+      <!-- Error message (hidden by default) -->
+      <div id="form-error" class="contact-alert contact-alert--error" style="display:none" role="alert">
+        <strong>Er is iets misgegaan.</strong> Controleer uw gegevens en probeer het opnieuw.
+      </div>
+
+      <form id="contact-form" class="contact-form" novalidate>
       <!-- Honeypot (hidden field, bots fill this) -->
       <div style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">
         <label for="website">Website (laat leeg)</label>
@@ -98,11 +100,33 @@ const description = 'Neem contact op met ShortNews. Vragen, suggesties of samenw
         <span id="submit-text">Bericht versturen</span>
         <span id="submit-spinner" style="display:none">Versturen…</span>
       </button>
-    </form>
+      </form>
+    </div>
   </div>
 </Layout>
 
 <style>
+  .page-outer {
+    padding: 3rem 1.5rem 4rem;
+  }
+
+  .page-card {
+    max-width: 44rem;
+    margin: 0 auto;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 2.75rem 3.25rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05), 0 6px 24px rgba(0,0,0,0.04);
+  }
+
+  @media (max-width: 640px) {
+    .page-outer { padding: 1.5rem 1rem 3rem; }
+    .page-card  { padding: 1.5rem 1.25rem; border-radius: 8px; }
+  }
+
+  .meta-text { color: var(--text-muted); }
+
   .contact-form {
     position: relative;
     display: flex;
