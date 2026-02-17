@@ -1,0 +1,149 @@
+---
+// GoogleAnalytics.astro — GA4 integration with Google Consent Mode v2
+// GA_ID is the public Measurement ID — not sensitive, appears in page source.
+// Override with PUBLIC_GA4_ID env var if needed.
+
+const GA_ID = import.meta.env.PUBLIC_GA4_ID || 'G-1NZ4VEDNHF';
+---
+
+{GA_ID && (
+  <>
+    {/* GA4 script — always load so Consent Mode modeling works */}
+    <script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}></script>
+
+    {/* GA4 init + event tracking */}
+    <script define:vars={{ GA_ID }}>
+      // Extend gtag already initialized by BaseHead consent-mode block
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){window.dataLayer.push(arguments);}
+
+      gtag('js', new Date());
+      gtag('config', GA_ID, {
+        anonymize_ip: true,
+        send_page_view: true
+      });
+
+      // ── Helpers ──────────────────────────────────────────────────────────────
+
+      const CONSENT_KEY = 'sn_cookie_consent';
+
+      function hasAnalyticsConsent() {
+        try {
+          const c = JSON.parse(localStorage.getItem(CONSENT_KEY) || '{}');
+          return c.analytics === true;
+        } catch { return false; }
+      }
+
+      // ── Scroll depth tracking ─────────────────────────────────────────────────
+
+      function setupScrollDepth() {
+        const milestones = [25, 50, 75, 90];
+        const fired = new Set();
+
+        const onScroll = () => {
+          if (!hasAnalyticsConsent()) return;
+          const scrolled = window.scrollY + window.innerHeight;
+          const total    = document.documentElement.scrollHeight;
+          const pct      = Math.round((scrolled / total) * 100);
+
+          milestones.forEach(m => {
+            if (pct >= m && !fired.has(m)) {
+              fired.add(m);
+              gtag('event', 'scroll_depth', {
+                event_category: 'engagement',
+                scroll_depth_pct: m
+              });
+            }
+          });
+        };
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+      }
+
+      // ── Click event tracking ──────────────────────────────────────────────────
+
+      function setupClickTracking() {
+        document.addEventListener('click', (e) => {
+          if (!hasAnalyticsConsent()) return;
+
+          const link = (e.target as HTMLElement).closest('a');
+          if (!link) return;
+
+          const href = link.getAttribute('href') || '';
+
+          // Affiliate link clicks (internal /go/ redirects)
+          if (href.startsWith('/go/')) {
+            gtag('event', 'affiliate_click', {
+              event_category: 'monetization',
+              link_url: href,
+              link_text: link.textContent?.trim().slice(0, 100) || ''
+            });
+            return;
+          }
+
+          // External link clicks
+          if (href.startsWith('http') && !href.includes(window.location.hostname)) {
+            gtag('event', 'outbound_click', {
+              event_category: 'outbound',
+              link_url: href,
+              link_text: link.textContent?.trim().slice(0, 100) || ''
+            });
+          }
+        });
+      }
+
+      // ── Newsletter signup tracking ────────────────────────────────────────────
+
+      function setupNewsletterTracking() {
+        document.addEventListener('submit', (e) => {
+          if (!hasAnalyticsConsent()) return;
+
+          const form = e.target as HTMLFormElement;
+          if (!form) return;
+
+          // Detect newsletter forms by id, class, or action url
+          const isNewsletter =
+            form.id?.includes('newsletter') ||
+            form.className?.includes('newsletter') ||
+            (form.action && form.action.includes('newsletter'));
+
+          if (isNewsletter) {
+            gtag('event', 'newsletter_signup', {
+              event_category: 'engagement'
+            });
+          }
+        });
+      }
+
+      // ── Consent change listener ───────────────────────────────────────────────
+      // When the user updates consent via the cookie banner, apply immediately.
+
+      window.addEventListener('sn:consent-update', (e: Event) => {
+        const detail = (e as CustomEvent).detail;
+        // gtag consent update is already done by CookieConsent component;
+        // here we fire a GA4 event for the consent interaction itself.
+        if (detail?.analytics) {
+          gtag('event', 'consent_accepted', {
+            event_category: 'gdpr',
+            analytics: detail.analytics,
+            marketing: detail.marketing
+          });
+        }
+      });
+
+      // ── Init ─────────────────────────────────────────────────────────────────
+
+      function initTracking() {
+        setupScrollDepth();
+        setupClickTracking();
+        setupNewsletterTracking();
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTracking);
+      } else {
+        initTracking();
+      }
+    </script>
+  </>
+)}

@@ -1,0 +1,85 @@
+---
+import Layout from '../layouts/Layout.astro';
+const title = 'Over ShortNews';
+const description = 'ShortNews is de gids voor high-leverage crypto trading in Nederland en België. Leer wie wij zijn, wat wij doen en waarom wij het doen.';
+---
+
+<Layout title={title} description={description}>
+  <div class="container mx-auto px-6 py-16 max-w-3xl">
+    <span class="date-badge mb-6 inline-block">Over ons</span>
+    <h1 class="text-4xl font-extrabold text-navy mb-6 leading-tight">Over ShortNews</h1>
+
+    <div class="prose-about">
+
+      <h2>Wie zijn wij?</h2>
+      <p>
+        ShortNews is een onafhankelijke informatieve website over crypto trading, specifiek gericht op lezers in Nederland en België.
+        Wij schrijven heldere, praktische gidsen over handelsplatformen, high-leverage strategieën en de risico's van de cryptomarkt.
+      </p>
+
+      <h2>Onze missie</h2>
+      <p>
+        De cryptomarkt is complex en beweegt snel. Wij geloven dat iedereen recht heeft op begrijpelijke, eerlijke informatie — zonder jargon, zonder verborgen agenda's.
+        ShortNews helpt lezers gefundeerde keuzes te maken door platformen objectief te vergelijken en de mechanismen van crypto trading inzichtelijk te maken.
+      </p>
+
+      <h2>Wat wij doen</h2>
+      <ul>
+        <li><strong>Platformvergelijkingen</strong> — Wij testen en vergelijken handelsplatformen op kosten, gebruiksgemak, veiligheid en beschikbaarheid voor NL/BE-gebruikers.</li>
+        <li><strong>Trading gidsen</strong> — Van basisbegrippen tot geavanceerde strategieën: onze gidsen zijn geschreven voor zowel beginners als gevorderde traders.</li>
+        <li><strong>Marktanalyse</strong> — Regelmatige updates over relevante ontwikkelingen in de cryptomarkt, met nadruk op wat dit betekent voor Nederlandse en Belgische traders.</li>
+      </ul>
+
+      <h2>Onze onafhankelijkheid</h2>
+      <p>
+        ShortNews is redactioneel onafhankelijk. Sommige artikelen bevatten affiliate links waarmee wij een commissie ontvangen bij het openen van een account via onze link.
+        Dit heeft <strong>geen invloed</strong> op onze beoordelingen of aanbevelingen — wij schrijven alleen positief over platformen die wij ook daadwerkelijk goed vinden.
+      </p>
+      <p>
+        Alle inhoud is uitsluitend informatief en vormt <strong>geen financieel of beleggingsadvies</strong>.
+        Trading in cryptocurrencies brengt aanzienlijke risico's met zich mee, inclusief het verlies van uw volledige inleg.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        Heeft u een vraag, suggestie of wilt u samenwerken? Neem contact op via ons <a href="/contact">contactformulier</a> of stuur een e-mail naar <a href="mailto:info@shortnews.tech">info@shortnews.tech</a>.
+      </p>
+
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .prose-about h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-navy);
+    margin-top: 2.5rem;
+    margin-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.4rem;
+  }
+  .prose-about p {
+    color: #3a4a5c;
+    line-height: 1.8;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+  }
+  .prose-about ul {
+    list-style: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .prose-about li {
+    color: #3a4a5c;
+    line-height: 1.7;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+  }
+  .prose-about a {
+    color: var(--color-navy);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .prose-about a:hover { opacity: 0.7; }
+</style>

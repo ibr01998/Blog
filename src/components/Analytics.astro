@@ -3,30 +3,40 @@ const { slug } = Astro.props;
 ---
 
 <script define:vars={{ slug }}>
+  const CONSENT_KEY = 'sn_cookie_consent';
   let viewId = null;
+
+  // Helper: Check analytics consent
+  function hasAnalyticsConsent() {
+    try {
+      const c = JSON.parse(localStorage.getItem(CONSENT_KEY) || '{}');
+      return c.analytics === true;
+    } catch { return false; }
+  }
 
   // Helper: Get or Create Visitor ID
   function getVisitorId() {
     let id = localStorage.getItem('visitorId');
     if (!id) {
-        id = crypto.randomUUID();
-        localStorage.setItem('visitorId', id);
+      id = crypto.randomUUID();
+      localStorage.setItem('visitorId', id);
     }
     return id;
   }
 
   // 1. Track Page View
   async function trackView() {
+    if (!hasAnalyticsConsent()) return;
     try {
       const visitorId = getVisitorId();
       const res = await fetch('/api/analytics/track', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            type: 'view', 
-            slug,
-            referrer: document.referrer || 'Direct',
-            visitorId
+        body: JSON.stringify({
+          type: 'view',
+          slug,
+          referrer: document.referrer || 'Direct',
+          visitorId
         })
       });
       const data = await res.json();
@@ -41,38 +51,44 @@ const { slug } = Astro.props;
   function startHeartbeat() {
     if (!viewId) return;
     setInterval(async () => {
-      if (document.hidden) return; // Don't track if tab is hidden
+      if (document.hidden) return;
+      if (!hasAnalyticsConsent()) return;
       await fetch('/api/analytics/track', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'heartbeat', slug, viewId })
       });
-    }, 5000); // Every 5 seconds
+    }, 5000);
   }
 
   // 3. Track Clicks
   function setupClickTracking() {
     document.addEventListener('click', async (e) => {
+      if (!hasAnalyticsConsent()) return;
       const link = e.target.closest('a');
       if (!link) return;
-      
       const href = link.getAttribute('href');
       if (!href) return;
-
-      // Only track external or affiliate links
       if (href.startsWith('http') || href.startsWith('/go/')) {
-         fetch('/api/analytics/track', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'click', slug, link: href })
-         });
+        fetch('/api/analytics/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'click', slug, link: href })
+        });
       }
     });
   }
 
+  // 4. Re-init if consent is given later (user clicks Accept on banner)
+  window.addEventListener('sn:consent-update', (e) => {
+    if (e.detail?.analytics && slug && !viewId) {
+      trackView();
+    }
+  });
+
   // Init
   if (slug) {
-      trackView();
-      setupClickTracking();
+    trackView();
+    setupClickTracking();
   }
 </script>

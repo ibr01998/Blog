@@ -1,0 +1,171 @@
+---
+import Layout from '../layouts/Layout.astro';
+const title = 'Privacyverklaring';
+const description = 'Lees hoe ShortNews omgaat met uw persoonsgegevens, welke cookies wij gebruiken en wat uw rechten zijn onder de AVG/GDPR.';
+const lastUpdated = '17 februari 2026';
+---
+
+<Layout title={title} description={description}>
+  <div class="container mx-auto px-6 py-16 max-w-3xl">
+    <span class="date-badge mb-6 inline-block">Juridisch</span>
+    <h1 class="text-4xl font-extrabold text-navy mb-3 leading-tight">Privacyverklaring</h1>
+    <p class="text-sm text-muted mb-10">Laatste update: {lastUpdated}</p>
+
+    <div class="prose prose-legal">
+
+      <h2>1. Wie zijn wij?</h2>
+      <p>
+        ShortNews is een informatieve website over crypto trading, gericht op lezers in Nederland en België.
+        ShortNews is bereikbaar via <a href="https://shortnews.tech">shortnews.tech</a>.
+      </p>
+      <p>
+        <strong>Verwerkingsverantwoordelijke:</strong><br />
+        ShortNews<br />
+        E-mail: <a href="mailto:privacy@shortnews.tech">privacy@shortnews.tech</a>
+      </p>
+
+      <h2>2. Welke gegevens verwerken wij?</h2>
+      <p>Wij verwerken de volgende categorieën persoonsgegevens, uitsluitend na uw toestemming:</p>
+      <ul>
+        <li><strong>Analytische gegevens</strong> – geanonimiseerd IP-adres, paginabezoeken, verblijfsduur, klikgedrag, herkomst van verkeer (via Google Analytics 4).</li>
+        <li><strong>Contactformuliergegevens</strong> – naam, e-mailadres en de inhoud van uw bericht, uitsluitend bij het invullen van het contactformulier.</li>
+        <li><strong>Technische gegevens</strong> – anonieme sessie-ID die lokaal in uw browser wordt opgeslagen (localStorage), uitsluitend voor functionele doeleinden.</li>
+      </ul>
+      <p>Wij verzamelen <strong>geen</strong> bijzondere categorieën persoonsgegevens (zoals gezondheidsgegevens of politieke opvattingen).</p>
+
+      <h2>3. Grondslag voor verwerking</h2>
+      <ul>
+        <li><strong>Toestemming (art. 6 lid 1 sub a AVG)</strong> – voor analytische cookies en marketing cookies. U kunt uw toestemming te allen tijde intrekken via de cookieinstellingen in de footer.</li>
+        <li><strong>Gerechtvaardigd belang (art. 6 lid 1 sub f AVG)</strong> – voor het bijhouden van beveiligings- en prestatiemetingen (anoniem en zonder identificatie van personen).</li>
+        <li><strong>Uitvoering van een overeenkomst (art. 6 lid 1 sub b AVG)</strong> – voor het verwerken van contactverzoeken.</li>
+      </ul>
+
+      <h2>4. Cookies</h2>
+      <p>Wij gebruiken drie categorieën cookies:</p>
+
+      <h3>Functionele cookies (altijd actief)</h3>
+      <p>Deze cookies zijn strikt noodzakelijk voor het functioneren van de website. Zij slaan geen persoonsgegevens op en vereisen geen toestemming.</p>
+      <ul>
+        <li><code>theme</code> – slaat uw voorkeur op voor lichte of donkere weergave (localStorage).</li>
+      </ul>
+
+      <h3>Analytische cookies (opt-in)</h3>
+      <p>Uitsluitend na uw toestemming wordt Google Analytics 4 geactiveerd. Wij hebben IP-anonimisering ingeschakeld. De gegevens worden niet gebruikt voor advertentiedoeleinden.</p>
+      <ul>
+        <li><code>_ga</code>, <code>_ga_*</code> – Google Analytics cookies (vervallen na 2 jaar).</li>
+        <li><code>sn_cookie_consent</code> – slaat uw cookievoorkeur op (localStorage, 1 jaar).</li>
+      </ul>
+
+      <h3>Marketing cookies (opt-in)</h3>
+      <p>Momenteel maken wij geen gebruik van marketing- of retargetingcookies. Dit type cookie wordt uitsluitend geplaatst als u hiervoor expliciet toestemming geeft.</p>
+
+      <h2>5. Google Analytics 4 en Google Consent Mode v2</h2>
+      <p>
+        Wij maken gebruik van Google Analytics 4 (GA4) van Google LLC, 1600 Amphitheatre Parkway, Mountain View, CA 94043, VS.
+        GA4 is geconfigureerd met <em>Google Consent Mode v2</em>: bij het laden van de pagina worden alle tracking-signalen standaard uitgeschakeld (<code>denied</code>). Pas na uw expliciete toestemming worden analytische cookies ingeschakeld.
+      </p>
+      <p>
+        Google kan als verwerker in de VS persoonsgegevens verwerken. Voor de doorgifte naar de VS beroepen wij ons op de Standard Contractual Clauses (SCC's) die Google heeft gesloten.
+        Raadpleeg het <a href="https://policies.google.com/privacy" rel="noopener noreferrer" target="_blank">privacybeleid van Google</a> voor meer informatie.
+      </p>
+
+      <h2>6. Vercel Analytics</h2>
+      <p>
+        De website draait op het Vercel-platform. Vercel verzamelt anonieme prestatiestatistieken (Core Web Vitals) zonder cookies en zonder persoonsgegevens te verwerken.
+        Raadpleeg het <a href="https://vercel.com/legal/privacy-policy" rel="noopener noreferrer" target="_blank">privacybeleid van Vercel</a> voor meer informatie.
+      </p>
+
+      <h2>7. Bewaartermijnen</h2>
+      <ul>
+        <li>Analytische gegevens (GA4): maximaal 14 maanden (geconfigureerd in GA4).</li>
+        <li>Contactformuliergegevens: maximaal 12 maanden na afhandeling van uw verzoek.</li>
+        <li>Cookietoestemming (localStorage): 1 jaar, daarna wordt opnieuw om toestemming gevraagd.</li>
+      </ul>
+
+      <h2>8. Uw rechten</h2>
+      <p>Op grond van de AVG heeft u de volgende rechten:</p>
+      <ul>
+        <li><strong>Recht op inzage</strong> – u kunt opvragen welke gegevens wij van u verwerken.</li>
+        <li><strong>Recht op rectificatie</strong> – u kunt onjuiste gegevens laten corrigeren.</li>
+        <li><strong>Recht op gegevenswissing ("recht op vergetelheid")</strong> – u kunt verzoeken om verwijdering van uw gegevens.</li>
+        <li><strong>Recht op beperking van verwerking</strong> – u kunt verzoeken de verwerking tijdelijk te beperken.</li>
+        <li><strong>Recht op gegevensoverdraagbaarheid</strong> – u kunt uw gegevens in een gestructureerd formaat opvragen.</li>
+        <li><strong>Recht van bezwaar</strong> – u kunt bezwaar maken tegen verwerking op grond van gerechtvaardigd belang.</li>
+        <li><strong>Recht op intrekking van toestemming</strong> – u kunt uw cookietoestemming te allen tijde intrekken via de cookieknop in de footer, zonder dat dit de rechtmatigheid van de verwerking vóór intrekking aantast.</li>
+      </ul>
+      <p>
+        Stuur uw verzoek naar: <a href="mailto:privacy@shortnews.tech">privacy@shortnews.tech</a>. Wij reageren binnen 30 dagen.
+      </p>
+
+      <h2>9. Klachten</h2>
+      <p>
+        Als u van mening bent dat wij uw gegevens onrechtmatig verwerken, heeft u het recht een klacht in te dienen bij de Autoriteit Persoonsgegevens (Nederland):
+        <a href="https://www.autoriteitpersoonsgegevens.nl" rel="noopener noreferrer" target="_blank">www.autoriteitpersoonsgegevens.nl</a>.
+        Belgische lezers kunnen terecht bij de <a href="https://www.gegevensbeschermingsautoriteit.be" rel="noopener noreferrer" target="_blank">Gegevensbeschermingsautoriteit</a>.
+      </p>
+
+      <h2>10. Wijzigingen</h2>
+      <p>
+        Wij kunnen deze privacyverklaring te allen tijde aanpassen. De meest recente versie is altijd beschikbaar op <a href="/privacy">/privacy</a>. Bij ingrijpende wijzigingen informeren wij u via de website.
+      </p>
+
+      <h2>11. Contact</h2>
+      <p>
+        Voor vragen over deze privacyverklaring of over uw gegevens kunt u contact opnemen via:<br />
+        E-mail: <a href="mailto:privacy@shortnews.tech">privacy@shortnews.tech</a><br />
+        Of via ons <a href="/contact">contactformulier</a>.
+      </p>
+
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .prose-legal h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-navy);
+    margin-top: 2.5rem;
+    margin-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.4rem;
+  }
+  .prose-legal h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-navy);
+    margin-top: 1.5rem;
+    margin-bottom: 0.4rem;
+  }
+  .prose-legal p {
+    color: #3a4a5c;
+    line-height: 1.8;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+  }
+  .prose-legal ul {
+    list-style: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .prose-legal li {
+    color: #3a4a5c;
+    line-height: 1.7;
+    margin-bottom: 0.4rem;
+    font-size: 0.95rem;
+  }
+  .prose-legal a {
+    color: var(--color-navy);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .prose-legal a:hover { opacity: 0.7; }
+  .prose-legal code {
+    font-size: 0.82rem;
+    background: rgba(27,45,79,0.07);
+    padding: 0.1em 0.4em;
+    border-radius: 3px;
+    font-family: monospace;
+  }
+  .text-muted { color: var(--text-muted); }
+</style>

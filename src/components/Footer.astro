@@ -4,14 +4,18 @@ const today = new Date();
 <footer class="bg-navy mt-auto" style="color: var(--color-cream);">
 	<div class="container mx-auto px-6 max-w-7xl py-6 flex flex-col sm:flex-row justify-between items-center gap-3">
 		<p class="text-sm font-medium">&copy; {today.getFullYear()} ShortNews</p>
-		<nav class="flex gap-5 text-sm">
+		<nav class="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm">
 			<a href="/" class="opacity-70 hover:opacity-100 transition-opacity">Home</a>
-			<span class="opacity-30">·</span>
+			<span class="opacity-30 hidden sm:inline">·</span>
 			<a href="/blog" class="opacity-70 hover:opacity-100 transition-opacity">Blog</a>
-			<span class="opacity-30">·</span>
-			<a href="#" class="opacity-70 hover:opacity-100 transition-opacity">Disclaimer</a>
-			<span class="opacity-30">·</span>
-			<a href="#" class="opacity-70 hover:opacity-100 transition-opacity">Privacy</a>
+			<span class="opacity-30 hidden sm:inline">·</span>
+			<a href="/about" class="opacity-70 hover:opacity-100 transition-opacity">Over ons</a>
+			<span class="opacity-30 hidden sm:inline">·</span>
+			<a href="/contact" class="opacity-70 hover:opacity-100 transition-opacity">Contact</a>
+			<span class="opacity-30 hidden sm:inline">·</span>
+			<a href="/terms" class="opacity-70 hover:opacity-100 transition-opacity">Voorwaarden</a>
+			<span class="opacity-30 hidden sm:inline">·</span>
+			<a href="/privacy" class="opacity-70 hover:opacity-100 transition-opacity">Privacy</a>
 		</nav>
 	</div>
 </footer>

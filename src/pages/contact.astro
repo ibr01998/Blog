@@ -1,0 +1,334 @@
+---
+import Layout from '../layouts/Layout.astro';
+const title = 'Contact';
+const description = 'Neem contact op met ShortNews. Vragen, suggesties of samenwerkingsverzoeken? Wij reageren binnen 2 werkdagen.';
+---
+
+<Layout title={title} description={description}>
+  <div class="container mx-auto px-6 py-16 max-w-2xl">
+    <span class="date-badge mb-6 inline-block">Contact</span>
+    <h1 class="text-4xl font-extrabold text-navy mb-3 leading-tight">Neem contact op</h1>
+    <p class="text-sm mb-10" style="color: var(--text-muted)">
+      Gebruik het onderstaande formulier voor vragen, feedback of samenwerkingsverzoeken.
+      Wij reageren doorgaans binnen 2 werkdagen.
+    </p>
+
+    <!-- Success message (hidden by default) -->
+    <div id="form-success" class="contact-alert contact-alert--success" style="display:none" role="alert">
+      <strong>Bericht verzonden!</strong> Bedankt voor uw bericht. Wij nemen zo snel mogelijk contact met u op.
+    </div>
+
+    <!-- Error message (hidden by default) -->
+    <div id="form-error" class="contact-alert contact-alert--error" style="display:none" role="alert">
+      <strong>Er is iets misgegaan.</strong> Controleer uw gegevens en probeer het opnieuw.
+    </div>
+
+    <form id="contact-form" class="contact-form" novalidate>
+      <!-- Honeypot (hidden field, bots fill this) -->
+      <div style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">
+        <label for="website">Website (laat leeg)</label>
+        <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
+      </div>
+
+      <div class="contact-form__row">
+        <label class="contact-form__label" for="name">Naam <span class="contact-form__required">*</span></label>
+        <input
+          class="contact-form__input"
+          type="text"
+          id="name"
+          name="name"
+          placeholder="Uw naam"
+          autocomplete="name"
+          required
+          maxlength="100"
+        />
+        <span class="contact-form__error" id="name-error"></span>
+      </div>
+
+      <div class="contact-form__row">
+        <label class="contact-form__label" for="email">E-mailadres <span class="contact-form__required">*</span></label>
+        <input
+          class="contact-form__input"
+          type="email"
+          id="email"
+          name="email"
+          placeholder="u@voorbeeld.nl"
+          autocomplete="email"
+          required
+          maxlength="254"
+        />
+        <span class="contact-form__error" id="email-error"></span>
+      </div>
+
+      <div class="contact-form__row">
+        <label class="contact-form__label" for="subject">Onderwerp <span class="contact-form__required">*</span></label>
+        <select class="contact-form__input contact-form__select" id="subject" name="subject" required>
+          <option value="">— Kies een onderwerp —</option>
+          <option value="general">Algemene vraag</option>
+          <option value="privacy">Privacy / AVG verzoek</option>
+          <option value="content">Fout in een artikel</option>
+          <option value="partnership">Samenwerking / partnership</option>
+          <option value="other">Overig</option>
+        </select>
+        <span class="contact-form__error" id="subject-error"></span>
+      </div>
+
+      <div class="contact-form__row">
+        <label class="contact-form__label" for="message">Bericht <span class="contact-form__required">*</span></label>
+        <textarea
+          class="contact-form__input contact-form__textarea"
+          id="message"
+          name="message"
+          placeholder="Schrijf hier uw bericht..."
+          required
+          minlength="10"
+          maxlength="2000"
+          rows="6"
+        ></textarea>
+        <span class="contact-form__error" id="message-error"></span>
+        <span class="contact-form__hint" id="message-count">0 / 2000 tekens</span>
+      </div>
+
+      <p class="contact-form__privacy-note">
+        Door dit formulier in te sturen gaat u akkoord met onze <a href="/privacy">privacyverklaring</a>.
+        Uw gegevens worden uitsluitend gebruikt om uw verzoek te behandelen.
+      </p>
+
+      <button type="submit" id="submit-btn" class="contact-form__submit">
+        <span id="submit-text">Bericht versturen</span>
+        <span id="submit-spinner" style="display:none">Versturen…</span>
+      </button>
+    </form>
+  </div>
+</Layout>
+
+<style>
+  .contact-form {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .contact-form__row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .contact-form__label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-navy);
+  }
+
+  .contact-form__required {
+    color: #c0392b;
+    margin-left: 1px;
+  }
+
+  .contact-form__input {
+    padding: 0.65rem 0.9rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: white;
+    color: var(--color-navy);
+    font-size: 0.9rem;
+    font-family: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+  }
+
+  .contact-form__input:focus {
+    border-color: var(--color-navy);
+    box-shadow: 0 0 0 3px rgba(27,45,79,0.1);
+  }
+
+  .contact-form__input.invalid {
+    border-color: #c0392b;
+    box-shadow: 0 0 0 3px rgba(192,57,43,0.08);
+  }
+
+  .contact-form__select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%231B2D4F' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2.5rem;
+  }
+
+  .contact-form__textarea {
+    resize: vertical;
+    min-height: 140px;
+  }
+
+  .contact-form__error {
+    font-size: 0.78rem;
+    color: #c0392b;
+    min-height: 1em;
+  }
+
+  .contact-form__hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: right;
+  }
+
+  .contact-form__privacy-note {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  .contact-form__privacy-note a {
+    color: var(--color-navy);
+    text-decoration: underline;
+  }
+
+  .contact-form__submit {
+    align-self: flex-start;
+    background: var(--color-navy);
+    color: var(--color-cream);
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0.7rem 1.75rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    font-family: inherit;
+  }
+
+  .contact-form__submit:hover:not(:disabled) { opacity: 0.85; }
+  .contact-form__submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .contact-alert {
+    padding: 0.9rem 1.1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .contact-alert--success {
+    background: #e9f7ef;
+    border: 1px solid #27ae60;
+    color: #1a5e36;
+  }
+
+  .contact-alert--error {
+    background: #fdf3f1;
+    border: 1px solid #c0392b;
+    color: #7b1a11;
+  }
+
+  /* Dark mode adjustments */
+  :global(.dark) .contact-form__input {
+    background: #1a2a40;
+    border-color: rgba(245,240,235,0.2);
+    color: var(--color-cream);
+  }
+
+  :global(.dark) .contact-form__input:focus {
+    border-color: var(--color-cream);
+    box-shadow: 0 0 0 3px rgba(245,240,235,0.1);
+  }
+</style>
+
+<script>
+  const form = document.getElementById('contact-form') as HTMLFormElement;
+  const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+  const submitText = document.getElementById('submit-text')!;
+  const submitSpinner = document.getElementById('submit-spinner')!;
+  const successEl = document.getElementById('form-success')!;
+  const errorEl = document.getElementById('form-error')!;
+  const messageInput = document.getElementById('message') as HTMLTextAreaElement;
+  const messageCount = document.getElementById('message-count')!;
+
+  // Live character counter for message
+  messageInput?.addEventListener('input', () => {
+    const len = messageInput.value.length;
+    messageCount.textContent = `${len} / 2000 tekens`;
+  });
+
+  // Simple client-side validation
+  function validateField(id: string, errorId: string, check: (v: string) => string | null) {
+    const input = document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+    const errorEl = document.getElementById(errorId)!;
+    const msg = check(input.value.trim());
+    if (msg) {
+      input.classList.add('invalid');
+      errorEl.textContent = msg;
+      return false;
+    }
+    input.classList.remove('invalid');
+    errorEl.textContent = '';
+    return true;
+  }
+
+  function validateAll() {
+    const checks = [
+      validateField('name', 'name-error', v => !v ? 'Vul uw naam in.' : v.length > 100 ? 'Naam te lang.' : null),
+      validateField('email', 'email-error', v => {
+        if (!v) return 'Vul uw e-mailadres in.';
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Ongeldig e-mailadres.';
+        return null;
+      }),
+      validateField('subject', 'subject-error', v => !v ? 'Kies een onderwerp.' : null),
+      validateField('message', 'message-error', v => {
+        if (!v) return 'Schrijf een bericht.';
+        if (v.length < 10) return 'Bericht te kort (minimaal 10 tekens).';
+        return null;
+      }),
+    ];
+    return checks.every(Boolean);
+  }
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    successEl.style.display = 'none';
+    errorEl.style.display   = 'none';
+
+    if (!validateAll()) return;
+
+    // Honeypot check
+    const honeypot = (document.getElementById('website') as HTMLInputElement)?.value;
+    if (honeypot) return; // Silent fail for bots
+
+    submitBtn.disabled   = true;
+    submitText.style.display  = 'none';
+    submitSpinner.style.display = 'inline';
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:    (document.getElementById('name')    as HTMLInputElement).value.trim(),
+          email:   (document.getElementById('email')   as HTMLInputElement).value.trim(),
+          subject: (document.getElementById('subject') as HTMLSelectElement).value,
+          message: messageInput.value.trim(),
+        })
+      });
+
+      if (res.ok) {
+        form.reset();
+        messageCount.textContent = '0 / 2000 tekens';
+        successEl.style.display = 'block';
+        successEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        const data = await res.json().catch(() => ({}));
+        errorEl.textContent = '';
+        const strong = errorEl.querySelector('strong');
+        if (strong) strong.textContent = data.error || 'Er is iets misgegaan.';
+        errorEl.style.display = 'block';
+      }
+    } catch {
+      errorEl.style.display = 'block';
+    } finally {
+      submitBtn.disabled     = false;
+      submitText.style.display  = 'inline';
+      submitSpinner.style.display = 'none';
+    }
+  });
+</script>

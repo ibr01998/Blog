@@ -13,6 +13,26 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 const { title, description, image = '/blog-placeholder-1.jpg', type = 'website' } = Astro.props;
 ---
 
+<!-- Google Consent Mode v2 — must run BEFORE any gtag/GA4 scripts -->
+<script is:inline>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){window.dataLayer.push(arguments);}
+
+  // Read stored consent (set by CookieConsent component)
+  var _snc = {};
+  try { _snc = JSON.parse(localStorage.getItem('sn_cookie_consent') || '{}'); } catch(e){}
+
+  gtag('consent', 'default', {
+    analytics_storage:     _snc.analytics  ? 'granted' : 'denied',
+    ad_storage:            _snc.marketing  ? 'granted' : 'denied',
+    ad_user_data:          _snc.marketing  ? 'granted' : 'denied',
+    ad_personalization:    _snc.marketing  ? 'granted' : 'denied',
+    functionality_storage: 'granted',
+    security_storage:      'granted',
+    wait_for_update:       500
+  });
+</script>
+
 <!-- Theme: apply before render to prevent flash of unstyled content -->
 <script is:inline>
   (function () {
