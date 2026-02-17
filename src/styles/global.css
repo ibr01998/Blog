@@ -346,3 +346,28 @@ html.dark .bg-white\/50 {
 html.dark .bg-white {
   background-color: var(--bg-card) !important;
 }
+html.dark .bg-white\/80 {
+  background-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+/* ---- Research Agent "laatste analyse" card: blue light-only classes ---- */
+html.dark .bg-blue-50\/60 {
+  background-color: rgba(59, 130, 246, 0.08) !important;
+}
+html.dark .border-blue-100\/80,
+html.dark .border-blue-100 {
+  border-color: rgba(59, 130, 246, 0.2) !important;
+}
+html.dark .text-blue-800 {
+  color: #93c5fd !important;
+}
+html.dark .text-blue-600 {
+  color: #60a5fa !important;
+}
+/* Empty state card in Research Agent */
+html.dark .bg-gray-50 {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+html.dark .border-gray-200 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
