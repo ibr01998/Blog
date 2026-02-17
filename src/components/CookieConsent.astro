@@ -16,13 +16,13 @@
       </div>
       <div class="cookie-banner__actions">
         <button id="btn-decline-all" class="cookie-btn cookie-btn--outline" type="button">Alles weigeren</button>
-        <button id="btn-settings" class="cookie-btn cookie-btn--ghost" type="button">Instellingen</button>
-        <button id="btn-accept-all" class="cookie-btn cookie-btn--primary" type="button">Alles accepteren</button>
+        <button id="btn-settings"    class="cookie-btn cookie-btn--ghost"   type="button">Instellingen</button>
+        <button id="btn-accept-all"  class="cookie-btn cookie-btn--primary" type="button">Alles accepteren</button>
       </div>
     </div>
   </div>
 
-  <!-- Detail/settings view -->
+  <!-- Detail / settings view -->
   <div id="consent-settings" style="display:none">
     <div class="cookie-banner__content cookie-banner__content--wide">
       <p class="cookie-banner__title">Cookievoorkeuren</p>
@@ -102,9 +102,7 @@
     padding: 1.5rem;
   }
 
-  .cookie-banner__text {
-    flex: 1 1 300px;
-  }
+  .cookie-banner__text { flex: 1 1 300px; }
 
   .cookie-banner__title {
     font-size: 0.95rem;
@@ -137,7 +135,6 @@
     margin-top: 1rem;
   }
 
-  /* Buttons */
   .cookie-btn {
     padding: 0.5rem 1.1rem;
     font-size: 0.8rem;
@@ -147,6 +144,7 @@
     cursor: pointer;
     transition: opacity 0.15s;
     white-space: nowrap;
+    font-family: inherit;
   }
 
   .cookie-btn:hover { opacity: 0.85; }
@@ -171,7 +169,6 @@
     padding-right: 0.25rem;
   }
 
-  /* Toggle rows */
   .cookie-toggle {
     display: flex;
     align-items: center;
@@ -181,9 +178,7 @@
     border-bottom: 1px solid rgba(255,255,255,0.1);
   }
 
-  .cookie-toggle__info {
-    flex: 1;
-  }
+  .cookie-toggle__info { flex: 1; }
 
   .cookie-toggle__name {
     display: block;
@@ -200,7 +195,6 @@
     margin-top: 0.2rem;
   }
 
-  /* Toggle switch */
   .cookie-toggle__switch {
     position: relative;
     display: flex;
@@ -263,102 +257,103 @@
   }
 </style>
 
-<script>
-  const CONSENT_KEY = 'sn_cookie_consent';
-  const CONSENT_VERSION = 1;
-  const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+<!-- is:inline ensures this runs as-is, no bundling, no module caching -->
+<script is:inline>
+(function () {
+  var CONSENT_KEY     = 'sn_cookie_consent';
+  var CONSENT_VERSION = 1;
+  var ONE_YEAR_MS     = 365 * 24 * 60 * 60 * 1000;
 
   function loadConsent() {
     try {
-      const raw = localStorage.getItem(CONSENT_KEY);
+      var raw = localStorage.getItem(CONSENT_KEY);
       if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      // Expire after 1 year
+      var parsed = JSON.parse(raw);
       if (Date.now() - (parsed.timestamp || 0) > ONE_YEAR_MS) return null;
       if (parsed.version !== CONSENT_VERSION) return null;
       return parsed;
-    } catch {
+    } catch (e) {
       return null;
     }
   }
 
-  function saveConsent(analytics: boolean, marketing: boolean) {
-    const consent = {
-      version: CONSENT_VERSION,
-      analytics,
-      marketing,
+  function saveConsent(analytics, marketing) {
+    var consent = {
+      version:   CONSENT_VERSION,
+      analytics: analytics,
+      marketing: marketing,
       functional: true,
       timestamp: Date.now()
     };
-    localStorage.setItem(CONSENT_KEY, JSON.stringify(consent));
+    try { localStorage.setItem(CONSENT_KEY, JSON.stringify(consent)); } catch(e) {}
     applyConsentMode(consent);
     window.dispatchEvent(new CustomEvent('sn:consent-update', { detail: consent }));
   }
 
-  function applyConsentMode(consent: { analytics: boolean; marketing: boolean }) {
+  function applyConsentMode(consent) {
     if (typeof window.gtag !== 'function') return;
     window.gtag('consent', 'update', {
       analytics_storage:  consent.analytics ? 'granted' : 'denied',
       ad_storage:         consent.marketing ? 'granted' : 'denied',
       ad_user_data:       consent.marketing ? 'granted' : 'denied',
-      ad_personalization: consent.marketing ? 'granted' : 'denied',
+      ad_personalization: consent.marketing ? 'granted' : 'denied'
     });
   }
 
   function hideBanner() {
-    const banner = document.getElementById('cookie-banner');
-    if (banner) banner.style.display = 'none';
+    var b = document.getElementById('cookie-banner');
+    if (b) b.style.display = 'none';
   }
 
   function showBanner() {
-    const banner = document.getElementById('cookie-banner');
-    if (banner) banner.style.display = 'block';
+    var b = document.getElementById('cookie-banner');
+    if (b) b.style.display = 'block';
   }
 
   function init() {
-    const existing = loadConsent();
+    var existing = loadConsent();
     if (existing) {
-      // Consent already given — apply and don't show banner
       applyConsentMode(existing);
       return;
     }
+
     showBanner();
 
-    const summary  = document.getElementById('consent-summary')!;
-    const settings = document.getElementById('consent-settings')!;
-    const toggleAnalytics = document.getElementById('toggle-analytics') as HTMLInputElement;
-    const toggleMarketing = document.getElementById('toggle-marketing') as HTMLInputElement;
+    var summary          = document.getElementById('consent-summary');
+    var settings         = document.getElementById('consent-settings');
+    var toggleAnalytics  = document.getElementById('toggle-analytics');
+    var toggleMarketing  = document.getElementById('toggle-marketing');
 
-    document.getElementById('btn-accept-all')!.addEventListener('click', () => {
+    document.getElementById('btn-accept-all').addEventListener('click', function () {
       saveConsent(true, true);
       hideBanner();
     });
 
-    document.getElementById('btn-decline-all')!.addEventListener('click', () => {
+    document.getElementById('btn-decline-all').addEventListener('click', function () {
       saveConsent(false, false);
       hideBanner();
     });
 
-    document.getElementById('btn-settings')!.addEventListener('click', () => {
-      const current = loadConsent();
+    document.getElementById('btn-settings').addEventListener('click', function () {
+      var current = loadConsent();
       if (current) {
         toggleAnalytics.checked = current.analytics;
         toggleMarketing.checked = current.marketing;
       }
-      summary.style.display  = 'none';
-      settings.style.display = 'block';
+      if (summary)  summary.style.display  = 'none';
+      if (settings) settings.style.display = 'block';
     });
 
-    document.getElementById('btn-save-prefs')!.addEventListener('click', () => {
+    document.getElementById('btn-save-prefs').addEventListener('click', function () {
       saveConsent(toggleAnalytics.checked, toggleMarketing.checked);
       hideBanner();
     });
   }
 
-  // Run after DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
   }
+})();
 </script>
