@@ -1,0 +1,575 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+import { db, Post, eq } from 'astro:db';
+
+const filePosts = await getCollection('blog');
+const dbPosts = await db.select().from(Post).where(eq(Post.status, 'published'));
+
+const allPosts = [
+  ...filePosts.map((p) => ({
+    slug:        p.slug,
+    title:       p.data.title,
+    description: p.data.description,
+    pubDate:     p.data.pubDate,
+    heroImage:   p.data.heroImage || null,
+    articleType: (p.data as any).article_type || null,
+  })),
+  ...dbPosts.map((p) => ({
+    slug:        p.slug,
+    title:       p.title,
+    description: p.description,
+    pubDate:     p.pubDate instanceof Date ? p.pubDate : new Date(String(p.pubDate)),
+    heroImage:   p.heroImage || null,
+    articleType: null as string | null,
+  })),
+].sort((a, b) => b.pubDate.valueOf() - a.pubDate.valueOf());
+
+// Collect unique types for filter chips
+const typeLabels: Record<string, string> = {
+  comparison: 'Vergelijking',
+  review:     'Review',
+  bonus:      'Bonus',
+  trust:      'Vertrouwen',
+  fee:        'Kosten',
+};
+const availableTypes = [...new Set(allPosts.map(p => p.articleType).filter(Boolean))] as string[];
+---
+
+<Layout title="Blog" description="Alle crypto trading artikelen van ShortNews. Vergelijkingen, reviews en strategieën voor traders in Nederland en België.">
+
+  <!-- Page header -->
+  <div class="blog-header">
+    <div class="blog-header__inner">
+      <div>
+        <span class="date-badge mb-4 inline-block">Blog</span>
+        <h1 class="text-4xl md:text-5xl font-extrabold text-navy leading-tight tracking-tight">
+          Alle artikelen
+        </h1>
+        <p class="text-muted text-sm mt-2">{allPosts.length} {allPosts.length === 1 ? 'artikel' : 'artikelen'} gepubliceerd</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toolbar: search + sort -->
+  <div class="toolbar-wrap">
+    <div class="toolbar">
+      <!-- Search -->
+      <div class="search-wrap">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input
+          id="blog-search"
+          type="search"
+          placeholder="Zoek artikelen…"
+          class="search-input"
+          aria-label="Zoek artikelen"
+          autocomplete="off"
+        />
+        <button id="search-clear" class="search-clear" aria-label="Wis zoekopdracht" style="display:none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Sort -->
+      <div class="sort-wrap" role="group" aria-label="Sortering">
+        <button id="sort-new" class="sort-btn sort-btn--active" data-sort="new">Nieuwste</button>
+        <button id="sort-old" class="sort-btn" data-sort="old">Oudste</button>
+      </div>
+    </div>
+
+    <!-- Filter chips (only when article types exist) -->
+    {availableTypes.length > 0 && (
+      <div class="filter-chips" role="group" aria-label="Filter op type">
+        <button class="chip chip--active" data-type="all">Alles</button>
+        {availableTypes.map(type => (
+          <button class="chip" data-type={type}>
+            {typeLabels[type] || type}
+          </button>
+        ))}
+      </div>
+    )}
+  </div>
+
+  <!-- Results count + empty state -->
+  <div class="results-bar">
+    <div class="results-bar__inner">
+      <span id="results-count" class="results-count"></span>
+    </div>
+  </div>
+
+  <!-- Article grid -->
+  <section class="grid-section">
+    <div class="grid-inner">
+      <div id="posts-grid" class="posts-grid">
+        {allPosts.map((post) => (
+          <article
+            class="post-card group"
+            data-title={post.title.toLowerCase()}
+            data-description={post.description?.toLowerCase() || ''}
+            data-type={post.articleType || 'none'}
+            data-date={post.pubDate.valueOf()}
+          >
+            <a href={`/blog/${post.slug}/`} class="post-card__img-wrap duotone-navy" tabindex="-1" aria-hidden="true">
+              <img
+                width={720} height={405}
+                src={post.heroImage || '/blog-placeholder-1.jpg'}
+                alt=""
+                loading="lazy"
+                class="post-card__img"
+              />
+            </a>
+            <div class="post-card__body">
+              <div class="post-card__meta">
+                <span class="date-badge">
+                  {post.pubDate.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </span>
+                {post.articleType && typeLabels[post.articleType] && (
+                  <span class="type-chip">{typeLabels[post.articleType]}</span>
+                )}
+              </div>
+              <h2 class="post-card__title">
+                <a href={`/blog/${post.slug}/`}>{post.title}</a>
+              </h2>
+              <p class="post-card__desc">{post.description}</p>
+              <a href={`/blog/${post.slug}/`} class="post-card__cta">
+                Lees meer &rarr;
+              </a>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <!-- Empty state -->
+      <div id="empty-state" class="empty-state" style="display:none">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <p>Geen artikelen gevonden voor <strong id="empty-query"></strong></p>
+        <button id="empty-reset" class="empty-reset">Wis filters</button>
+      </div>
+    </div>
+  </section>
+
+</Layout>
+
+<style>
+  /* ── Header ───────────────────────────────────────────────── */
+  .blog-header {
+    padding: 3rem 1.5rem 0;
+  }
+  .blog-header__inner {
+    max-width: 80rem;
+    margin: 0 auto;
+  }
+
+  /* ── Toolbar ─────────────────────────────────────────────── */
+  .toolbar-wrap {
+    position: sticky;
+    top: 64px; /* below the site header */
+    z-index: 40;
+    padding: 1rem 1.5rem 0;
+    background: var(--bg-main);
+    /* match halftone texture so it blends with the body */
+    background-image: radial-gradient(circle, var(--dot-color) var(--dot-size), transparent var(--dot-size));
+    background-size: var(--dot-spacing) var(--dot-spacing);
+  }
+
+  .toolbar {
+    max-width: 80rem;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.6rem 0.75rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
+
+  /* Search */
+  .search-wrap {
+    position: relative;
+    flex: 1 1 200px;
+    display: flex;
+    align-items: center;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 0.6rem;
+    color: var(--text-muted);
+    pointer-events: none;
+    flex-shrink: 0;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 0.45rem 2rem 0.45rem 2.1rem;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    font-size: 0.875rem;
+    font-family: inherit;
+    color: var(--color-navy);
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .search-input::placeholder { color: var(--text-muted); }
+
+  .search-input:focus {
+    border-color: var(--border-color);
+    background: var(--bg-main);
+  }
+
+  /* clear ✕ button */
+  .search-clear {
+    position: absolute;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 2px;
+    display: flex;
+    align-items: center;
+  }
+  .search-clear:hover { color: var(--color-navy); }
+
+  /* Sort */
+  .sort-wrap {
+    display: flex;
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+
+  .sort-btn {
+    padding: 0.35rem 0.8rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: 5px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.12s;
+    white-space: nowrap;
+  }
+
+  .sort-btn:hover { color: var(--color-navy); background: var(--bg-main); }
+
+  .sort-btn--active {
+    background: var(--color-navy);
+    color: var(--color-cream);
+    border-color: var(--color-navy);
+  }
+
+  /* Filter chips */
+  .filter-chips {
+    max-width: 80rem;
+    margin: 0.5rem auto 0;
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    padding: 0.3rem 0.85rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: 100px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .chip:hover { border-color: var(--color-navy); color: var(--color-navy); }
+
+  .chip--active {
+    background: var(--color-navy);
+    color: var(--color-cream);
+    border-color: var(--color-navy);
+  }
+
+  /* ── Results bar ─────────────────────────────────────────── */
+  .results-bar {
+    padding: 0.75rem 1.5rem 0;
+  }
+  .results-bar__inner {
+    max-width: 80rem;
+    margin: 0 auto;
+  }
+  .results-count {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  /* ── Grid ────────────────────────────────────────────────── */
+  .grid-section {
+    padding: 1rem 1.5rem 4rem;
+  }
+  .grid-inner {
+    max-width: 80rem;
+    margin: 0 auto;
+  }
+
+  .posts-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 640px) {
+    .posts-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (min-width: 1024px) {
+    .posts-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  /* ── Post card ───────────────────────────────────────────── */
+  .post-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+
+  .post-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  }
+
+  .post-card__img-wrap {
+    display: block;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+    flex-shrink: 0;
+  }
+
+  .post-card__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.45s;
+  }
+
+  .post-card:hover .post-card__img { transform: scale(1.04); }
+
+  .post-card__body {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    padding: 1.1rem 1.25rem 1.25rem;
+    gap: 0.5rem;
+  }
+
+  .post-card__meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .type-chip {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-navy);
+    border: 1px solid var(--color-navy);
+    border-radius: 3px;
+    padding: 0.1rem 0.45rem;
+    opacity: 0.65;
+  }
+
+  .post-card__title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--color-navy);
+  }
+
+  .post-card__title a { text-decoration: none; }
+  .post-card__title a:hover { opacity: 0.7; }
+
+  .post-card__desc {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    flex-grow: 1;
+  }
+
+  .post-card__cta {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--color-navy);
+    text-decoration: none;
+    border-bottom: 1px solid var(--color-navy);
+    padding-bottom: 1px;
+    align-self: flex-start;
+    margin-top: 0.25rem;
+    opacity: 0.85;
+    transition: opacity 0.15s;
+  }
+
+  .post-card__cta:hover { opacity: 0.55; }
+
+  /* ── Empty state ─────────────────────────────────────────── */
+  .empty-state {
+    text-align: center;
+    padding: 5rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .empty-state p { font-size: 0.9rem; }
+  .empty-state strong { color: var(--color-navy); }
+
+  .empty-reset {
+    margin-top: 0.5rem;
+    padding: 0.45rem 1.2rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: inherit;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--color-navy);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .empty-reset:hover { background: var(--color-navy); color: var(--color-cream); }
+
+  /* ── Hidden card (filtered out) ─────────────────────────── */
+  .post-card[hidden] { display: none; }
+</style>
+
+<script>
+  const searchInput  = document.getElementById('blog-search')   as HTMLInputElement;
+  const searchClear  = document.getElementById('search-clear')  as HTMLButtonElement;
+  const sortNewBtn   = document.getElementById('sort-new')      as HTMLButtonElement;
+  const sortOldBtn   = document.getElementById('sort-old')      as HTMLButtonElement;
+  const grid         = document.getElementById('posts-grid')    as HTMLElement;
+  const emptyState   = document.getElementById('empty-state')   as HTMLElement;
+  const emptyQuery   = document.getElementById('empty-query')   as HTMLElement;
+  const emptyReset   = document.getElementById('empty-reset')   as HTMLButtonElement;
+  const resultsCount = document.getElementById('results-count') as HTMLElement;
+  const chipBtns     = document.querySelectorAll<HTMLButtonElement>('.chip');
+
+  const allCards = Array.from(
+    grid.querySelectorAll<HTMLElement>('.post-card')
+  );
+
+  let query       = '';
+  let activeType  = 'all';
+  let sortDir     = 'new'; // 'new' | 'old'
+
+  // ── Render ──────────────────────────────────────────────────
+  function render() {
+    const q = query.trim().toLowerCase();
+
+    let visible: HTMLElement[] = [];
+
+    allCards.forEach(card => {
+      const titleMatch = card.dataset.title?.includes(q) ?? true;
+      const descMatch  = card.dataset.description?.includes(q) ?? true;
+      const typeMatch  = activeType === 'all' || card.dataset.type === activeType;
+      const show       = (titleMatch || descMatch) && typeMatch;
+
+      card.hidden = !show;
+      if (show) visible.push(card);
+    });
+
+    // Sort visible cards in DOM
+    visible
+      .sort((a, b) => {
+        const da = Number(a.dataset.date);
+        const db = Number(b.dataset.date);
+        return sortDir === 'new' ? db - da : da - db;
+      })
+      .forEach(card => grid.appendChild(card));
+
+    // Results count
+    const total = allCards.length;
+    if (q || activeType !== 'all') {
+      resultsCount.textContent = `${visible.length} van ${total} artikelen`;
+    } else {
+      resultsCount.textContent = '';
+    }
+
+    // Empty state
+    const isEmpty = visible.length === 0;
+    emptyState.style.display = isEmpty ? 'flex' : 'none';
+    if (isEmpty && q) emptyQuery.textContent = `"${q}"`;
+    else if (isEmpty) emptyQuery.textContent = 'deze filter';
+  }
+
+  // ── Events ──────────────────────────────────────────────────
+  searchInput?.addEventListener('input', () => {
+    query = searchInput.value;
+    searchClear.style.display = query ? 'flex' : 'none';
+    render();
+  });
+
+  searchClear?.addEventListener('click', () => {
+    searchInput.value = '';
+    query = '';
+    searchClear.style.display = 'none';
+    searchInput.focus();
+    render();
+  });
+
+  sortNewBtn?.addEventListener('click', () => {
+    sortDir = 'new';
+    sortNewBtn.classList.add('sort-btn--active');
+    sortOldBtn.classList.remove('sort-btn--active');
+    render();
+  });
+
+  sortOldBtn?.addEventListener('click', () => {
+    sortDir = 'old';
+    sortOldBtn.classList.add('sort-btn--active');
+    sortNewBtn.classList.remove('sort-btn--active');
+    render();
+  });
+
+  chipBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeType = btn.dataset.type || 'all';
+      chipBtns.forEach(b => b.classList.toggle('chip--active', b === btn));
+      render();
+    });
+  });
+
+  emptyReset?.addEventListener('click', () => {
+    query = '';
+    activeType = 'all';
+    sortDir = 'new';
+    searchInput.value = '';
+    searchClear.style.display = 'none';
+    chipBtns.forEach(b => b.classList.toggle('chip--active', b.dataset.type === 'all'));
+    sortNewBtn.classList.add('sort-btn--active');
+    sortOldBtn.classList.remove('sort-btn--active');
+    render();
+  });
+
+  // Initial count
+  render();
+</script>
