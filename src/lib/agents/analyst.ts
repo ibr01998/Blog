@@ -209,9 +209,18 @@ Set best_performing_strategy to null if no strategy data exists.
 
     // 7. Log evolution suggestions separately for admin review
     for (const suggestion of llmOutput.suggested_agent_overrides) {
+      // Include the performance metrics that triggered this suggestion so the
+      // dashboard card can explain *why* this agent was flagged.
+      const writerData = writerStats.find(w => w.writer_id === suggestion.agent_id);
       await this.log({
         stage: 'evolution:suggestion',
-        inputSummary: { agent_id: suggestion.agent_id },
+        inputSummary: {
+          agent_id: suggestion.agent_id,
+          avg_ctr: writerData?.avg_ctr ?? null,
+          avg_conversion_rate: writerData?.avg_conversion_rate ?? null,
+          avg_time_on_page: writerData?.avg_time_on_page ?? null,
+          total_articles: writerData?.total_articles ?? null,
+        },
         decisionSummary: { suggested_overrides: suggestion.suggested_overrides },
         reasoningSummary: suggestion.reasoning,
       });

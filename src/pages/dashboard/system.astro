@@ -301,32 +301,60 @@ try {
           {config?.enable_auto_evolution ? 'Auto-evolutie staat aan — worden automatisch toegepast.' : 'Keur handmatig goed of wijs af.'}
         </p>
         <div class="space-y-3">
-          {evolutionSuggestions.map((s) => (
-            <div class="flex items-start gap-3 p-3 bg-amber-50/50 rounded-lg border border-amber-200/50">
-              <div class="flex-1">
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="text-xs font-semibold text-amber-800">{s.agent_name ?? 'Onbekend'}</span>
-                  <span class="text-xs text-gray-400">({s.agent_role})</span>
+          {evolutionSuggestions.map((s) => {
+            const overrides = s.decision_summary?.suggested_overrides ?? {};
+            const activeOverrides = Object.entries(overrides).filter(([, v]) => v !== null && v !== undefined);
+            const overrideLabels: Record<string, string> = {
+              reduce_hype: 'Minder hype',
+              increase_assertiveness: 'Meer assertief',
+              lower_wordcount: 'Kortere artikelen',
+              avoid_platform: `Vermijd platform`,
+              keyword_density_target: 'Keyword dichtheid aanpassen',
+            };
+            const metrics = s.input_summary ?? {};
+            const hasCtr = metrics.avg_ctr !== null && metrics.avg_ctr !== undefined;
+            const hasCvr = metrics.avg_conversion_rate !== null && metrics.avg_conversion_rate !== undefined;
+            return (
+              <div class="flex items-start gap-3 p-3 bg-amber-50/50 rounded-lg border border-amber-200/50">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xs font-semibold text-amber-800">{s.agent_name ?? 'Onbekend'}</span>
+                    <span class="text-xs text-gray-400">({s.agent_role})</span>
+                    {(hasCtr || hasCvr) && (
+                      <span class="text-xs text-gray-400 ml-1">
+                        {hasCtr && `CTR ${(metrics.avg_ctr * 100).toFixed(1)}%`}
+                        {hasCtr && hasCvr && ' · '}
+                        {hasCvr && `Conv. ${(metrics.avg_conversion_rate * 100).toFixed(1)}%`}
+                        {metrics.total_articles != null && ` · ${metrics.total_articles} art.`}
+                      </span>
+                    )}
+                  </div>
+                  <p class="text-xs text-gray-600 mb-2">{s.reasoning_summary}</p>
+                  {activeOverrides.length > 0 && (
+                    <div class="flex flex-wrap gap-1">
+                      {activeOverrides.map(([key, val]) => (
+                        <span class="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
+                          {overrideLabels[key] ?? key}
+                          {typeof val === 'string' && `: ${val}`}
+                          {typeof val === 'number' && `: ${val}`}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <p class="text-xs text-gray-600">{s.reasoning_summary}</p>
-                {s.decision_summary && (
-                  <pre class="text-xs text-gray-500 mt-1 bg-white/60 rounded p-1 overflow-auto max-h-20">
-                    {typeof s.decision_summary === 'string' ? s.decision_summary : JSON.stringify(s.decision_summary, null, 2)}
-                  </pre>
+                {!config?.enable_auto_evolution && s.agent_id && (
+                  <button
+                    class="apply-evolution-btn shrink-0 text-xs bg-navy text-white px-3 py-1.5 rounded-lg hover:bg-navy/90"
+                    data-agent-id={s.agent_id}
+                    data-log-id={s.id}
+                    data-overrides={JSON.stringify(overrides)}
+                  >
+                    Toepassen
+                  </button>
                 )}
               </div>
-              {!config?.enable_auto_evolution && s.agent_id && (
-                <button
-                  class="apply-evolution-btn shrink-0 text-xs bg-navy text-white px-3 py-1.5 rounded-lg hover:bg-navy/90"
-                  data-agent-id={s.agent_id}
-                  data-log-id={s.id}
-                  data-overrides={JSON.stringify(s.decision_summary?.suggested_overrides ?? {})}
-                >
-                  Toepassen
-                </button>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     )}

@@ -202,8 +202,12 @@ export async function runEditorialCycle(onProgress?: ProgressCallback): Promise<
     ]);
     for (const suggestion of analystReport.suggested_agent_overrides) {
       const agent = agentMap.get(suggestion.agent_id);
-      if (agent && Object.keys(suggestion.suggested_overrides).length > 0) {
-        agent.applyOverrides(suggestion.suggested_overrides);
+      // Strip null values — only apply overrides that are explicitly set
+      const cleanOverrides = Object.fromEntries(
+        Object.entries(suggestion.suggested_overrides).filter(([, v]) => v !== null)
+      );
+      if (agent && Object.keys(cleanOverrides).length > 0) {
+        agent.applyOverrides(cleanOverrides);
       }
     }
   }
@@ -327,15 +331,26 @@ export async function runEditorialCycle(onProgress?: ProgressCallback): Promise<
   if (cfg.enable_auto_evolution && analystReport.suggested_agent_overrides.length > 0) {
     for (const suggestion of analystReport.suggested_agent_overrides) {
       try {
-        // Only update if agent exists and suggestion has meaningful overrides
-        if (suggestion.agent_id && Object.keys(suggestion.suggested_overrides).length > 0) {
+        // Strip null values — only persist overrides that are explicitly set
+        const cleanOverrides = Object.fromEntries(
+          Object.entries(suggestion.suggested_overrides).filter(([, v]) => v !== null)
+        );
+        if (suggestion.agent_id && Object.keys(cleanOverrides).length > 0) {
           await query(
             `UPDATE agents
              SET behavior_overrides = behavior_overrides || $1::jsonb
              WHERE id = $2`,
-            [JSON.stringify(suggestion.suggested_overrides), suggestion.agent_id]
+            [JSON.stringify(cleanOverrides), suggestion.agent_id]
           );
         }
+        // Mark log as applied so it no longer appears in the dashboard queue
+        await query(
+          `UPDATE agent_logs
+           SET stage = 'evolution:applied'
+           WHERE stage = 'evolution:suggestion'
+             AND input_summary->>'agent_id' = $1`,
+          [suggestion.agent_id]
+        );
       } catch (err) {
         console.warn('[Orchestrator] Auto-evolution update failed for agent:', suggestion.agent_id, err);
       }
