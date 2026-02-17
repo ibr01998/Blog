@@ -304,7 +304,7 @@ try {
           {evolutionSuggestions.map((s) => {
             const overrides = s.decision_summary?.suggested_overrides ?? {};
             const activeOverrides = Object.entries(overrides).filter(([, v]) => v !== null && v !== undefined);
-            const overrideLabels: Record<string, string> = {
+            const overrideLabels = {
               reduce_hype: 'Minder hype',
               increase_assertiveness: 'Meer assertief',
               lower_wordcount: 'Kortere artikelen',
