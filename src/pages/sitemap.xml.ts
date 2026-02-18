@@ -22,6 +22,10 @@ export async function GET(context) {
   const staticPages = [
     '',
     '/blog',
+    '/about',
+    '/contact',
+    '/privacy',
+    '/terms',
   ];
 
   // 4. Build XML
