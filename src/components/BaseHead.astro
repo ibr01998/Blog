@@ -44,10 +44,18 @@ const { title, description, image = '/blog-placeholder-1.jpg', type = 'website' 
   })();
 </script>
 
+<!-- Preconnect to external domains for performance -->
+<link rel="preconnect" href="https://www.googletagmanager.com" />
+<link rel="dns-prefetch" href="https://www.google-analytics.com" />
+
 <!-- Global Metadata -->
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#1B2D4F" />
 <meta name="generator" content={Astro.generator} />
 
 <!-- Canonical URL -->
@@ -73,4 +81,20 @@ const { title, description, image = '/blog-placeholder-1.jpg', type = 'website' 
 <meta property="twitter:image" content={new URL(image, Astro.url)} />
 
 <!-- sitemap -->
-<link rel="sitemap" href="/sitemap-index.xml" />
+<link rel="sitemap" href="/sitemap.xml" type="application/xml" />
+
+<!-- Organization Schema -->
+<script type="application/ld+json" set:html={JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "ShortNews",
+  "url": "https://shortnews.tech",
+  "logo": "https://shortnews.tech/favicon.svg",
+  "description": "De gids voor high-leverage crypto trading in Nederland en België",
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "email": "info@shortnews.tech",
+    "contactType": "Customer Service"
+  },
+  "sameAs": []
+})} />

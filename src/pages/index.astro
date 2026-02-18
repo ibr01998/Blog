@@ -33,9 +33,9 @@ const otherPosts = posts.slice(1);
     <section class="relative">
         <!-- Halftone hero image -->
         <div class="relative w-full h-[420px] md:h-[520px] overflow-hidden duotone-navy halftone-bg">
-            <img 
-                src={featuredPost.data.heroImage || "/blog-placeholder-1.jpg"} 
-                alt="" 
+            <img
+                src={featuredPost.data.heroImage || "/blog-placeholder-1.jpg"}
+                alt={featuredPost.data.title}
                 class="w-full h-full object-cover"
             />
         </div>
@@ -79,11 +79,11 @@ const otherPosts = posts.slice(1);
                     otherPosts.map((post) => (
                     <article class="group flex flex-col glass rounded-lg overflow-hidden">
                         <a href={`/blog/${post.slug}/`} class="block overflow-hidden duotone-navy">
-                            <img 
-                                width={720} height={360} 
-                                src={post.data.heroImage || "/blog-placeholder-1.jpg"} 
-                                alt="" 
-                                class="w-full aspect-[16/9] object-cover group-hover:scale-105 transition-transform duration-500" 
+                            <img
+                                width={720} height={360}
+                                src={post.data.heroImage || "/blog-placeholder-1.jpg"}
+                                alt={post.data.title}
+                                class="w-full aspect-[16/9] object-cover group-hover:scale-105 transition-transform duration-500"
                             />
                         </a>
                         <div class="flex flex-col flex-grow p-5">

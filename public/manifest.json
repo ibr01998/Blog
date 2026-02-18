@@ -1,0 +1,27 @@
+{
+  "name": "ShortNews - Crypto Trading Nieuws",
+  "short_name": "ShortNews",
+  "description": "De gids voor high-leverage crypto trading in Nederland en België",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F5F0EB",
+  "theme_color": "#1B2D4F",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["news", "finance", "education"],
+  "lang": "nl-NL",
+  "dir": "ltr"
+}

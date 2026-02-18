@@ -60,7 +60,7 @@ if (platformSlugs && Array.isArray(platformSlugs) && platformSlugs.length > 0) {
     <!-- Hero: Duotone Image -->
     {post.data.heroImage && (
     <div class="relative w-full h-[320px] md:h-[450px] overflow-hidden duotone-navy">
-        <img width={1920} height={1080} src={post.data.heroImage} alt="" class="w-full h-full object-cover" />
+        <img width={1920} height={1080} src={post.data.heroImage} alt={post.data.title} class="w-full h-full object-cover" />
     </div>
     )}
 
