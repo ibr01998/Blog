@@ -21,7 +21,7 @@
 
 import type { APIRoute } from 'astro';
 import { query } from '../../../../lib/db/postgres.ts';
-import { db, Post } from 'astro:db';
+import { db, Post, Platform, inArray } from 'astro:db';
 
 interface ArticleRow {
   id: string;
@@ -57,7 +57,23 @@ function extractPlatformSlugs(markdown: string): string[] {
 }
 
 async function publishToPostTable(article: ArticleRow): Promise<void> {
-  const platforms = extractPlatformSlugs(article.article_markdown);
+  const extractedPlatforms = extractPlatformSlugs(article.article_markdown);
+
+  // Validate that all extracted platform slugs actually exist in Platform table
+  let platforms: string[] = [];
+  if (extractedPlatforms.length > 0) {
+    const validPlatforms = await db.select().from(Platform).where(
+      inArray(Platform.slug, extractedPlatforms)
+    );
+    const validSlugs = new Set(validPlatforms.map(p => p.slug));
+    platforms = extractedPlatforms.filter(slug => validSlugs.has(slug));
+
+    // Log warning if some platforms were invalid
+    const invalidPlatforms = extractedPlatforms.filter(slug => !validSlugs.has(slug));
+    if (invalidPlatforms.length > 0) {
+      console.warn(`[publishToPostTable] Invalid platform slugs in article ${article.slug}:`, invalidPlatforms);
+    }
+  }
 
   await db.insert(Post).values({
     slug: article.slug,
@@ -247,14 +263,24 @@ export const PATCH: APIRoute = async ({ params, request }) => {
       try {
         await publishToPostTable(updatedArticle);
       } catch (publishError) {
-        // Don't fail the whole request if Post table write fails
+        // CRITICAL: Rollback Postgres to draft if Astro DB write fails
         console.error('[articles/[id]] Post table publish failed:', publishError);
+
+        // Rollback the status in Postgres to prevent inconsistent state
+        try {
+          await query(
+            `UPDATE articles SET status = 'draft', published_at = NULL WHERE id = $1`,
+            [id]
+          );
+        } catch (rollbackError) {
+          console.error('[articles/[id]] Rollback failed:', rollbackError);
+        }
+
         return new Response(JSON.stringify({
-          success: true,
-          article: updatedArticle,
-          warning: `Postgres updated but Post table publish failed: ${publishError instanceof Error ? publishError.message : String(publishError)}`,
+          error: `Failed to publish article: ${publishError instanceof Error ? publishError.message : String(publishError)}`,
+          details: 'Article status has been rolled back to draft. Please fix the issue and try publishing again.',
         }), {
-          status: 200,
+          status: 500,
           headers: { 'Content-Type': 'application/json' },
         });
       }

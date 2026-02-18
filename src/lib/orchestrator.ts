@@ -62,22 +62,42 @@ async function loadAgent<T extends BaseAgent>(
 // ─── Slug Uniqueness ──────────────────────────────────────────────────────────
 
 /**
- * Ensure the slug is unique in the articles table.
- * The Astro DB Post table check happens in the API route that does the dual-write.
+ * Ensure the slug is unique across ALL content sources:
+ * 1. Postgres articles table (AI-generated)
+ * 2. Content Collections (file-based)
+ * 3. Astro DB Post table (checked via onConflictDoUpdate during publish)
  * If slug exists, appends -2, -3, etc.
  */
 async function ensureUniqueSlug(slug: string): Promise<string> {
+  // Import here to avoid loading collections on every orchestrator import
+  const { getCollection } = await import('astro:content');
+  const collections = await getCollection('blog');
+
   let candidate = slug;
   let suffix = 2;
+
   while (true) {
-    const existing = await query(
+    // Check Postgres articles table
+    const pgExists = await query(
       `SELECT id FROM articles WHERE slug = $1 LIMIT 1`,
       [candidate]
     );
-    if (existing.length === 0) return candidate;
+
+    // Check Content Collections
+    const collectionExists = collections.some(p => p.slug === candidate);
+
+    // If unique in both sources, we're good
+    if (pgExists.length === 0 && !collectionExists) {
+      return candidate;
+    }
+
+    // Try next suffix
     candidate = `${slug}-${suffix}`;
     suffix++;
-    if (suffix > 20) throw new Error(`Could not generate unique slug for: ${slug}`);
+
+    if (suffix > 20) {
+      throw new Error(`Could not generate unique slug for: ${slug}`);
+    }
   }
 }
 
