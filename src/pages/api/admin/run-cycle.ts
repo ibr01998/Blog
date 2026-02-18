@@ -24,7 +24,10 @@ import { runEditorialCycle } from '../../../lib/orchestrator.ts';
 // Requires Vercel Pro plan (max 300s). Hobby plan limit is 60s.
 export const config = { maxDuration: 300 };
 
-export const POST: APIRoute = async ({ request }) => {
+/**
+ * Shared handler logic for both GET (Vercel cron) and POST (manual trigger)
+ */
+async function handleCycle(request: Request): Promise<Response> {
   // Check CRON_SECRET for Vercel Cron triggers (middleware may already handle session)
   const cronSecret = (import.meta as any).env?.CRON_SECRET ?? process.env.CRON_SECRET;
   if (cronSecret) {
@@ -119,4 +122,8 @@ export const POST: APIRoute = async ({ request }) => {
       headers: { 'Content-Type': 'application/json' },
     });
   }
-};
+}
+
+// Export both GET (for Vercel cron) and POST (for manual dashboard triggers)
+export const GET: APIRoute = async ({ request }) => handleCycle(request);
+export const POST: APIRoute = async ({ request }) => handleCycle(request);

@@ -18,7 +18,10 @@ import { ResearchAgent } from '../../../lib/agents/researcher.ts';
 
 export const config = { maxDuration: 120 };
 
-export const POST: APIRoute = async ({ request }) => {
+/**
+ * Shared handler logic for both GET (cron) and POST (manual trigger)
+ */
+async function handleResearch(request: Request): Promise<Response> {
   const startTime = Date.now();
 
   // ── Auth: Bearer token (cron) OR session cookie (dashboard) ──────────────
@@ -97,4 +100,8 @@ export const POST: APIRoute = async ({ request }) => {
       duration_ms: Date.now() - startTime,
     }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
-};
+}
+
+// Export both GET (for Vercel cron) and POST (for manual dashboard triggers)
+export const GET: APIRoute = async ({ request }) => handleResearch(request);
+export const POST: APIRoute = async ({ request }) => handleResearch(request);
