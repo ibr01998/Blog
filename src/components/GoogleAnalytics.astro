@@ -15,6 +15,7 @@ const GA_ID = import.meta.env.PUBLIC_GA4_ID || 'G-1NZ4VEDNHF';
   var el = document.querySelector('meta[name="ga4-id"]');
   if (!el) return;
   var GA_ID = el.getAttribute('content');
+  var AW_ID = 'AW-17960694610'; // Hardcoded for now as requested
 
   // ── 1. Ensure gtag + dataLayer exist (BaseHead already sets consent defaults)
   window.dataLayer = window.dataLayer || [];
@@ -26,12 +27,13 @@ const GA_ID = import.meta.env.PUBLIC_GA4_ID || 'G-1NZ4VEDNHF';
   if (!document.querySelector('script[src*="googletagmanager.com/gtag"]')) {
     var s = document.createElement('script');
     s.async = true;
-    s.src   = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+    s.src   = 'https://www.googletagmanager.com/gtag/js?id=' + AW_ID; // Use AW ID for the script source as requested
     document.head.appendChild(s);
   }
 
   window.gtag('js', new Date());
   window.gtag('config', GA_ID, { anonymize_ip: true, send_page_view: true });
+  window.gtag('config', AW_ID); // Configure Google Ads
 
   // ── 3. Helpers
   var CONSENT_KEY = 'sn_cookie_consent';
