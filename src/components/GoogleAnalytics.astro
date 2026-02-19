@@ -56,9 +56,12 @@ const GA_ID = import.meta.env.PUBLIC_GA4_ID || 'G-1NZ4VEDNHF';
       marks.forEach(function (m) {
         if (pct >= m && !fired[m]) {
           fired[m] = true;
+          // Send scroll depth event with parameter
+          // IMPORTANT: scroll_depth_pct must be configured as a custom dimension in GA4
           window.gtag('event', 'scroll_depth', {
             event_category:   'engagement',
-            scroll_depth_pct: m
+            scroll_depth_pct: m,  // Custom parameter for GA4
+            page_location: window.location.pathname
           });
         }
       });

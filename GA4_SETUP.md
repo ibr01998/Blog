@@ -81,7 +81,25 @@ The JSON file looks like this:
 
 ---
 
-## Step 6: Get Your GA4 Property ID
+## Step 6: Configure Custom Dimensions (Required for Scroll Depth)
+
+To track scroll depth data, you need to register the custom event parameter in GA4:
+
+1. In Google Analytics, go to **Admin**
+2. In the **Property** column, click **Custom definitions**
+3. Click **Create custom dimension**
+4. Fill in:
+   - **Dimension name**: `Scroll Depth Percentage`
+   - **Scope**: `Event`
+   - **Description**: `Percentage of page scrolled (25, 50, 75, 90)`
+   - **Event parameter**: `scroll_depth_pct`
+5. Click **Save**
+
+**Why this matters**: Without this custom dimension, GA4 will collect scroll_depth events but won't break them down by percentage, making the Analyst agent unable to analyze user reading behavior.
+
+---
+
+## Step 7: Get Your GA4 Property ID
 
 1. In Google Analytics, go to **Admin**
 2. Click **Property Settings** (in the Property column)
@@ -90,7 +108,7 @@ The JSON file looks like this:
 
 ---
 
-## Step 7: Prepare Environment Variables
+## Step 8: Prepare Environment Variables
 
 ### Extract Values from JSON Key
 
@@ -125,7 +143,7 @@ GA4_PRIVATE_KEY="LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0t..." # base64 encoded
 
 ---
 
-## Step 8: Add to Vercel
+## Step 9: Add to Vercel
 
 1. Go to your Vercel project dashboard
 2. Click **Settings > Environment Variables**
@@ -138,7 +156,7 @@ GA4_PRIVATE_KEY="LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0t..." # base64 encoded
 
 ---
 
-## Step 9: Test the Connection
+## Step 10: Test the Connection
 
 ### Option 1: Via Dashboard (Recommended)
 
@@ -178,9 +196,38 @@ curl -H "Authorization: Bearer YOUR_CRON_SECRET" \
 
 ---
 
-## Step 10: Verify Analyst Agent Integration
+## Step 11: Verify Data is Flowing to Analyst
 
-Run an editorial cycle and check the agent logs:
+### Quick Check
+Visit:
+```
+https://your-domain.com/api/admin/analyst-preview
+```
+
+This shows **exactly** what data the Analyst agent receives, including:
+- Postgres metrics (writer performance, affiliate stats)
+- GA4 metrics (traffic, engagement, scroll depth)
+- Data quality assessment
+
+**What to look for:**
+```json
+{
+  "data_sources": {
+    "ga4": {
+      "available": true,
+      "scroll_depth": {
+        "avg_depth_percent": "62.5",
+        "scroll_25_count": 450,
+        "scroll_50_count": 320,
+        "scroll_75_count": 180,
+        "scroll_90_count": 85
+      }
+    }
+  }
+}
+```
+
+### Full Cycle Test
 
 1. Go to `/dashboard/ai-articles`
 2. Click **Run Editorial Cycle**
@@ -226,6 +273,18 @@ echo "YOUR_BASE64_STRING" | base64 -d
 1. GA4 property is brand new (no data yet)
 2. Date range is too narrow (try 30 days)
 3. Service account has wrong permissions in GA4
+
+### Scroll Depth Shows All Zeros
+
+**Possible causes:**
+1. Custom dimension not configured (see Step 6)
+2. No scroll events collected yet (wait 24-48 hours after deployment)
+3. Cookie consent not given (scroll tracking only works with consent)
+
+**How to fix:**
+1. Verify custom dimension exists: GA4 Admin → Custom definitions
+2. Check that `scroll_depth_pct` parameter name matches exactly
+3. Test locally: Open site, scroll to 50%, check GA4 Real-time → Events
 
 ---
 

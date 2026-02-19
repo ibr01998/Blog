@@ -164,6 +164,7 @@ export class AnalystAgent extends BaseAgent {
     // Build GA4 insights summary
     const ga4Summary = ga4Data ? `
 GOOGLE ANALYTICS 4 DATA (Last 30 Days):
+
 Overall Site Performance:
 - Total Users: ${ga4Data.totalUsers.toLocaleString()}
 - Total Sessions: ${ga4Data.totalSessions.toLocaleString()}
@@ -172,20 +173,44 @@ Overall Site Performance:
 - Bounce Rate: ${(ga4Data.overallBounceRate * 100).toFixed(1)}%
 - Total Conversions: ${ga4Data.totalConversions}
 
-Top Blog Posts (by views):
+Engagement Metrics:
+- Engaged Sessions: ${ga4Data.engagement.engagedSessions.toLocaleString()} (${((ga4Data.engagement.engagedSessions / ga4Data.totalSessions) * 100).toFixed(1)}% of sessions)
+- Engagement Rate: ${(ga4Data.engagement.engagementRate * 100).toFixed(1)}%
+- Avg Engagement Time: ${(ga4Data.engagement.avgEngagementTimeSeconds / 60).toFixed(1)} minutes
+- Events Per User: ${ga4Data.engagement.eventCountPerUser.toFixed(1)}
+
+Scroll Depth Analysis (User Reading Behavior):
+- 25% Scroll: ${ga4Data.scrollDepth.scrollDepth25Count.toLocaleString()} events
+- 50% Scroll: ${ga4Data.scrollDepth.scrollDepth50Count.toLocaleString()} events (${((ga4Data.scrollDepth.scrollDepth50Count / ga4Data.scrollDepth.totalScrollEvents) * 100).toFixed(1)}% of scrollers)
+- 75% Scroll: ${ga4Data.scrollDepth.scrollDepth75Count.toLocaleString()} events (${((ga4Data.scrollDepth.scrollDepth75Count / ga4Data.scrollDepth.totalScrollEvents) * 100).toFixed(1)}% of scrollers)
+- 90% Scroll: ${ga4Data.scrollDepth.scrollDepth90Count.toLocaleString()} events (${((ga4Data.scrollDepth.scrollDepth90Count / ga4Data.scrollDepth.totalScrollEvents) * 100).toFixed(1)}% of scrollers)
+- Avg Scroll Depth: ${ga4Data.scrollDepth.avgScrollDepth.toFixed(1)}%
+- Total Scroll Events: ${ga4Data.scrollDepth.totalScrollEvents.toLocaleString()}
+
+SCROLL DEPTH INSIGHTS:
+${ga4Data.scrollDepth.avgScrollDepth < 50
+  ? '⚠️ Low scroll depth - users are not reading articles fully. Consider: shorter content, better hooks, clearer structure.'
+  : ga4Data.scrollDepth.avgScrollDepth > 70
+  ? '✅ High scroll depth - users are engaged and reading content. Current format is working well.'
+  : '📊 Moderate scroll depth - some users engage deeply, others leave early. Test different formats.'}
+
+Top Blog Posts (by views, with engagement data):
 ${ga4Data.blogPostPerformance.slice(0, 10).map((p, i) =>
   `${i + 1}. ${p.title} (${p.path})
-     Views: ${p.views}, Users: ${p.uniqueUsers}, Bounce: ${(p.bounceRate * 100).toFixed(1)}%, Conversions: ${p.conversions}`
+     Views: ${p.views} | Users: ${p.uniqueUsers} | Conversions: ${p.conversions}
+     Engagement: ${(p.engagementRate * 100).toFixed(1)}% | Avg Time: ${(p.avgEngagementTime / 60).toFixed(1)}min
+     Bounce: ${(p.bounceRate * 100).toFixed(1)}% | Exit: ${(p.exitRate * 100).toFixed(1)}%`
 ).join('\n')}
 
 Top Traffic Sources:
 ${ga4Data.trafficSources.slice(0, 5).map((s, i) =>
-  `${i + 1}. ${s.source} / ${s.medium} - ${s.sessions} sessions, ${s.users} users, ${(s.bounceRate * 100).toFixed(1)}% bounce`
+  `${i + 1}. ${s.source} / ${s.medium}${s.campaign !== '(not set)' ? ` / ${s.campaign}` : ''}
+     ${s.sessions} sessions, ${s.users} users, ${(s.bounceRate * 100).toFixed(1)}% bounce`
 ).join('\n')}
 
 Device Breakdown:
 ${ga4Data.deviceCategories.map((d) =>
-  `- ${d.deviceCategory}: ${d.sessions} sessions (${((d.sessions / ga4Data.totalSessions) * 100).toFixed(1)}%)`
+  `- ${d.deviceCategory}: ${d.sessions} sessions (${((d.sessions / ga4Data.totalSessions) * 100).toFixed(1)}%), ${(d.bounceRate * 100).toFixed(1)}% bounce`
 ).join('\n')}
 
 Top Conversion Events:
@@ -220,16 +245,43 @@ TREND ANALYSIS (recent 14 days vs prior 14-60 days):
 ${ga4Summary}
 
 Based on ALL available data (Postgres + GA4):
+
 1. Recommend the optimal content_tier, hook_type, and format_type for the next editorial cycle
+
 2. Provide 3-6 specific performance insights (what is working, what is not)
    - Use GA4 data to validate Postgres metrics (are they aligned?)
    - Identify which blog posts are driving the most traffic and conversions
    - Analyze traffic sources: organic search, social, direct, referral
    - Consider device preferences (mobile vs desktop optimization needs)
+   - **CRITICAL: Analyze scroll depth** - are users reading articles fully or dropping off?
+     * If avg scroll depth < 50%: Content is too long, boring, or hook fails
+     * If 90% scroll events are low: Users aren't reaching CTAs at bottom
+     * If 50% scroll is high but 90% is low: Content loses momentum mid-article
+   - **CRITICAL: Analyze engagement metrics**:
+     * Low engagement rate = users aren't interacting (no clicks, scrolls, events)
+     * High bounce + low engagement = content mismatch with traffic source
+     * High engagement time but low conversions = CTA placement issues
+   - **Content Length Implications**:
+     * If scroll depth is low, recommend Writer agent to use lower_wordcount override
+     * If engagement time is under 2 minutes, articles might be too short
+     * Balance: depth for SEO vs brevity for engagement
+
 3. Suggest behavior overrides for any underperforming agents (only if data shows clear issues)
+   Example overrides based on GA4 data:
+   - If scroll depth < 50%: Writer → lower_wordcount: true
+   - If bounce rate > 70%: Writer → increase_assertiveness: true (stronger hooks)
+   - If engagement time is low: Humanizer → reduce_hype: true (more conversational)
+   - If specific platform has low conversions: Writer → avoid_platform: "platform-slug"
+
 4. Identify the best_performing_strategy combination (if strategy data exists, otherwise null)
+
 5. Determine trend_direction: are metrics improving, stable, or declining?
+
 6. Focus on Dutch crypto market: NL/BE traders, platforms BitMEX/Bybit/Binance/Kraken
+
+IMPORTANT: Your recommendations will directly influence agent behavior and article generation.
+Be specific and data-driven. If GA4 shows users aren't reading full articles, SAY SO explicitly.
+If conversions are low despite high traffic, diagnose WHY (CTA placement, content-traffic mismatch, etc).
 
 If data is empty or insufficient, recommend money tier with benefit hook and comparison format as safe defaults.
 Set trend_direction to "stable" if insufficient data.

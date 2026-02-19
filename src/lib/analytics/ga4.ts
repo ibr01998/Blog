@@ -31,6 +31,14 @@ export type GAPageMetrics = {
   bounceRate: number;
   conversions: number;
   eventCount: number;
+  engagedSessions: number;
+  engagementRate: number;
+  avgEngagementTime: number;
+  exitRate: number;
+  scrollDepth25: number;
+  scrollDepth50: number;
+  scrollDepth75: number;
+  scrollDepth90: number;
 };
 
 export type GATrafficSource = {
@@ -55,6 +63,22 @@ export type GAEventMetrics = {
   uniqueUsers: number;
 };
 
+export type GAEngagementMetrics = {
+  engagedSessions: number;
+  engagementRate: number;
+  avgEngagementTimeSeconds: number;
+  eventCountPerUser: number;
+};
+
+export type GAScrollDepthMetrics = {
+  scrollDepth25Count: number;
+  scrollDepth50Count: number;
+  scrollDepth75Count: number;
+  scrollDepth90Count: number;
+  totalScrollEvents: number;
+  avgScrollDepth: number;
+};
+
 export type GAAnalyticsSummary = {
   // Overall site metrics
   totalUsers: number;
@@ -63,6 +87,12 @@ export type GAAnalyticsSummary = {
   avgSessionDuration: number;
   overallBounceRate: number;
   totalConversions: number;
+
+  // Engagement metrics
+  engagement: GAEngagementMetrics;
+
+  // Scroll depth metrics
+  scrollDepth: GAScrollDepthMetrics;
 
   // Content performance
   topPages: GAPageMetrics[];
@@ -134,7 +164,7 @@ export async function getAnalyticsSummary(
   const endDate = 'today';
 
   try {
-    // Fetch overall metrics
+    // Fetch overall metrics with engagement data
     const [overallResponse] = await client.runReport({
       property: propertyId,
       dateRanges: [{ startDate, endDate }],
@@ -146,10 +176,14 @@ export async function getAnalyticsSummary(
         { name: 'averageSessionDuration' },
         { name: 'bounceRate' },
         { name: 'conversions' },
+        { name: 'engagedSessions' },
+        { name: 'engagementRate' },
+        { name: 'userEngagementDuration' },
+        { name: 'eventCountPerUser' },
       ],
     });
 
-    // Fetch top pages
+    // Fetch top pages with engagement metrics
     const [pagesResponse] = await client.runReport({
       property: propertyId,
       dateRanges: [{ startDate, endDate }],
@@ -164,6 +198,10 @@ export async function getAnalyticsSummary(
         { name: 'bounceRate' },
         { name: 'conversions' },
         { name: 'eventCount' },
+        { name: 'engagedSessions' },
+        { name: 'engagementRate' },
+        { name: 'userEngagementDuration' },
+        { name: 'exitRate' },
       ],
       limit: 50,
       orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
@@ -213,6 +251,34 @@ export async function getAnalyticsSummary(
       orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
     });
 
+    // Fetch scroll depth metrics specifically
+    // Note: This requires custom event parameter 'scroll_depth_pct' to be configured in GA4
+    let scrollDepthResponse;
+    try {
+      [scrollDepthResponse] = await client.runReport({
+        property: propertyId,
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'customEvent:scroll_depth_pct' }],
+        dimensionFilter: {
+          filter: {
+            fieldName: 'eventName',
+            stringFilter: {
+              matchType: 'EXACT' as const,
+              value: 'scroll_depth',
+            },
+          },
+        },
+        metrics: [
+          { name: 'eventCount' },
+        ],
+        orderBys: [{ dimension: { dimensionName: 'customEvent:scroll_depth_pct' } }],
+      });
+    } catch (scrollError) {
+      console.warn('[GA4] Scroll depth query failed (custom parameter may not be configured):', scrollError);
+      // Create empty response
+      scrollDepthResponse = { rows: [] };
+    }
+
     // Parse overall metrics
     const overall = overallResponse.rows?.[0]?.metricValues ?? [];
     const totalUsers = parseInt(overall[0]?.value ?? '0');
@@ -221,8 +287,46 @@ export async function getAnalyticsSummary(
     const avgSessionDuration = parseFloat(overall[3]?.value ?? '0');
     const overallBounceRate = parseFloat(overall[4]?.value ?? '0');
     const totalConversions = parseInt(overall[5]?.value ?? '0');
+    const engagedSessions = parseInt(overall[6]?.value ?? '0');
+    const engagementRate = parseFloat(overall[7]?.value ?? '0');
+    const userEngagementDuration = parseFloat(overall[8]?.value ?? '0');
+    const eventCountPerUser = parseFloat(overall[9]?.value ?? '0');
 
-    // Parse top pages
+    // Parse engagement metrics
+    const engagement: GAEngagementMetrics = {
+      engagedSessions,
+      engagementRate,
+      avgEngagementTimeSeconds: userEngagementDuration,
+      eventCountPerUser,
+    };
+
+    // Parse scroll depth metrics
+    const scrollDepthData = scrollDepthResponse.rows ?? [];
+    const scrollDepth25Count = scrollDepthData.find(r => r.dimensionValues?.[0]?.value === '25')?.metricValues?.[0]?.value ?? '0';
+    const scrollDepth50Count = scrollDepthData.find(r => r.dimensionValues?.[0]?.value === '50')?.metricValues?.[0]?.value ?? '0';
+    const scrollDepth75Count = scrollDepthData.find(r => r.dimensionValues?.[0]?.value === '75')?.metricValues?.[0]?.value ?? '0';
+    const scrollDepth90Count = scrollDepthData.find(r => r.dimensionValues?.[0]?.value === '90')?.metricValues?.[0]?.value ?? '0';
+    const totalScrollEvents = scrollDepthData.reduce((sum, row) => sum + parseInt(row.metricValues?.[0]?.value ?? '0'), 0);
+
+    // Calculate average scroll depth (weighted average)
+    let weightedScrollSum = 0;
+    scrollDepthData.forEach(row => {
+      const depth = parseInt(row.dimensionValues?.[0]?.value ?? '0');
+      const count = parseInt(row.metricValues?.[0]?.value ?? '0');
+      weightedScrollSum += depth * count;
+    });
+    const avgScrollDepth = totalScrollEvents > 0 ? weightedScrollSum / totalScrollEvents : 0;
+
+    const scrollDepth: GAScrollDepthMetrics = {
+      scrollDepth25Count: parseInt(scrollDepth25Count),
+      scrollDepth50Count: parseInt(scrollDepth50Count),
+      scrollDepth75Count: parseInt(scrollDepth75Count),
+      scrollDepth90Count: parseInt(scrollDepth90Count),
+      totalScrollEvents,
+      avgScrollDepth,
+    };
+
+    // Parse top pages with engagement
     const topPages: GAPageMetrics[] = (pagesResponse.rows ?? []).map((row) => ({
       path: row.dimensionValues?.[0]?.value ?? '',
       title: row.dimensionValues?.[1]?.value ?? '',
@@ -232,6 +336,15 @@ export async function getAnalyticsSummary(
       bounceRate: parseFloat(row.metricValues?.[3]?.value ?? '0'),
       conversions: parseInt(row.metricValues?.[4]?.value ?? '0'),
       eventCount: parseInt(row.metricValues?.[5]?.value ?? '0'),
+      engagedSessions: parseInt(row.metricValues?.[6]?.value ?? '0'),
+      engagementRate: parseFloat(row.metricValues?.[7]?.value ?? '0'),
+      avgEngagementTime: parseFloat(row.metricValues?.[8]?.value ?? '0'),
+      exitRate: parseFloat(row.metricValues?.[9]?.value ?? '0'),
+      // Scroll depth per page would require separate query, using placeholders
+      scrollDepth25: 0,
+      scrollDepth50: 0,
+      scrollDepth75: 0,
+      scrollDepth90: 0,
     }));
 
     // Filter blog posts (paths starting with /blog/)
@@ -269,6 +382,8 @@ export async function getAnalyticsSummary(
       avgSessionDuration,
       overallBounceRate,
       totalConversions,
+      engagement,
+      scrollDepth,
       topPages,
       blogPostPerformance,
       trafficSources,
@@ -323,11 +438,54 @@ export async function getArticleMetrics(
         { name: 'bounceRate' },
         { name: 'conversions' },
         { name: 'eventCount' },
+        { name: 'engagedSessions' },
+        { name: 'engagementRate' },
+        { name: 'userEngagementDuration' },
+        { name: 'exitRate' },
       ],
+    });
+
+    // Fetch scroll depth for this specific page
+    const [scrollResponse] = await client.runReport({
+      property: propertyId,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'customEvent:scroll_depth_pct' }],
+      dimensionFilter: {
+        andGroup: {
+          expressions: [
+            {
+              filter: {
+                fieldName: 'eventName',
+                stringFilter: {
+                  matchType: 'EXACT' as const,
+                  value: 'scroll_depth',
+                },
+              },
+            },
+            {
+              filter: {
+                fieldName: 'pagePath',
+                stringFilter: {
+                  matchType: 'EXACT' as const,
+                  value: pagePath,
+                },
+              },
+            },
+          ],
+        },
+      },
+      metrics: [{ name: 'eventCount' }],
     });
 
     const row = response.rows?.[0];
     if (!row) return null;
+
+    // Parse scroll depth for this page
+    const scrollData = scrollResponse.rows ?? [];
+    const scrollDepth25 = parseInt(scrollData.find(r => r.dimensionValues?.[0]?.value === '25')?.metricValues?.[0]?.value ?? '0');
+    const scrollDepth50 = parseInt(scrollData.find(r => r.dimensionValues?.[0]?.value === '50')?.metricValues?.[0]?.value ?? '0');
+    const scrollDepth75 = parseInt(scrollData.find(r => r.dimensionValues?.[0]?.value === '75')?.metricValues?.[0]?.value ?? '0');
+    const scrollDepth90 = parseInt(scrollData.find(r => r.dimensionValues?.[0]?.value === '90')?.metricValues?.[0]?.value ?? '0');
 
     return {
       path: row.dimensionValues?.[0]?.value ?? '',
@@ -338,6 +496,14 @@ export async function getArticleMetrics(
       bounceRate: parseFloat(row.metricValues?.[3]?.value ?? '0'),
       conversions: parseInt(row.metricValues?.[4]?.value ?? '0'),
       eventCount: parseInt(row.metricValues?.[5]?.value ?? '0'),
+      engagedSessions: parseInt(row.metricValues?.[6]?.value ?? '0'),
+      engagementRate: parseFloat(row.metricValues?.[7]?.value ?? '0'),
+      avgEngagementTime: parseFloat(row.metricValues?.[8]?.value ?? '0'),
+      exitRate: parseFloat(row.metricValues?.[9]?.value ?? '0'),
+      scrollDepth25,
+      scrollDepth50,
+      scrollDepth75,
+      scrollDepth90,
     };
   } catch (error) {
     console.error(`[GA4] Failed to fetch metrics for article: ${slug}`, error);
