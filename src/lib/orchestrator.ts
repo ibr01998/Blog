@@ -340,8 +340,24 @@ export async function runEditorialCycle(onProgress?: ProgressCallback): Promise<
 
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
-      errors.push(`Assignment ${assignment.assignment_id}: ${errorMsg}`);
-      emit({ stage: 'error', progress: Math.round(articleBase + perArticleRange), message: `Fout bij artikel "${keyword}": ${errorMsg}` });
+
+      // Provide more context for timeout errors
+      if (errorMsg.includes('timed out')) {
+        errors.push(`Assignment ${assignment.assignment_id}: AI generation timed out. This may be due to network issues or model slowdowns. Try again later.`);
+        emit({
+          stage: 'error',
+          progress: Math.round(articleBase + perArticleRange),
+          message: `⏱️ Timeout bij artikel "${keyword}": ${errorMsg}. Probeer opnieuw.`
+        });
+      } else {
+        errors.push(`Assignment ${assignment.assignment_id}: ${errorMsg}`);
+        emit({
+          stage: 'error',
+          progress: Math.round(articleBase + perArticleRange),
+          message: `Fout bij artikel "${keyword}": ${errorMsg}`
+        });
+      }
+
       console.error('[Orchestrator] Pipeline failed for assignment:', assignment.brief.primary_keyword, err);
     }
   }

@@ -35,6 +35,7 @@ export class SEOAgent extends BaseAgent {
       schema: seoOutputSchema,
       model: 'gpt-4o-mini',
       maxTokens: 4000,
+      timeoutMs: 90000, // 90s timeout for SEO (processes full articles)
       systemPrompt: this.buildSystemPrompt(targetDensity),
       userPrompt: `
 Optimaliseer het volgende artikel voor Nederlandse zoekmachines.

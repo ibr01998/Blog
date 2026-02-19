@@ -21,6 +21,7 @@ export class HumanizerAgent extends BaseAgent {
     const humanizedText = await this.callText({
       model: 'gpt-4o-mini',
       maxTokens: 6000,
+      timeoutMs: 90000, // 90s timeout for Humanizer (processes full articles)
       systemPrompt: this.buildSystemPrompt(),
       userPrompt: draft.article_markdown,
     });

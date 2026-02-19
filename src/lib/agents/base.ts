@@ -96,14 +96,21 @@ export class BaseAgent {
     userPrompt: string;
     model?: string;
     maxTokens?: number;
+    timeoutMs?: number;
   }): Promise<string> {
-    const result = await generateText({
-      model: resolveModel(params.model ?? 'gpt-4o'),
-      system: params.systemPrompt,
-      prompt: params.userPrompt,
-      // maxTokens: accepted at runtime but type definition varies by SDK version
-      ...(params.maxTokens ? ({ maxTokens: params.maxTokens } as object) : {}),
-    } as Parameters<typeof generateText>[0]);
+    const timeout = params.timeoutMs ?? 60000; // Default 60s timeout
+
+    const result = await this.withTimeout(
+      generateText({
+        model: resolveModel(params.model ?? 'gpt-4o'),
+        system: params.systemPrompt,
+        prompt: params.userPrompt,
+        // maxTokens: accepted at runtime but type definition varies by SDK version
+        ...(params.maxTokens ? ({ maxTokens: params.maxTokens } as object) : {}),
+      } as Parameters<typeof generateText>[0]),
+      timeout,
+      `callText (model: ${params.model ?? 'gpt-4o'})`
+    );
     return result.text;
   }
 
@@ -117,14 +124,21 @@ export class BaseAgent {
     schema: ZodSchema<T>;
     model?: string;
     maxTokens?: number;
+    timeoutMs?: number;
   }): Promise<T> {
-    const result = await generateObject({
-      model: resolveModel(params.model ?? 'gpt-4o'),
-      system: params.systemPrompt,
-      prompt: params.userPrompt,
-      schema: params.schema,
-      ...(params.maxTokens ? ({ maxTokens: params.maxTokens } as object) : {}),
-    });
+    const timeout = params.timeoutMs ?? 60000; // Default 60s timeout
+
+    const result = await this.withTimeout(
+      generateObject({
+        model: resolveModel(params.model ?? 'gpt-4o'),
+        system: params.systemPrompt,
+        prompt: params.userPrompt,
+        schema: params.schema,
+        ...(params.maxTokens ? ({ maxTokens: params.maxTokens } as object) : {}),
+      }),
+      timeout,
+      `callObject (model: ${params.model ?? 'gpt-4o'})`
+    );
     return result.object;
   }
 
@@ -160,6 +174,24 @@ export class BaseAgent {
    */
   applyOverrides(overrides: Record<string, unknown>): void {
     this.mergedConfig = { ...this.mergedConfig, ...overrides } as PersonalityConfig & BehaviorOverrides;
+  }
+
+  /**
+   * Wraps a promise with a timeout to prevent hanging indefinitely.
+   * Used to add timeout protection to AI SDK calls.
+   */
+  private async withTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    operationName: string
+  ): Promise<T> {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`${operationName} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    });
+
+    return Promise.race([promise, timeoutPromise]);
   }
 
   // Getters
