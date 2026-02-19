@@ -15,6 +15,7 @@
 import { z } from 'zod';
 import { BaseAgent } from './base.ts';
 import { query } from '../db/postgres.ts';
+import { getAnalyticsSummary, getConversionEvents } from '../analytics/ga4.ts';
 import type {
   AgentRecord,
   AnalystReport,
@@ -149,24 +150,64 @@ export class AnalystAgent extends BaseAgent {
       );
     }
 
-    // 6. Ask the LLM to interpret all data and make strategic recommendations
+    // 6. Fetch Google Analytics 4 data (last 30 days)
+    console.log('[Analyst] Fetching GA4 data...');
+    const ga4Data = await getAnalyticsSummary(30);
+    const ga4Conversions = await getConversionEvents(30);
+
+    // 7. Ask the LLM to interpret all data and make strategic recommendations
     const hasData = writerStats.some(w => w.total_articles > 0);
     const hasStrategyData = strategyStats.length > 0;
     const recentTrend = trendData.find(t => t.period === 'recent');
     const olderTrend = trendData.find(t => t.period === 'older');
 
+    // Build GA4 insights summary
+    const ga4Summary = ga4Data ? `
+GOOGLE ANALYTICS 4 DATA (Last 30 Days):
+Overall Site Performance:
+- Total Users: ${ga4Data.totalUsers.toLocaleString()}
+- Total Sessions: ${ga4Data.totalSessions.toLocaleString()}
+- Total Pageviews: ${ga4Data.totalPageviews.toLocaleString()}
+- Avg Session Duration: ${(ga4Data.avgSessionDuration / 60).toFixed(1)} minutes
+- Bounce Rate: ${(ga4Data.overallBounceRate * 100).toFixed(1)}%
+- Total Conversions: ${ga4Data.totalConversions}
+
+Top Blog Posts (by views):
+${ga4Data.blogPostPerformance.slice(0, 10).map((p, i) =>
+  `${i + 1}. ${p.title} (${p.path})
+     Views: ${p.views}, Users: ${p.uniqueUsers}, Bounce: ${(p.bounceRate * 100).toFixed(1)}%, Conversions: ${p.conversions}`
+).join('\n')}
+
+Top Traffic Sources:
+${ga4Data.trafficSources.slice(0, 5).map((s, i) =>
+  `${i + 1}. ${s.source} / ${s.medium} - ${s.sessions} sessions, ${s.users} users, ${(s.bounceRate * 100).toFixed(1)}% bounce`
+).join('\n')}
+
+Device Breakdown:
+${ga4Data.deviceCategories.map((d) =>
+  `- ${d.deviceCategory}: ${d.sessions} sessions (${((d.sessions / ga4Data.totalSessions) * 100).toFixed(1)}%)`
+).join('\n')}
+
+Top Conversion Events:
+${ga4Conversions.slice(0, 5).map((e, i) =>
+  `${i + 1}. ${e.eventName}: ${e.eventCount} events, ${e.uniqueUsers} users`
+).join('\n')}
+` : 'GOOGLE ANALYTICS 4 DATA: Not available (credentials not configured or API error)';
+
     const llmOutput = await this.callObject({
       schema: analystOutputSchema,
       model: 'gpt-4o-mini',
+      maxTokens: 2000,
+      timeoutMs: 90000, // 90s timeout for analyst (processes large dataset)
       systemPrompt: this.buildSystemPrompt(),
       userPrompt: `
 Analyze the following performance data for a Dutch crypto affiliate blog (ShortNews.tech).
 ${!hasData ? 'NOTE: This is an early-stage blog with limited data. Use defaults and recommend starting with money-tier content.' : ''}
 
-WRITER PERFORMANCE DATA:
+WRITER PERFORMANCE DATA (from Postgres):
 ${JSON.stringify(writerStats, null, 2)}
 
-AFFILIATE LINK PERFORMANCE:
+AFFILIATE LINK PERFORMANCE (from Postgres):
 ${JSON.stringify(affiliateStats, null, 2)}
 
 ${hasStrategyData ? `CONTENT STRATEGY PERFORMANCE (which tier/hook/format combo works best):
@@ -176,9 +217,15 @@ TREND ANALYSIS (recent 14 days vs prior 14-60 days):
 - Recent period: ${recentTrend ? `${recentTrend.article_count} articles, avg ${recentTrend.avg_views.toFixed(1)} views, ${(recentTrend.avg_ctr * 100).toFixed(1)}% CTR, ${recentTrend.avg_time.toFixed(0)}s avg time` : 'No recent articles'}
 - Older period: ${olderTrend ? `${olderTrend.article_count} articles, avg ${olderTrend.avg_views.toFixed(1)} views, ${(olderTrend.avg_ctr * 100).toFixed(1)}% CTR, ${olderTrend.avg_time.toFixed(0)}s avg time` : 'No older articles'}
 
-Based on this data:
+${ga4Summary}
+
+Based on ALL available data (Postgres + GA4):
 1. Recommend the optimal content_tier, hook_type, and format_type for the next editorial cycle
 2. Provide 3-6 specific performance insights (what is working, what is not)
+   - Use GA4 data to validate Postgres metrics (are they aligned?)
+   - Identify which blog posts are driving the most traffic and conversions
+   - Analyze traffic sources: organic search, social, direct, referral
+   - Consider device preferences (mobile vs desktop optimization needs)
 3. Suggest behavior overrides for any underperforming agents (only if data shows clear issues)
 4. Identify the best_performing_strategy combination (if strategy data exists, otherwise null)
 5. Determine trend_direction: are metrics improving, stable, or declining?
@@ -235,6 +282,9 @@ Set best_performing_strategy to null if no strategy data exists.
         strategy_combos: strategyStats.length,
         has_data: hasData,
         trend_direction: llmOutput.trend_direction,
+        ga4_available: !!ga4Data,
+        ga4_total_users: ga4Data?.totalUsers ?? 0,
+        ga4_total_pageviews: ga4Data?.totalPageviews ?? 0,
       },
       decisionSummary: {
         recommended_tier: report.recommended_content_tier,

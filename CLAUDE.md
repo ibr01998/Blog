@@ -77,6 +77,7 @@ The blog supports two independent content sources that work together seamlessly:
 - Resolves model strings: `"anthropic:claude-3-5-sonnet"`, `"openai:gpt-4o-mini"`
 - Uses Vercel AI SDK (`generateText`, `generateObject`)
 - Structured output via Zod schemas
+- **Built-in timeout protection**: 60s default, configurable per call
 
 **Model Providers:**
 - Anthropic: Claude 3.5 Sonnet (primary for complex reasoning)
@@ -88,6 +89,13 @@ The blog supports two independent content sources that work together seamlessly:
 - `behavior_overrides` can be set per agent for A/B testing
 - Performance metrics feed back into evolution system
 
+**Timeouts:**
+- Default: 60 seconds for all AI calls
+- Writer: 120 seconds (generates full articles)
+- Humanizer: 90 seconds (processes full articles)
+- SEO: 90 seconds (processes full articles)
+- Analyst: 90 seconds (large dataset analysis)
+
 ### Embeddings System
 
 **Implementation**: `/src/lib/embeddings.ts`
@@ -95,6 +103,21 @@ The blog supports two independent content sources that work together seamlessly:
 - **Storage**: Postgres `articles` table with `embedding` column (vector type)
 - **Usage**: Semantic similarity for related articles, content recommendations
 - **Generated**: During article creation, stored alongside metadata
+
+### Google Analytics 4 Integration
+
+**Implementation**: `/src/lib/analytics/ga4.ts`
+- **API**: Google Analytics Data API v1
+- **Authentication**: Service account (read-only Viewer role)
+- **Data Fetched**:
+  - Overall site metrics (users, sessions, pageviews, bounce rate)
+  - Top blog posts performance
+  - Traffic sources (organic, social, direct, referral)
+  - Device breakdown (mobile, desktop, tablet)
+  - Conversion events (affiliate clicks, newsletter signups)
+- **Integration**: Analyst agent uses GA4 data for strategic recommendations
+- **Fallback**: System works without GA4 (uses Postgres metrics only)
+- **Setup Guide**: See `/GA4_SETUP.md` for configuration instructions
 
 ---
 
@@ -289,6 +312,14 @@ The blog supports two independent content sources that work together seamlessly:
 - **Verification**: Middleware checks header on `/api/admin/run-*` routes
 - **Env var**: `CRON_SECRET` set in Vercel
 
+### Google Analytics 4 Access
+- **Required env vars**:
+  - `GA4_PROPERTY_ID` - Property ID (format: `properties/123456789`)
+  - `GA4_SERVICE_ACCOUNT_EMAIL` - Service account email
+  - `GA4_PRIVATE_KEY` - Base64 encoded private key
+- **Setup**: See `/GA4_SETUP.md` for detailed instructions
+- **Test endpoint**: GET `/api/admin/test-ga4` (protected)
+
 ---
 
 ## Build & Deployment
@@ -423,6 +454,13 @@ npm run preview
 - Verify all API keys in env vars
 - Check Postgres connection (`DATABASE_URL`)
 - Review `agent_logs` table for specific errors
+- If cycle times out at SEO stage: Check OpenAI API status, timeouts are set to 90s
+
+**GA4 integration issues:**
+- Test connection: GET `/api/admin/test-ga4`
+- Verify env vars: `GA4_PROPERTY_ID`, `GA4_SERVICE_ACCOUNT_EMAIL`, `GA4_PRIVATE_KEY`
+- Check service account has "Viewer" role in GA4 property
+- See `/GA4_SETUP.md` for detailed troubleshooting
 
 **Database queries fail:**
 - Astro DB: Run `npx astro db push --remote` to sync schema
@@ -456,6 +494,7 @@ npm run preview
 - `GET/POST /api/admin/articles` - CRUD articles
 - `GET/POST /api/admin/agents` - CRUD agent configs
 - `GET /api/admin/logs` - Retrieve agent logs
+- `GET /api/admin/test-ga4` - Test Google Analytics 4 API connection
 - `GET /api/analytics/stats` - Aggregated analytics
 - `GET /api/analytics/ai-performance` - Agent performance metrics
 
