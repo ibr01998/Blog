@@ -17,12 +17,12 @@ import { query } from '../../../lib/db/postgres.ts';
 
 export const GET: APIRoute = async () => {
   try {
-    // 1. Migration check — does the latest table (amazon_products) exist?
+    // 1. Migration check — does the latest table (bol_products) exist?
     const migrationRows = await query<{ ok: boolean }>(`
       SELECT EXISTS (
         SELECT 1 FROM information_schema.tables
         WHERE table_schema = 'public'
-          AND table_name = 'amazon_products'
+          AND table_name = 'bol_products'
       ) as ok
     `);
     const migrationOk = migrationRows[0]?.ok === true;
@@ -54,8 +54,8 @@ export const GET: APIRoute = async () => {
           id: 'migration',
           label: 'Database Migratie',
           description: migrationOk
-            ? 'Alle tabellen aangemaakt (incl. amazon_products)'
-            : 'amazon_products tabel ontbreekt — migratie vereist',
+            ? 'Alle tabellen aangemaakt (incl. bol_products)'
+            : 'bol_products tabel ontbreekt — migratie vereist',
           ok: migrationOk,
           action: { method: 'POST', url: '/api/admin/migrate' },
           actionLabel: 'Migreer Nu',

@@ -33,6 +33,7 @@ const typeLabels: Record<string, string> = {
   trust:      'Vertrouwen',
   fee:        'Kosten',
   'amazon-review': 'Amazon',
+  'bol-review': 'Bol.com',
 };
 const availableTypes = [...new Set(allPosts.map(p => p.articleType).filter(Boolean))] as string[];
 ---

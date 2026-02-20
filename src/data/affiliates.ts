@@ -102,6 +102,23 @@ export const affiliatePrograms: AffiliateProgram[] = [
         ],
         active: true,
     },
+    {
+        id: 'bol',
+        name: 'Bol.com Partner Programma',
+        slug: 'bol',
+        url: 'https://www.bol.com',
+        envKey: 'BOL_SITE_ID',
+        type: 'revenue_share',
+        commission: '2.5%-7% commissie op bol.com verkopen (Platinum 7%, Gold 6%, Silver 4%, Bronze 2.5%)',
+        maxCtaPlacements: 3,
+        ctaAnchors: [
+            'Bekijk op bol.com',
+            'Bekijk de huidige prijs op bol.com',
+            'Bestel via bol.com',
+            'Controleer beschikbaarheid op bol.com',
+        ],
+        active: true,
+    },
 ];
 
 /** Get affiliate by id */

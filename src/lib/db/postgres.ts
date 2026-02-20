@@ -264,6 +264,55 @@ CREATE TABLE IF NOT EXISTS amazon_performance (
 );
 CREATE INDEX IF NOT EXISTS idx_amazon_perf_product ON amazon_performance(product_id);
 CREATE INDEX IF NOT EXISTS idx_amazon_perf_article ON amazon_performance(article_id);
+
+-- bol_products: Products fetched from Bol.com Marketing Catalog API or entered manually
+CREATE TABLE IF NOT EXISTS bol_products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ean TEXT NOT NULL DEFAULT '',
+  bol_product_id TEXT NOT NULL DEFAULT '',
+  title TEXT NOT NULL,
+  brand TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT '',
+  current_price FLOAT NOT NULL DEFAULT 0,
+  list_price FLOAT,
+  currency TEXT NOT NULL DEFAULT 'EUR',
+  rating FLOAT NOT NULL DEFAULT 0,
+  review_count INT NOT NULL DEFAULT 0,
+  availability TEXT NOT NULL DEFAULT 'Unknown',
+  delivery_label TEXT NOT NULL DEFAULT '',
+  affiliate_url TEXT NOT NULL DEFAULT '',
+  image_url TEXT NOT NULL DEFAULT '',
+  features JSONB NOT NULL DEFAULT '[]',
+  description TEXT NOT NULL DEFAULT '',
+  offer_condition TEXT NOT NULL DEFAULT 'NEW',
+  country_code TEXT NOT NULL DEFAULT 'BE',
+  raw_api_response JSONB NOT NULL DEFAULT '{}',
+  selection_reasoning TEXT NOT NULL DEFAULT '',
+  price_history JSONB NOT NULL DEFAULT '[]',
+  article_id UUID REFERENCES articles(id) ON DELETE SET NULL,
+  is_available BOOLEAN NOT NULL DEFAULT true,
+  source TEXT NOT NULL DEFAULT 'manual',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_bol_products_ean ON bol_products(ean);
+CREATE INDEX IF NOT EXISTS idx_bol_products_category ON bol_products(category);
+CREATE INDEX IF NOT EXISTS idx_bol_products_article ON bol_products(article_id);
+
+-- bol_performance: Affiliate click and conversion tracking for Bol.com products
+CREATE TABLE IF NOT EXISTS bol_performance (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID NOT NULL REFERENCES bol_products(id) ON DELETE CASCADE,
+  article_id UUID REFERENCES articles(id) ON DELETE SET NULL,
+  clicks INT NOT NULL DEFAULT 0,
+  conversions INT NOT NULL DEFAULT 0,
+  revenue FLOAT NOT NULL DEFAULT 0,
+  epc FLOAT NOT NULL DEFAULT 0,
+  conversion_rate FLOAT NOT NULL DEFAULT 0,
+  recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_bol_perf_product ON bol_performance(product_id);
+CREATE INDEX IF NOT EXISTS idx_bol_perf_article ON bol_performance(article_id);
 `;
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────

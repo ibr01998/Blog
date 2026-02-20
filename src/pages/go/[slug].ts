@@ -42,5 +42,21 @@ export const GET: APIRoute = async ({ params, redirect }) => {
         }
     }
 
+    // 4. Check Bol.com products by EAN-based slug (e.g. /go/bol-5412345678901)
+    if (normSlug.startsWith('bol-')) {
+        const ean = normSlug.replace('bol-', '');
+        try {
+            const rows = await query<{ affiliate_url: string }>(
+                'SELECT affiliate_url FROM bol_products WHERE ean = $1 AND is_available = true LIMIT 1',
+                [ean]
+            );
+            if (rows.length > 0 && rows[0].affiliate_url) {
+                return redirect(rows[0].affiliate_url, 307);
+            }
+        } catch {
+            // Postgres not available — fall through
+        }
+    }
+
     return new Response('Link not found', { status: 404 });
 };
