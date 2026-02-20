@@ -15,7 +15,14 @@
       "Bash(npm run build:*)",
       "Bash(node scripts/generate-icons.js:*)",
       "Bash(ls:*)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(head:*)",
+      "WebFetch(domain:affiliate-program.amazon.com)",
+      "WebFetch(domain:www.keywordrush.com)",
+      "WebFetch(domain:logie.ai)",
+      "Bash(git remote set-url:*)",
+      "Bash(ssh-keyscan:*)",
+      "Bash(~/.ssh/known_hosts)"
     ]
   }
 }
