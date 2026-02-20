@@ -71,12 +71,12 @@ export async function publishAmazonArticle(
       id, title, slug, language, writer_id,
       content_tier, primary_keyword, intent, hook_type, format_type,
       word_count, article_markdown, meta_description, meta_title,
-      embedding, status, review_status
+      image_url, embedding, status, review_status
     ) VALUES (
       $1, $2, $3, $4, NULL,
       $5, $6, $7, $8, $9,
       $10, $11, $12, $13,
-      $14::vector, $15, $16
+      $14, $15::vector, $16, $17
     )`,
     [
       articleId,
@@ -92,6 +92,7 @@ export async function publishAmazonArticle(
       article.articleMarkdown,
       article.metaDescription,
       article.metaTitle,
+      article.heroImage || null,
       JSON.stringify(embedding),
       autoPublish ? 'published' : 'draft',
       autoPublish ? 'approved' : 'pending',
@@ -126,7 +127,7 @@ export async function publishAmazonArticle(
         target_keyword: article.primaryKeyword,
         seo_title: article.metaTitle,
         article_type: 'amazon-review',
-        heroImage: '',
+        heroImage: article.heroImage || '',
         platforms: '[]',
         blocks: '[]',
         status: 'published',

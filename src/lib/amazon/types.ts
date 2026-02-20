@@ -113,6 +113,7 @@ export interface GeneratedArticle {
   articleMarkdown: string;
   wordCount: number;
   primaryKeyword: string;
+  heroImage: string;
   language: 'nl' | 'en';
 }
 

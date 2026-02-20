@@ -71,6 +71,7 @@ REGELS:
 - Maximaal 3 affiliate links per artikel
 - Gebruik contextuele ankertekst: "Bekijk op Amazon", "Bekijk de huidige prijs op Amazon"
 - NOOIT "klik hier" gebruiken
+- Als er een AFBEELDING URL is meegegeven, voeg deze toe direct na de H1 titel als: ![Product naam](afbeelding-url)
 - FAQ sectie: precies 3-5 vragen met korte antwoorden
 - Eindig met affiliate disclosure tekst
 
@@ -106,6 +107,7 @@ RULES:
 - Maximum 3 affiliate links per article
 - Use contextual anchor text: "Check on Amazon", "See current price on Amazon"
 - NEVER use "click here"
+- If an IMAGE URL is provided, include it right after the H1 title as: ![Product name](image-url)
 - FAQ section: exactly 3-5 questions with brief answers
 - End with affiliate disclosure text
 
@@ -136,7 +138,7 @@ ${product.prime_eligible ? 'PRIME: Ja (snelle levering)\n' : ''}
 KENMERKEN:
 ${features.length > 0 ? features.map(f => `- ${f}`).join('\n') : '- Geen specificaties beschikbaar'}
 
-${product.description ? `BESCHRIJVING: ${product.description}\n` : ''}
+${product.description ? `BESCHRIJVING: ${product.description}\n` : ''}${product.image_url ? `AFBEELDING: ${product.image_url}\n` : ''}
 AFFILIATE LINK: ${affiliateUrl}`
     : `Write a product review for the following product:
 
@@ -150,7 +152,7 @@ ${product.prime_eligible ? 'PRIME: Yes (fast delivery)\n' : ''}
 FEATURES:
 ${features.length > 0 ? features.map(f => `- ${f}`).join('\n') : '- No specifications available'}
 
-${product.description ? `DESCRIPTION: ${product.description}\n` : ''}
+${product.description ? `DESCRIPTION: ${product.description}\n` : ''}${product.image_url ? `IMAGE: ${product.image_url}\n` : ''}
 AFFILIATE LINK: ${affiliateUrl}`;
 
   return { system, user };
@@ -181,6 +183,7 @@ REGELS:
 - Wees eerlijk en gebalanceerd — elk product heeft voor- én nadelen
 - Maximaal 2 affiliate links per product (max 6 totaal)
 - Contextuele ankertekst: "Bekijk [Product] op Amazon"
+- Als een product een AFBEELDING URL heeft, voeg deze toe als: ![Product naam](afbeelding-url) in de sectie van dat product
 - FAQ sectie: 3-5 vragen
 - Maak een Markdown vergelijkingstabel met: Product | Prijs | Beoordeling | Beste Voor
 - Eindig met affiliate disclosure
@@ -215,6 +218,7 @@ RULES:
 - Be honest and balanced — every product has pros and cons
 - Maximum 2 affiliate links per product (max 6 total)
 - Contextual anchor text: "Check [Product] on Amazon"
+- If a product has an IMAGE URL, include it as: ![Product name](image-url) in that product's section
 - FAQ section: 3-5 questions
 - Create a Markdown comparison table: Product | Price | Rating | Best For
 - End with affiliate disclosure
@@ -241,7 +245,7 @@ primary_keyword: [main search keyword]`;
 - Prijs: €${p.current_price.toFixed(2)}${p.list_price ? ` (was €${p.list_price.toFixed(2)})` : ''}
 - Beoordeling: ${p.rating > 0 ? `${p.rating}/5 (${p.review_count} reviews)` : 'Geen beoordeling'}
 ${p.prime_eligible ? '- Prime: Ja\n' : ''}- Kenmerken: ${features.length > 0 ? features.slice(0, 5).join('; ') : 'Niet beschikbaar'}
-- Affiliate link: ${affiliateUrl}`;
+${p.image_url ? `- Afbeelding: ${p.image_url}\n` : ''}- Affiliate link: ${affiliateUrl}`;
   }).join('\n\n');
 
   const user = isNl
@@ -253,7 +257,7 @@ ${p.prime_eligible ? '- Prime: Ja\n' : ''}- Kenmerken: ${features.length > 0 ? f
 
 // ─── Article Parsing ────────────────────────────────────────────────────────────
 
-function parseGeneratedArticle(text: string, language: 'nl' | 'en'): GeneratedArticle {
+function parseGeneratedArticle(text: string, language: 'nl' | 'en', heroImage: string): GeneratedArticle {
   // Split content and meta
   const metaSeparator = '---META---';
   const parts = text.split(metaSeparator);
@@ -290,6 +294,7 @@ function parseGeneratedArticle(text: string, language: 'nl' | 'en'): GeneratedAr
     articleMarkdown,
     wordCount,
     primaryKeyword: meta.primary_keyword || title.split(' ').slice(0, 3).join(' ').toLowerCase(),
+    heroImage,
     language,
   };
 }
@@ -327,5 +332,8 @@ export async function generateAmazonArticle(
     `generateAmazonArticle (${products.length} products)`
   );
 
-  return parseGeneratedArticle(result.text, language);
+  // Use first product's image as hero image
+  const heroImage = products[0]?.image_url || '';
+
+  return parseGeneratedArticle(result.text, language, heroImage);
 }
