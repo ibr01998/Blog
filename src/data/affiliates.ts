@@ -85,6 +85,23 @@ export const affiliatePrograms: AffiliateProgram[] = [
         ],
         active: true,
     },
+    {
+        id: 'amazon',
+        name: 'Amazon Associates',
+        slug: 'amazon',
+        url: 'https://www.amazon.nl',
+        envKey: 'AMAZON_PARTNER_TAG',
+        type: 'revenue_share',
+        commission: 'Tot 12% commissie op Amazon.nl verkopen',
+        maxCtaPlacements: 3,
+        ctaAnchors: [
+            'Bekijk op Amazon',
+            'Bekijk de huidige prijs',
+            'Bestel via Amazon.nl',
+            'Controleer beschikbaarheid',
+        ],
+        active: true,
+    },
 ];
 
 /** Get affiliate by id */

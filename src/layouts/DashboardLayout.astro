@@ -24,6 +24,7 @@ const navItems = [
   { id: 'ai-articles', label: 'AI Artikelen', href: '/dashboard/ai-articles', icon: 'doc-check' },
   { id: 'system', label: 'Systeem', href: '/dashboard/system', icon: 'settings' },
   { id: 'agent-logs', label: 'Agent Logs', href: '/dashboard/agent-logs', icon: 'logs' },
+  { id: 'amazon', label: 'Amazon', href: '/dashboard/amazon', icon: 'cart' },
 ];
 ---
 
@@ -110,6 +111,11 @@ const navItems = [
           {item.icon === 'logs' && (
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h7" />
+            </svg>
+          )}
+          {item.icon === 'cart' && (
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
           )}
           {item.label}

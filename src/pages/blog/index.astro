@@ -21,7 +21,7 @@ const allPosts = [
     description: p.description,
     pubDate:     p.pubDate instanceof Date ? p.pubDate : new Date(String(p.pubDate)),
     heroImage:   p.heroImage || null,
-    articleType: null as string | null,
+    articleType: (p as any).article_type || null as string | null,
   })),
 ].sort((a, b) => b.pubDate.valueOf() - a.pubDate.valueOf());
 
@@ -32,6 +32,7 @@ const typeLabels: Record<string, string> = {
   bonus:      'Bonus',
   trust:      'Vertrouwen',
   fee:        'Kosten',
+  'amazon-review': 'Amazon',
 };
 const availableTypes = [...new Set(allPosts.map(p => p.articleType).filter(Boolean))] as string[];
 ---

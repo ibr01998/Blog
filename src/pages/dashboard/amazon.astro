@@ -1,0 +1,646 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { query } from '../../lib/db/postgres.ts';
+import { isConfigured } from '../../lib/amazon/client.ts';
+import type { AmazonProductRow } from '../../lib/amazon/types.ts';
+
+const configured = isConfigured();
+
+let products: AmazonProductRow[] = [];
+let totalProducts = 0;
+let productsWithArticles = 0;
+let dbError = '';
+
+try {
+  products = await query<AmazonProductRow>(
+    'SELECT * FROM amazon_products ORDER BY created_at DESC LIMIT 50'
+  );
+  totalProducts = products.length;
+  productsWithArticles = products.filter(p => p.article_id).length;
+} catch (err) {
+  dbError = err instanceof Error ? err.message : 'Database niet beschikbaar';
+}
+
+function parseJson(val: any): any {
+  if (typeof val === 'string') { try { return JSON.parse(val); } catch { return val; } }
+  return val;
+}
+---
+
+<DashboardLayout title="Amazon Associates" activePage="amazon">
+  <div class="space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-xl font-bold text-navy">Amazon Associates</h2>
+        <p class="text-sm text-gray-500 mt-1">Producten beheren, artikelen genereren en prestaties volgen.</p>
+      </div>
+    </div>
+
+    <!-- API Status Banner -->
+    {!configured && (
+      <div class="glass rounded-xl p-4 border border-amber-200 bg-amber-50/50">
+        <div class="flex items-start gap-3">
+          <svg class="h-5 w-5 text-amber-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+          <div>
+            <p class="text-sm font-medium text-amber-800">Creators API niet geconfigureerd</p>
+            <p class="text-xs text-amber-600 mt-1">
+              Stel <code class="bg-amber-100 px-1 rounded">AMAZON_CREDENTIAL_ID</code>, <code class="bg-amber-100 px-1 rounded">AMAZON_CREDENTIAL_SECRET</code> en <code class="bg-amber-100 px-1 rounded">AMAZON_PARTNER_TAG</code> in als omgevingsvariabelen.
+              Je hebt 10 kwalificerende verkopen nodig voor API-toegang via <a href="https://affiliate-program.amazon.com/creatorsapi" target="_blank" class="underline">Associates Central</a>.
+            </p>
+            <p class="text-xs text-amber-600 mt-1">Je kunt wel handmatig producten toevoegen en artikelen genereren.</p>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {configured && (
+      <div class="glass rounded-xl p-4 border border-green-200 bg-green-50/50">
+        <p class="text-sm text-green-700">Creators API verbonden. Zoek producten via de API of voeg ze handmatig toe.</p>
+      </div>
+    )}
+
+    {dbError && (
+      <div class="glass rounded-xl p-4 border border-red-200">
+        <p class="text-sm text-red-600"><strong>Fout:</strong> {dbError}</p>
+        <p class="text-xs text-gray-500 mt-1">
+          Voer <code class="bg-gray-100 px-1 rounded">POST /api/admin/migrate</code> uit om de tabellen aan te maken.
+        </p>
+      </div>
+    )}
+
+    <!-- Tab Navigation -->
+    <div class="flex gap-2 border-b border-gray-200">
+      <button id="btn-products" onclick="switchTab('products')"
+        class="px-4 py-2 text-sm font-medium border-b-2 border-navy text-navy">
+        Producten ({totalProducts})
+      </button>
+      <button id="btn-performance" onclick="switchTab('performance')"
+        class="px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-navy">
+        Prestaties
+      </button>
+    </div>
+
+    <!-- ═══ Tab: Producten ═══ -->
+    <div id="panel-products">
+
+      <!-- Stats -->
+      <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="glass rounded-xl p-4 border border-white/20">
+          <p class="text-xs text-gray-500 uppercase tracking-wide">Producten</p>
+          <p class="text-2xl font-bold text-navy mt-1">{totalProducts}</p>
+        </div>
+        <div class="glass rounded-xl p-4 border border-white/20">
+          <p class="text-xs text-gray-500 uppercase tracking-wide">Met Artikel</p>
+          <p class="text-2xl font-bold text-navy mt-1">{productsWithArticles}</p>
+        </div>
+        <div class="glass rounded-xl p-4 border border-white/20">
+          <p class="text-xs text-gray-500 uppercase tracking-wide">Zonder Artikel</p>
+          <p class="text-2xl font-bold text-navy mt-1">{totalProducts - productsWithArticles}</p>
+        </div>
+      </div>
+
+      <!-- API Search (only when configured) -->
+      {configured && (
+        <div class="glass rounded-xl p-5 border border-white/20 mb-6">
+          <h3 class="text-sm font-semibold text-navy mb-3">Zoek op Amazon</h3>
+          <div class="flex gap-3">
+            <input id="search-keywords" type="text" placeholder="Zoekwoorden..."
+              class="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-navy/20 focus:border-navy outline-none" />
+            <select id="search-category"
+              class="px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-navy/20 focus:border-navy outline-none">
+              <option value="">Alle categorieen</option>
+              <option value="Electronics">Elektronica</option>
+              <option value="HomeAndKitchen">Huis & Keuken</option>
+              <option value="OfficeProducts">Kantoor</option>
+              <option value="SportsAndOutdoors">Sport</option>
+              <option value="ToolsAndHomeImprovement">Gereedschap</option>
+              <option value="Beauty">Beauty</option>
+              <option value="Books">Boeken</option>
+            </select>
+            <button id="search-btn"
+              class="bg-navy text-white px-4 py-2 text-sm rounded-lg hover:bg-navy/90 transition-colors whitespace-nowrap">
+              Zoeken
+            </button>
+          </div>
+          <div id="search-results" class="mt-4 hidden"></div>
+        </div>
+      )}
+
+      <!-- Manual Product Entry -->
+      <div class="glass rounded-xl p-5 border border-white/20 mb-6">
+        <details>
+          <summary class="text-sm font-semibold text-navy cursor-pointer select-none">
+            Product Handmatig Toevoegen
+          </summary>
+          <div class="mt-4 space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">Titel *</label>
+                <input id="manual-title" type="text" placeholder="Product naam..."
+                  class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-navy/20 focus:border-navy outline-none" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">ASIN (optioneel)</label>
+                <input id="manual-asin" type="text" placeholder="B0XXXXXXXXX"
+                  class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-navy/20 focus:border-navy outline-none" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">Merk</label>
+                <input id="manual-brand" type="text" placeholder="Merk naam..."
+                  class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-navy/20 focus:border-navy outline-none" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">Categorie</label>
+                <input id="manual-category" type="text" placeholder="Elektronica, Keuken..."
+                  class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-navy/20 focus:border-navy outline-none" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">Prijs (EUR) *</label>
+                <input id="manual-price" type="number" step="0.01" min="0" placeholder="49.99"
+                  class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-navy/20 focus:border-navy outline-none" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">Beoordeling (0-5)</label>
+                <input id="manual-rating" type="number" step="0.1" min="0" max="5" placeholder="4.5"
+                  class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-navy/20 focus:border-navy outline-none" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">Aantal Reviews</label>
+                <input id="manual-reviews" type="number" min="0" placeholder="250"
+                  class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-navy/20 focus:border-navy outline-none" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">Affiliate URL</label>
+                <input id="manual-url" type="url" placeholder="https://amazon.nl/dp/..."
+                  class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-navy/20 focus:border-navy outline-none" />
+              </div>
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 block mb-1">Afbeelding URL</label>
+              <input id="manual-image" type="url" placeholder="https://..."
+                class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-navy/20 focus:border-navy outline-none" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 block mb-1">Kenmerken (1 per regel)</label>
+              <textarea id="manual-features" rows="3" placeholder="Kenmerk 1&#10;Kenmerk 2&#10;Kenmerk 3"
+                class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-navy/20 focus:border-navy outline-none"></textarea>
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 block mb-1">Beschrijving</label>
+              <textarea id="manual-description" rows="2" placeholder="Korte productbeschrijving..."
+                class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-navy/20 focus:border-navy outline-none"></textarea>
+            </div>
+            <button id="manual-save-btn"
+              class="bg-navy text-white px-4 py-2 text-sm rounded-lg hover:bg-navy/90 transition-colors">
+              Product Opslaan
+            </button>
+          </div>
+        </details>
+      </div>
+
+      <!-- Products Table -->
+      {products.length > 0 && (
+        <div class="glass rounded-xl border border-white/20 overflow-hidden">
+          <div class="flex items-center justify-between p-4 border-b border-white/20">
+            <h3 class="text-sm font-semibold text-navy">Opgeslagen Producten</h3>
+            <button id="generate-selected-btn" class="bg-navy text-white px-3 py-1.5 text-xs rounded-lg hover:bg-navy/90 transition-colors hidden">
+              Genereer Artikel voor Selectie
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-xs text-gray-500 uppercase border-b border-white/20">
+                  <th class="text-left p-3"><input type="checkbox" id="select-all" class="rounded" /></th>
+                  <th class="text-left p-3">Product</th>
+                  <th class="text-left p-3">Prijs</th>
+                  <th class="text-left p-3">Rating</th>
+                  <th class="text-left p-3">Bron</th>
+                  <th class="text-left p-3">Status</th>
+                  <th class="text-right p-3">Acties</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map((product) => {
+                  const features = parseJson(product.features);
+                  const rawData = parseJson(product.raw_api_response);
+                  const priceHistory = parseJson(product.price_history);
+                  return (
+                    <tr class="border-b border-white/10 hover:bg-white/5" data-product-id={product.id}>
+                      <td class="p-3">
+                        <input type="checkbox" class="product-checkbox rounded" value={product.id}
+                          disabled={!!product.article_id} />
+                      </td>
+                      <td class="p-3">
+                        <div class="flex items-center gap-3">
+                          {product.image_url && (
+                            <img src={product.image_url} alt="" class="w-10 h-10 object-contain rounded" />
+                          )}
+                          <div class="min-w-0">
+                            <p class="font-medium text-navy truncate max-w-xs">{product.title}</p>
+                            <p class="text-xs text-gray-400">
+                              {product.brand && <span>{product.brand}</span>}
+                              {product.asin && <span class="ml-2">ASIN: {product.asin}</span>}
+                              {product.category && <span class="ml-2">{product.category}</span>}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="p-3">
+                        <span class="font-medium">{product.currency} {product.current_price.toFixed(2)}</span>
+                        {product.list_price && (
+                          <span class="text-xs text-gray-400 line-through ml-1">{product.list_price.toFixed(2)}</span>
+                        )}
+                      </td>
+                      <td class="p-3">
+                        {product.rating > 0 ? (
+                          <span>{product.rating}/5 <span class="text-xs text-gray-400">({product.review_count})</span></span>
+                        ) : (
+                          <span class="text-xs text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td class="p-3">
+                        <span class={`text-xs px-2 py-0.5 rounded-full ${product.source === 'api' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                          {product.source === 'api' ? 'API' : 'Handmatig'}
+                        </span>
+                      </td>
+                      <td class="p-3">
+                        {product.article_id ? (
+                          <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Artikel</span>
+                        ) : product.is_available ? (
+                          <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Beschikbaar</span>
+                        ) : (
+                          <span class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Niet beschikbaar</span>
+                        )}
+                      </td>
+                      <td class="p-3 text-right">
+                        <div class="flex gap-1 justify-end">
+                          {!product.article_id && (
+                            <button class="generate-btn text-xs bg-navy text-white px-2 py-1 rounded hover:bg-navy/90"
+                              data-product-id={product.id}>
+                              Genereer
+                            </button>
+                          )}
+                          <button class="details-btn text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200"
+                            data-product-id={product.id}>
+                            Details
+                          </button>
+                          <button class="delete-btn text-xs bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100"
+                            data-product-id={product.id}>
+                            Verwijder
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    <!-- Expandable Details Row -->
+                    <tr class="hidden details-row" id={`details-${product.id}`}>
+                      <td colspan="7" class="p-4 bg-gray-50/50">
+                        <div class="grid grid-cols-2 gap-4">
+                          <div>
+                            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-2">Selectie Reden</h4>
+                            <p class="text-sm text-gray-700">{product.selection_reasoning || 'Handmatig toegevoegd'}</p>
+                            {Array.isArray(features) && features.length > 0 && (
+                              <div class="mt-3">
+                                <h4 class="text-xs font-semibold text-gray-500 uppercase mb-1">Kenmerken</h4>
+                                <ul class="text-xs text-gray-600 space-y-0.5">
+                                  {features.slice(0, 5).map((f: string) => (
+                                    <li>- {f}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {Array.isArray(priceHistory) && priceHistory.length > 0 && (
+                              <div class="mt-3">
+                                <h4 class="text-xs font-semibold text-gray-500 uppercase mb-1">Prijsgeschiedenis</h4>
+                                <div class="text-xs text-gray-600 space-y-0.5">
+                                  {priceHistory.map((entry: any) => (
+                                    <div>{product.currency} {entry.price?.toFixed(2)} — {new Date(entry.date).toLocaleDateString('nl-BE')}</div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-2">API Response</h4>
+                            <pre class="text-xs bg-white rounded-lg p-3 max-h-48 overflow-auto border border-gray-100">{JSON.stringify(rawData, null, 2)}</pre>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {products.length === 0 && !dbError && (
+        <div class="glass rounded-xl p-8 border border-white/20 text-center">
+          <p class="text-gray-500">Nog geen producten opgeslagen.</p>
+          <p class="text-sm text-gray-400 mt-1">Gebruik de API-zoekfunctie of voeg handmatig een product toe.</p>
+        </div>
+      )}
+    </div>
+
+    <!-- ═══ Tab: Prestaties ═══ -->
+    <div id="panel-performance" class="hidden">
+      <div class="grid grid-cols-4 gap-4 mb-6">
+        <div class="glass rounded-xl p-4 border border-white/20">
+          <p class="text-xs text-gray-500 uppercase tracking-wide">Totaal Producten</p>
+          <p class="text-2xl font-bold text-navy mt-1">{totalProducts}</p>
+        </div>
+        <div class="glass rounded-xl p-4 border border-white/20">
+          <p class="text-xs text-gray-500 uppercase tracking-wide">Artikelen</p>
+          <p class="text-2xl font-bold text-navy mt-1">{productsWithArticles}</p>
+        </div>
+        <div class="glass rounded-xl p-4 border border-white/20">
+          <p class="text-xs text-gray-500 uppercase tracking-wide">Klikken</p>
+          <p class="text-2xl font-bold text-navy mt-1" id="total-clicks">0</p>
+        </div>
+        <div class="glass rounded-xl p-4 border border-white/20">
+          <p class="text-xs text-gray-500 uppercase tracking-wide">Gem. EPC</p>
+          <p class="text-2xl font-bold text-navy mt-1" id="avg-epc">-</p>
+        </div>
+      </div>
+
+      <div class="glass rounded-xl p-5 border border-white/20">
+        <h3 class="text-sm font-semibold text-navy mb-3">Product Prestaties</h3>
+        <p class="text-sm text-gray-400">Prestatiegegevens worden hier weergegeven zodra er klikken en conversies worden bijgehouden.</p>
+      </div>
+    </div>
+
+  </div>
+</DashboardLayout>
+
+<script>
+  // ─── Tab Switching ──────────────────────────────────────────────────
+  const ACTIVE = 'border-b-2 border-navy text-navy font-medium';
+  const INACTIVE = 'border-b-2 border-transparent text-gray-500 hover:text-navy font-medium';
+
+  (window as any).switchTab = (tab: string) => {
+    ['products', 'performance'].forEach(t => {
+      const panel = document.getElementById('panel-' + t);
+      const btn = document.getElementById('btn-' + t);
+      if (panel) panel.style.display = t === tab ? 'block' : 'none';
+      if (btn) btn.className = `px-4 py-2 text-sm ${t === tab ? ACTIVE : INACTIVE}`;
+    });
+  };
+
+  // ─── API Search ─────────────────────────────────────────────────────
+  document.getElementById('search-btn')?.addEventListener('click', async () => {
+    const keywords = (document.getElementById('search-keywords') as HTMLInputElement)?.value;
+    const category = (document.getElementById('search-category') as HTMLSelectElement)?.value;
+
+    if (!keywords) return;
+
+    const resultsDiv = document.getElementById('search-results')!;
+    resultsDiv.classList.remove('hidden');
+    resultsDiv.innerHTML = '<p class="text-sm text-gray-500">Zoeken...</p>';
+
+    try {
+      const res = await fetch('/api/admin/amazon/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keywords, category: category || undefined }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        resultsDiv.innerHTML = `<p class="text-sm text-red-600">Fout: ${data.error}</p>`;
+        return;
+      }
+
+      if (!data.filtered || data.filtered.length === 0) {
+        resultsDiv.innerHTML = '<p class="text-sm text-gray-500">Geen producten gevonden die aan de criteria voldoen.</p>';
+        return;
+      }
+
+      resultsDiv.innerHTML = data.filtered.map((p: any) => `
+        <div class="flex items-center gap-3 py-3 border-b border-gray-100 last:border-0">
+          ${p.imageUrl ? `<img src="${p.imageUrl}" class="w-12 h-12 object-contain rounded" />` : ''}
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-navy truncate">${p.title}</p>
+            <p class="text-xs text-gray-400">${p.brand || ''} ${p.category ? '| ' + p.category : ''}</p>
+            <p class="text-xs mt-0.5">
+              <span class="font-medium">${p.currency || 'EUR'} ${p.price?.toFixed(2) || '?'}</span>
+              ${p.rating > 0 ? ` | ${p.rating}/5 (${p.reviewCount} reviews)` : ''}
+              ${p.primeEligible ? ' | Prime' : ''}
+            </p>
+          </div>
+          <button class="save-search-result text-xs bg-navy text-white px-3 py-1.5 rounded hover:bg-navy/90 shrink-0"
+            data-product='${JSON.stringify(p).replace(/'/g, "&#39;")}'>
+            Opslaan
+          </button>
+        </div>
+      `).join('');
+
+      // Attach save handlers
+      resultsDiv.querySelectorAll('.save-search-result').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const el = e.currentTarget as HTMLButtonElement;
+          const product = JSON.parse(el.dataset.product!);
+          el.disabled = true;
+          el.textContent = 'Opslaan...';
+
+          const saveRes = await fetch('/api/admin/amazon/products', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ product }),
+          });
+
+          if (saveRes.ok) {
+            el.textContent = 'Opgeslagen!';
+            el.className = 'text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded shrink-0';
+          } else {
+            const err = await saveRes.json();
+            el.textContent = err.error?.includes('already') ? 'Al opgeslagen' : 'Fout';
+            el.disabled = false;
+          }
+        });
+      });
+    } catch (err) {
+      resultsDiv.innerHTML = `<p class="text-sm text-red-600">Netwerkfout: ${err}</p>`;
+    }
+  });
+
+  // ─── Manual Product Save ────────────────────────────────────────────
+  document.getElementById('manual-save-btn')?.addEventListener('click', async () => {
+    const title = (document.getElementById('manual-title') as HTMLInputElement)?.value;
+    const price = parseFloat((document.getElementById('manual-price') as HTMLInputElement)?.value || '0');
+
+    if (!title) { alert('Titel is verplicht'); return; }
+    if (price <= 0) { alert('Prijs is verplicht'); return; }
+
+    const btn = document.getElementById('manual-save-btn') as HTMLButtonElement;
+    btn.disabled = true;
+    btn.textContent = 'Opslaan...';
+
+    const featuresText = (document.getElementById('manual-features') as HTMLTextAreaElement)?.value ?? '';
+    const features = featuresText.split('\n').map(f => f.trim()).filter(Boolean);
+
+    const product = {
+      asin: (document.getElementById('manual-asin') as HTMLInputElement)?.value || undefined,
+      title,
+      brand: (document.getElementById('manual-brand') as HTMLInputElement)?.value || '',
+      category: (document.getElementById('manual-category') as HTMLInputElement)?.value || '',
+      price,
+      rating: parseFloat((document.getElementById('manual-rating') as HTMLInputElement)?.value || '0'),
+      reviewCount: parseInt((document.getElementById('manual-reviews') as HTMLInputElement)?.value || '0'),
+      affiliateUrl: (document.getElementById('manual-url') as HTMLInputElement)?.value || '',
+      imageUrl: (document.getElementById('manual-image') as HTMLInputElement)?.value || '',
+      features,
+      description: (document.getElementById('manual-description') as HTMLTextAreaElement)?.value || '',
+    };
+
+    try {
+      const res = await fetch('/api/admin/amazon/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product }),
+      });
+
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const data = await res.json();
+        alert('Fout: ' + data.error);
+        btn.disabled = false;
+        btn.textContent = 'Product Opslaan';
+      }
+    } catch (err) {
+      alert('Netwerkfout');
+      btn.disabled = false;
+      btn.textContent = 'Product Opslaan';
+    }
+  });
+
+  // ─── Generate Article (Single) ─────────────────────────────────────
+  document.querySelectorAll<HTMLButtonElement>('.generate-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const productId = btn.dataset.productId;
+      if (!confirm('Artikel genereren voor dit product? Dit kan 1-2 minuten duren.')) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Genereren...';
+
+      try {
+        const res = await fetch('/api/admin/amazon/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product_id: productId, language: 'nl' }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          alert(`Artikel gegenereerd: "${data.title}" (${data.word_count} woorden)`);
+          window.location.reload();
+        } else {
+          alert('Fout: ' + data.error);
+          btn.disabled = false;
+          btn.textContent = 'Genereer';
+        }
+      } catch (err) {
+        alert('Netwerkfout');
+        btn.disabled = false;
+        btn.textContent = 'Genereer';
+      }
+    });
+  });
+
+  // ─── Generate Article (Multi-Select) ───────────────────────────────
+  const generateSelectedBtn = document.getElementById('generate-selected-btn');
+  const selectAll = document.getElementById('select-all') as HTMLInputElement;
+  const checkboxes = document.querySelectorAll<HTMLInputElement>('.product-checkbox');
+
+  function updateSelectionUI() {
+    const selected = Array.from(checkboxes).filter(cb => cb.checked && !cb.disabled);
+    if (generateSelectedBtn) {
+      if (selected.length >= 2) {
+        generateSelectedBtn.classList.remove('hidden');
+        generateSelectedBtn.textContent = `Genereer Artikel voor ${selected.length} Producten`;
+      } else {
+        generateSelectedBtn.classList.add('hidden');
+      }
+    }
+  }
+
+  selectAll?.addEventListener('change', () => {
+    checkboxes.forEach(cb => {
+      if (!cb.disabled) cb.checked = selectAll.checked;
+    });
+    updateSelectionUI();
+  });
+
+  checkboxes.forEach(cb => cb.addEventListener('change', updateSelectionUI));
+
+  generateSelectedBtn?.addEventListener('click', async () => {
+    const selected = Array.from(checkboxes).filter(cb => cb.checked && !cb.disabled).map(cb => cb.value);
+    if (selected.length < 2) return;
+    if (!confirm(`Vergelijkingsartikel genereren voor ${selected.length} producten? Dit kan 1-2 minuten duren.`)) return;
+
+    const btn = generateSelectedBtn as HTMLButtonElement;
+    btn.disabled = true;
+    btn.textContent = 'Genereren...';
+
+    try {
+      const res = await fetch('/api/admin/amazon/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_ids: selected, language: 'nl' }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert(`Vergelijkingsartikel gegenereerd: "${data.title}" (${data.word_count} woorden, ${data.products_count} producten)`);
+        window.location.reload();
+      } else {
+        alert('Fout: ' + data.error);
+        btn.disabled = false;
+        updateSelectionUI();
+      }
+    } catch (err) {
+      alert('Netwerkfout');
+      btn.disabled = false;
+      updateSelectionUI();
+    }
+  });
+
+  // ─── Details Toggle ─────────────────────────────────────────────────
+  document.querySelectorAll<HTMLButtonElement>('.details-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const row = document.getElementById('details-' + btn.dataset.productId);
+      if (row) row.classList.toggle('hidden');
+    });
+  });
+
+  // ─── Delete Product ─────────────────────────────────────────────────
+  document.querySelectorAll<HTMLButtonElement>('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Product verwijderen?')) return;
+
+      const id = btn.dataset.productId;
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`/api/admin/amazon/products/${id}`, { method: 'DELETE' });
+        if (res.ok) window.location.reload();
+        else {
+          const data = await res.json();
+          alert('Fout: ' + data.error);
+          btn.disabled = false;
+        }
+      } catch {
+        alert('Netwerkfout');
+        btn.disabled = false;
+      }
+    });
+  });
+</script>

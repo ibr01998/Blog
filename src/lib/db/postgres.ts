@@ -217,6 +217,53 @@ ALTER TABLE agents ADD CONSTRAINT agents_role_check
 
 -- Add enable_research_agent toggle to system_config
 ALTER TABLE system_config ADD COLUMN IF NOT EXISTS enable_research_agent BOOLEAN NOT NULL DEFAULT true;
+
+-- amazon_products: Products fetched from Creators API or entered manually
+CREATE TABLE IF NOT EXISTS amazon_products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  asin TEXT NOT NULL DEFAULT '',
+  title TEXT NOT NULL,
+  brand TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT '',
+  current_price FLOAT NOT NULL DEFAULT 0,
+  list_price FLOAT,
+  currency TEXT NOT NULL DEFAULT 'EUR',
+  rating FLOAT NOT NULL DEFAULT 0,
+  review_count INT NOT NULL DEFAULT 0,
+  availability TEXT NOT NULL DEFAULT 'Unknown',
+  prime_eligible BOOLEAN NOT NULL DEFAULT false,
+  affiliate_url TEXT NOT NULL DEFAULT '',
+  image_url TEXT NOT NULL DEFAULT '',
+  features JSONB NOT NULL DEFAULT '[]',
+  description TEXT NOT NULL DEFAULT '',
+  best_seller_rank INT,
+  raw_api_response JSONB NOT NULL DEFAULT '{}',
+  selection_reasoning TEXT NOT NULL DEFAULT '',
+  price_history JSONB NOT NULL DEFAULT '[]',
+  article_id UUID REFERENCES articles(id) ON DELETE SET NULL,
+  is_available BOOLEAN NOT NULL DEFAULT true,
+  source TEXT NOT NULL DEFAULT 'manual',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_amazon_products_asin ON amazon_products(asin);
+CREATE INDEX IF NOT EXISTS idx_amazon_products_category ON amazon_products(category);
+CREATE INDEX IF NOT EXISTS idx_amazon_products_article ON amazon_products(article_id);
+
+-- amazon_performance: Affiliate click and conversion tracking for Amazon products
+CREATE TABLE IF NOT EXISTS amazon_performance (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID NOT NULL REFERENCES amazon_products(id) ON DELETE CASCADE,
+  article_id UUID REFERENCES articles(id) ON DELETE SET NULL,
+  clicks INT NOT NULL DEFAULT 0,
+  conversions INT NOT NULL DEFAULT 0,
+  revenue FLOAT NOT NULL DEFAULT 0,
+  epc FLOAT NOT NULL DEFAULT 0,
+  conversion_rate FLOAT NOT NULL DEFAULT 0,
+  recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_amazon_perf_product ON amazon_performance(product_id);
+CREATE INDEX IF NOT EXISTS idx_amazon_perf_article ON amazon_performance(article_id);
 `;
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
