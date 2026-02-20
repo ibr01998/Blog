@@ -5,7 +5,7 @@
  * which actions still need to be run after a new deployment.
  *
  * Checks:
- *  1. migration   — latest DB schema applied (content_strategy_metrics table exists)
+ *  1. migration   — latest DB schema applied (amazon_products table exists)
  *  2. metricsSync — article_metrics has synced data (any views > 0)
  *  3. agents      — at least one active agent is seeded
  */
@@ -17,12 +17,12 @@ import { query } from '../../../lib/db/postgres.ts';
 
 export const GET: APIRoute = async () => {
   try {
-    // 1. Migration check — does the latest table (market_research) exist?
+    // 1. Migration check — does the latest table (amazon_products) exist?
     const migrationRows = await query<{ ok: boolean }>(`
       SELECT EXISTS (
         SELECT 1 FROM information_schema.tables
         WHERE table_schema = 'public'
-          AND table_name = 'market_research'
+          AND table_name = 'amazon_products'
       ) as ok
     `);
     const migrationOk = migrationRows[0]?.ok === true;
@@ -54,8 +54,8 @@ export const GET: APIRoute = async () => {
           id: 'migration',
           label: 'Database Migratie',
           description: migrationOk
-            ? 'Alle tabellen aangemaakt (incl. market_research)'
-            : 'market_research tabel ontbreekt — migratie vereist',
+            ? 'Alle tabellen aangemaakt (incl. amazon_products)'
+            : 'amazon_products tabel ontbreekt — migratie vereist',
           ok: migrationOk,
           action: { method: 'POST', url: '/api/admin/migrate' },
           actionLabel: 'Migreer Nu',
