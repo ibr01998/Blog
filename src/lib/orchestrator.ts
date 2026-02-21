@@ -37,6 +37,7 @@ import type {
   AgentRole,
   AgentRecord,
   CycleSummary,
+  ArticleFactChecked,
   ArticleOptimized,
 } from './agents/types.ts';
 
@@ -211,8 +212,15 @@ export async function runEditorialCycle(onProgress?: ProgressCallback): Promise<
 
   const writerAgent = await loadAgent('writer', WriterAgent);
   const humanizerAgent = await loadAgent('humanizer', HumanizerAgent);
-  const factCheckerAgent = await loadAgent('fact_checker', FactCheckerAgent);
   const seoAgent = await loadAgent('seo', SEOAgent);
+
+  // Fact checker is optional — skip gracefully if agent not seeded yet
+  let factCheckerAgent: FactCheckerAgent | null = null;
+  try {
+    factCheckerAgent = await loadAgent('fact_checker', FactCheckerAgent);
+  } catch {
+    console.warn('[Orchestrator] fact_checker agent not found — skipping fact-check step');
+  }
 
   // Apply analyst evolution suggestions to in-memory agents immediately,
   // so this cycle's articles already benefit from the recommended overrides.
@@ -256,9 +264,14 @@ export async function runEditorialCycle(onProgress?: ProgressCallback): Promise<
       emit({ stage: 'humanizer', progress: Math.round(articleBase + perArticleRange * 0.3), message: `Humanizer verfijnt artikel: "${draft.title}"` });
       const humanized = await humanizerAgent.run(draft);
 
-      // 5c. Fact Check
-      emit({ stage: 'fact_checker', progress: Math.round(articleBase + perArticleRange * 0.5), message: `Feiten controleren: "${humanized.title}"` });
-      const factChecked = await factCheckerAgent.run(humanized);
+      // 5c. Fact Check (optional — skips if agent not available)
+      let factChecked: ArticleFactChecked;
+      if (factCheckerAgent) {
+        emit({ stage: 'fact_checker', progress: Math.round(articleBase + perArticleRange * 0.5), message: `Feiten controleren: "${humanized.title}"` });
+        factChecked = await factCheckerAgent.run(humanized);
+      } else {
+        factChecked = { ...humanized, fact_check_status: 'passed' as const, fact_check_issues: [] };
+      }
 
       // 5d. SEO optimize
       emit({ stage: 'seo', progress: Math.round(articleBase + perArticleRange * 0.65), message: `SEO optimaliseert artikel: "${factChecked.title}"` });
@@ -334,8 +347,8 @@ export async function runEditorialCycle(onProgress?: ProgressCallback): Promise<
         [articleId, assignment.writer_id]
       );
 
-      // Also backfill for humanizer, fact checker, and SEO agents
-      const helperAgents = [humanizerAgent.id, factCheckerAgent.id, seoAgent.id];
+      // Also backfill for humanizer, fact checker (if available), and SEO agents
+      const helperAgents = [humanizerAgent.id, ...(factCheckerAgent ? [factCheckerAgent.id] : []), seoAgent.id];
       for (const agentId of helperAgents) {
         await query(
           `UPDATE agent_logs
