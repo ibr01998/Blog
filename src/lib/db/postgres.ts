@@ -325,6 +325,11 @@ ALTER TABLE articles ADD COLUMN IF NOT EXISTS fact_check_issues JSONB NOT NULL D
 ALTER TABLE agents DROP CONSTRAINT IF EXISTS agents_role_check;
 ALTER TABLE agents ADD CONSTRAINT agents_role_check
   CHECK (role IN ('analyst','strategist','editor','writer','humanizer','seo','researcher','fact_checker'));
+
+-- Seed fact_checker agent if not present
+INSERT INTO agents (name, role, personality_config, behavior_overrides, performance_score, article_slots)
+SELECT 'Feiten-Checker', 'fact_checker', '{"tone":"critical","writing_style":"precise","preferred_formats":[]}', '{}', 0.5, 0
+WHERE NOT EXISTS (SELECT 1 FROM agents WHERE role = 'fact_checker');
 `;
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
