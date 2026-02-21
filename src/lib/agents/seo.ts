@@ -21,7 +21,7 @@ const seoOutputSchema = z.object({
   faq_items: z.array(z.object({
     question: z.string(),
     answer: z.string(),
-  })).optional().default([]),
+  })).default([]),
   changes_made: z.array(z.string()),
 });
 
