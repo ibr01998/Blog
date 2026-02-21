@@ -214,12 +214,25 @@ export async function runEditorialCycle(onProgress?: ProgressCallback): Promise<
   const humanizerAgent = await loadAgent('humanizer', HumanizerAgent);
   const seoAgent = await loadAgent('seo', SEOAgent);
 
-  // Fact checker is optional — skip gracefully if agent not seeded yet
+  // Fact checker — auto-create agent row if missing, skip step only on total failure
   let factCheckerAgent: FactCheckerAgent | null = null;
   try {
     factCheckerAgent = await loadAgent('fact_checker', FactCheckerAgent);
   } catch {
-    console.warn('[Orchestrator] fact_checker agent not found — skipping fact-check step');
+    // Agent doesn't exist yet — create it on the fly
+    try {
+      await query(
+        `INSERT INTO agents (name, role, personality_config, behavior_overrides, performance_score, article_slots)
+         SELECT 'Feiten-Checker', 'fact_checker',
+                '{"tone":"critical","writing_style":"precise","preferred_formats":[]}'::jsonb,
+                '{}'::jsonb, 0.5, 0
+         WHERE NOT EXISTS (SELECT 1 FROM agents WHERE role = 'fact_checker')`
+      );
+      factCheckerAgent = await loadAgent('fact_checker', FactCheckerAgent);
+      console.info('[Orchestrator] Auto-created fact_checker agent');
+    } catch (seedErr) {
+      console.warn('[Orchestrator] Could not create/load fact_checker agent — skipping step:', seedErr);
+    }
   }
 
   // Apply analyst evolution suggestions to in-memory agents immediately,
