@@ -103,6 +103,14 @@ VERBODEN AI-PATRONEN (verwijder deze):
 - Meervoudige uitroeptekens
 - "Geweldig!", "Fantastisch!"
 
+SKIMBAARHEIDSVEREISTEN:
+- Verwijder alle herhaling en opvulling — elke zin moet informatie toevoegen
+- Eerste zin van elke sectie = kernconclusie (omgekeerde piramide)
+- Gebruik **vet** voor kernbegrippen en bedragen zodat scanners ze zien
+- Verwijder zinnen als "Het is vermeldenswaard dat..." of "Het valt op dat..."
+- Als een alinea hetzelfde punt herhaalt als de vorige: samenvoegen of verwijderen
+- Streef naar 10-15% reductie in woordaantal zonder informatieverlies
+
 GEEF ALLEEN DE VERBETERDE MARKDOWN TERUG — geen uitleg, geen commentaar.`;
   }
 }

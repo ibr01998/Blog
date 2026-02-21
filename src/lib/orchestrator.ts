@@ -32,6 +32,7 @@ import { EditorAgent } from './agents/editor.ts';
 import { WriterAgent } from './agents/writer.ts';
 import { HumanizerAgent } from './agents/humanizer.ts';
 import { SEOAgent } from './agents/seo.ts';
+import { FactCheckerAgent } from './agents/fact-checker.ts';
 import type {
   AgentRole,
   AgentRecord,
@@ -210,6 +211,7 @@ export async function runEditorialCycle(onProgress?: ProgressCallback): Promise<
 
   const writerAgent = await loadAgent('writer', WriterAgent);
   const humanizerAgent = await loadAgent('humanizer', HumanizerAgent);
+  const factCheckerAgent = await loadAgent('fact_checker', FactCheckerAgent);
   const seoAgent = await loadAgent('seo', SEOAgent);
 
   // Apply analyst evolution suggestions to in-memory agents immediately,
@@ -251,15 +253,19 @@ export async function runEditorialCycle(onProgress?: ProgressCallback): Promise<
       const draft = await writerAgent.run(assignment);
 
       // 5b. Humanize
-      emit({ stage: 'humanizer', progress: Math.round(articleBase + perArticleRange * 0.4), message: `Humanizer verfijnt artikel: "${draft.title}"` });
+      emit({ stage: 'humanizer', progress: Math.round(articleBase + perArticleRange * 0.3), message: `Humanizer verfijnt artikel: "${draft.title}"` });
       const humanized = await humanizerAgent.run(draft);
 
-      // 5c. SEO optimize
-      emit({ stage: 'seo', progress: Math.round(articleBase + perArticleRange * 0.7), message: `SEO optimaliseert artikel: "${humanized.title}"` });
-      const optimized = await seoAgent.run(humanized);
+      // 5c. Fact Check
+      emit({ stage: 'fact_checker', progress: Math.round(articleBase + perArticleRange * 0.5), message: `Feiten controleren: "${humanized.title}"` });
+      const factChecked = await factCheckerAgent.run(humanized);
 
-      // 5d. Generate embedding
-      emit({ stage: 'embedding', progress: Math.round(articleBase + perArticleRange * 0.9), message: `Embedding genereren en opslaan: "${optimized.title}"` });
+      // 5d. SEO optimize
+      emit({ stage: 'seo', progress: Math.round(articleBase + perArticleRange * 0.65), message: `SEO optimaliseert artikel: "${factChecked.title}"` });
+      const optimized = await seoAgent.run(factChecked);
+
+      // 5e. Generate embedding
+      emit({ stage: 'embedding', progress: Math.round(articleBase + perArticleRange * 0.85), message: `Embedding genereren en opslaan: "${optimized.title}"` });
       const embeddingInput = [
         optimized.primary_keyword,
         optimized.title,
@@ -267,23 +273,28 @@ export async function runEditorialCycle(onProgress?: ProgressCallback): Promise<
       ].join(' ');
       const embedding = await generateEmbedding(embeddingInput);
 
-      // 5e. Pre-generate article UUID and ensure unique slug
+      // 5f. Pre-generate article UUID and ensure unique slug
       const articleId = crypto.randomUUID();
       const uniqueSlug = await ensureUniqueSlug(optimized.slug);
+      const readingTime = Math.ceil((optimized.word_count || 1000) / 200);
 
-      // 5f. INSERT to articles table
-      // NOTE: embedding must be cast as ::vector — pass JSON.stringify(array)
+      // Determine review status: flagged articles need human review
+      const reviewStatus = factChecked.fact_check_status === 'flagged' ? 'flagged' : 'pending';
+
+      // 5g. INSERT to articles table with new pipeline fields
       await query(
         `INSERT INTO articles (
           id, title, slug, language, writer_id,
           content_tier, primary_keyword, intent, hook_type, format_type,
           word_count, article_markdown, meta_description, meta_title,
-          embedding, status, review_status
+          embedding, status, review_status,
+          author, reading_time, fact_check_status, fact_check_issues
         ) VALUES (
           $1, $2, $3, $4, $5,
           $6, $7, $8, $9, $10,
           $11, $12, $13, $14,
-          $15::vector, $16, $17
+          $15::vector, $16, $17,
+          $18, $19, $20, $21
         )`,
         [
           articleId,
@@ -300,9 +311,13 @@ export async function runEditorialCycle(onProgress?: ProgressCallback): Promise<
           optimized.article_markdown,
           optimized.meta_description,
           optimized.meta_title,
-          JSON.stringify(embedding),   // pgvector accepts JSON array string cast to ::vector
+          JSON.stringify(embedding),
           'draft',
-          'pending',
+          reviewStatus,
+          'Redactie',
+          readingTime,
+          factChecked.fact_check_status,
+          JSON.stringify(factChecked.fact_check_issues),
         ]
       );
 
@@ -319,8 +334,8 @@ export async function runEditorialCycle(onProgress?: ProgressCallback): Promise<
         [articleId, assignment.writer_id]
       );
 
-      // Also backfill for humanizer and SEO agents
-      const helperAgents = [humanizerAgent.id, seoAgent.id];
+      // Also backfill for humanizer, fact checker, and SEO agents
+      const helperAgents = [humanizerAgent.id, factCheckerAgent.id, seoAgent.id];
       for (const agentId of helperAgents) {
         await query(
           `UPDATE agent_logs

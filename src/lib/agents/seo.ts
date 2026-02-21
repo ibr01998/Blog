@@ -11,13 +11,17 @@
 
 import { z } from 'zod';
 import { BaseAgent } from './base.ts';
-import type { AgentRecord, ArticleHumanized, ArticleOptimized } from './types.ts';
+import type { AgentRecord, ArticleFactChecked, ArticleOptimized } from './types.ts';
 
 const seoOutputSchema = z.object({
   optimized_markdown: z.string().min(500),
   meta_title: z.string().max(65),
   keyword_density: z.number().min(0).max(0.05),
   faq_schema_added: z.boolean(),
+  faq_items: z.array(z.object({
+    question: z.string(),
+    answer: z.string(),
+  })).optional().default([]),
   changes_made: z.array(z.string()),
 });
 
@@ -26,7 +30,7 @@ export class SEOAgent extends BaseAgent {
     super(record);
   }
 
-  async run(article: ArticleHumanized): Promise<ArticleOptimized> {
+  async run(article: ArticleFactChecked): Promise<ArticleOptimized> {
     const targetDensity = ((this.mergedConfig as any).keyword_density_target as number | undefined) ?? 0.011;
     const minDensity = 0.008; // 0.8%
     const maxDensity = 0.015; // 1.5%
@@ -58,6 +62,7 @@ OPTIMALISATIEVEREISTEN:
 4. Meta_title: max 60 tekens, bevat het primaire keyword, is klikbaar
 5. Als er een FAQ-sectie is, voeg onderaan toe: <!-- FAQ_SCHEMA: {"@type":"FAQPage","mainEntity":[...]} -->
 6. Verbeter H2/H3 koppen zodat ze keyword-gerelateerd zijn maar niet overvol
+7. Extraheer alle FAQ vragen en antwoorden als gestructureerde faq_items array (voor JSON-LD schema)
 
 NIET DOEN:
 - Keyword stuffing (dichtheid > 1.5% is een mislukking)
@@ -65,7 +70,7 @@ NIET DOEN:
 - Feitelijke inhoud veranderen
 - Sectievolgorde aanpassen
 
-Geef terug: de volledige geoptimaliseerde markdown + meta_title + bereikte dichtheid + of FAQ schema is toegevoegd + lijst met aangebrachte wijzigingen.
+Geef terug: de volledige geoptimaliseerde markdown + meta_title + bereikte dichtheid + of FAQ schema is toegevoegd + faq_items (gestructureerde vragen/antwoorden) + lijst met aangebrachte wijzigingen.
 `,
     });
 
@@ -93,6 +98,7 @@ Geef terug: de volledige geoptimaliseerde markdown + meta_title + bereikte dicht
       meta_title: result.meta_title,
       keyword_density: result.keyword_density,
       faq_schema_added: result.faq_schema_added,
+      faq_items: result.faq_items ?? [],
       seo_changes: result.changes_made,
     };
   }
@@ -126,6 +132,7 @@ GEEF TERUG:
 - meta_title: max 60 tekens
 - keyword_density: werkelijk berekende dichtheid als decimaal (0.011 = 1.1%)
 - faq_schema_added: true als je FAQ JSON-LD schema hebt toegevoegd
+- faq_items: array van {question, answer} objecten — extraheer alle FAQ vragen uit het artikel
 - changes_made: lijst van specifieke aanpassingen`;
   }
 }

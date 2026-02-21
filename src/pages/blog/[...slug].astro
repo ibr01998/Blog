@@ -53,9 +53,36 @@ if (platformSlugs && Array.isArray(platformSlugs) && platformSlugs.length > 0) {
         // Platform table query failed — don't break the page
     }
 }
+
+// Dynamic author and reading time (replaces hardcoded values)
+const author = isDb ? ((dbPost as any).author ?? 'Redactie') : 'Redactie';
+const readingTime = isDb
+    ? ((dbPost as any).readingTime ?? (Math.ceil((dbPost!.body?.split(/\s+/).length ?? 0) / 200) || 6))
+    : (Math.ceil(((post as any).body?.split(/\s+/).length ?? 0) / 200) || 6);
+
+// Extract FAQ JSON-LD from article markdown (SEO agent embeds as HTML comment)
+function extractFaqSchema(markdown: string): object | null {
+    const match = markdown.match(/<!-- FAQ_SCHEMA: (\{.*?\}) -->/s);
+    if (!match) return null;
+    try {
+        const parsed = JSON.parse(match[1]);
+        return {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": parsed.mainEntity || [],
+        };
+    } catch {
+        return null;
+    }
+}
+const faqSchema = isDb ? extractFaqSchema(dbPost!.body) : null;
+
+// Date helpers for OG tags
+const pubDateISO = post.data.pubDate.toISOString();
+const modDateISO = post.data.updatedDate?.toISOString() || pubDateISO;
 ---
 
-<Layout title={post.data.title} description={post.data.description} image={post.data.heroImage} type="article">
+<Layout title={post.data.title} description={post.data.description} image={post.data.heroImage} type="article" publishedTime={pubDateISO} modifiedTime={modDateISO} author={author}>
 
     <!-- Hero: Duotone Image -->
     {post.data.heroImage && (
@@ -87,10 +114,20 @@ if (platformSlugs && Array.isArray(platformSlugs) && platformSlugs.length > 0) {
                 {post.data.title}
             </h1>
 
-            <div class="flex items-center gap-3 text-sm text-muted">
-                <span class="font-semibold text-navy">Redactie</span>
-                <span class="opacity-40">·</span>
-                <span>6 min leestijd</span>
+            <div class="flex items-center gap-3 text-sm text-muted flex-wrap">
+                <a href="/about" class="font-semibold text-navy hover:opacity-70 transition-opacity">{author}</a>
+                <span class="opacity-40">&middot;</span>
+                <time datetime={pubDateISO}>
+                    {post.data.pubDate.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </time>
+                {post.data.updatedDate && (
+                    <>
+                        <span class="opacity-40">&middot;</span>
+                        <span class="text-xs">Bijgewerkt {post.data.updatedDate.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    </>
+                )}
+                <span class="opacity-40">&middot;</span>
+                <span>{readingTime} min leestijd</span>
             </div>
         </div>
     </div>
@@ -337,14 +374,28 @@ if (platformSlugs && Array.isArray(platformSlugs) && platformSlugs.length > 0) {
             "@context": "https://schema.org",
             "@type": "BlogPosting",
             "headline": post.data.title,
+            "description": post.data.description,
             "image": [post.data.heroImage],
-            "datePublished": post.data.pubDate.toISOString(),
-            "dateModified": post.data.updatedDate?.toISOString() || post.data.pubDate.toISOString(),
+            "datePublished": pubDateISO,
+            "dateModified": modDateISO,
             "author": [{
                 "@type": "Person",
-                "name": "Redactie",
-                "url": "https://shortnews.tech"
-            }]
+                "name": author,
+                "url": "https://shortnews.tech/about"
+            }],
+            "publisher": {
+                "@type": "Organization",
+                "name": "ShortNews",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://shortnews.tech/favicon.svg"
+                }
+            },
+            "mainEntityOfPage": {
+                "@type": "WebPage",
+                "@id": `https://shortnews.tech/blog/${slug}`
+            },
+            ...(isDb ? { "wordCount": dbPost!.body.split(/\s+/).length } : {})
         },
         {
             "@context": "https://schema.org",
@@ -364,7 +415,8 @@ if (platformSlugs && Array.isArray(platformSlugs) && platformSlugs.length > 0) {
                 "position": 3,
                 "name": post.data.title
             }]
-        }
+        },
+        ...(faqSchema ? [faqSchema] : [])
     ])} />
 </Layout>
 

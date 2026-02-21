@@ -132,6 +132,18 @@ VEREISTEN VOOR article_markdown:
 - Voeg een FAQ-sectie toe met 3-5 relevante vragen
 - Eindig met een duidelijke conclusie + aanbeveling
 
+STRUCTUURVEREISTEN:
+- Precies 1 H1 (de titel) — de rest zijn H2 en H3
+- Elke H2-sectie: max 300 woorden
+- Paragrafen: max 3-4 zinnen, wissel af met korte 1-zin alinea's
+- Gebruik bullet lists voor opsommingen van 3+ items
+- Vergelijkingstabellen: markdown table format met headers
+- Markeer **belangrijke takeaways** met vet
+- CTA PLAATSING:
+  * Na eerste sectie: zachte CTA, geen directe verkooptaal
+  * Midden (vergelijkingstabel of kern-H2): vergelijkende CTA
+  * Conclusie: directe CTA met duidelijke call-to-action
+
 VEREISTEN VOOR slug:
 - Volledig lowercase, alleen koppeltekens, Dutch keywords
 - Voorbeeld: "bybit-review-2026-ervaringen"

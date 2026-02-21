@@ -22,6 +22,7 @@
 import type { APIRoute } from 'astro';
 import { query } from '../../../../lib/db/postgres.ts';
 import { db, Post, Platform, inArray } from 'astro:db';
+import { generateAndInsertBodyImages } from '../../../../lib/images.ts';
 
 interface ArticleRow {
   id: string;
@@ -44,6 +45,11 @@ interface ArticleRow {
   human_notes: string | null;
   published_at: string | null;
   created_at: string;
+  author: string;
+  reading_time: number;
+  body_images: string;
+  fact_check_status: string;
+  fact_check_issues: string;
 }
 
 /**
@@ -87,6 +93,8 @@ async function publishToPostTable(article: ArticleRow): Promise<void> {
     heroImage: article.image_url || '',
     platforms,
     status: 'published',
+    author: article.author || 'Redactie',
+    readingTime: article.reading_time || 6,
   }).onConflictDoUpdate({
     target: Post.slug,
     set: {
@@ -96,6 +104,8 @@ async function publishToPostTable(article: ArticleRow): Promise<void> {
       heroImage: article.image_url || '',
       platforms,
       status: 'published',
+      author: article.author || 'Redactie',
+      readingTime: article.reading_time || 6,
     },
   });
 }
@@ -226,32 +236,66 @@ export const PATCH: APIRoute = async ({ params, request }) => {
 
     let updatedArticle = result[0];
 
-    // Auto-generate image if publishing and no image exists yet
-    if (shouldPublish && updatedArticle && !updatedArticle.image_url) {
+    // Auto-generate images if publishing: hero image + body images (in parallel)
+    if (shouldPublish && updatedArticle) {
+      const origin = new URL(request.url).origin;
+
       try {
-        const origin = new URL(request.url).origin;
-        const imgRes = await fetch(`${origin}/api/generate/image`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: updatedArticle.title,
-            keyword: updatedArticle.primary_keyword,
-            slug: updatedArticle.slug,
-            provider: 'google',
-            style: 'halftone',
-          }),
-        });
-        const imgData = await imgRes.json() as { url?: string };
-        if (imgRes.ok && imgData.url) {
-          // Save image_url back to the article
-          const imgResult = await query<ArticleRow>(
-            `UPDATE articles SET image_url = $1 WHERE id = $2 RETURNING *`,
-            [imgData.url, id]
+        // Build parallel image generation tasks
+        const imagePromises: Promise<void>[] = [];
+
+        // Hero image generation (if missing)
+        if (!updatedArticle.image_url) {
+          imagePromises.push(
+            (async () => {
+              const imgRes = await fetch(`${origin}/api/generate/image`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  title: updatedArticle.title,
+                  keyword: updatedArticle.primary_keyword,
+                  slug: updatedArticle.slug,
+                  provider: 'google',
+                  style: 'halftone',
+                }),
+              });
+              const imgData = await imgRes.json() as { url?: string };
+              if (imgRes.ok && imgData.url) {
+                const imgResult = await query<ArticleRow>(
+                  `UPDATE articles SET image_url = $1 WHERE id = $2 RETURNING *`,
+                  [imgData.url, id]
+                );
+                if (imgResult[0]) updatedArticle = imgResult[0];
+              } else {
+                console.warn('[articles/[id]] Auto hero image generation failed:', imgData);
+              }
+            })()
           );
-          if (imgResult[0]) updatedArticle = imgResult[0];
-        } else {
-          console.warn('[articles/[id]] Auto image generation failed:', imgData);
         }
+
+        // Body image generation (1-2 contextual images placed under H2 sections)
+        imagePromises.push(
+          (async () => {
+            const bodyResult = await generateAndInsertBodyImages({
+              markdown: updatedArticle.article_markdown,
+              title: updatedArticle.title,
+              keyword: updatedArticle.primary_keyword,
+              slug: updatedArticle.slug,
+              origin,
+              maxImages: 2,
+            });
+            if (bodyResult.bodyImages.length > 0) {
+              // Update article markdown with inserted body images
+              const bodyImgResult = await query<ArticleRow>(
+                `UPDATE articles SET article_markdown = $1, body_images = $2 WHERE id = $3 RETURNING *`,
+                [bodyResult.markdown, JSON.stringify(bodyResult.bodyImages), id]
+              );
+              if (bodyImgResult[0]) updatedArticle = bodyImgResult[0];
+            }
+          })()
+        );
+
+        await Promise.all(imagePromises);
       } catch (imgErr) {
         // Don't block publish if image generation fails
         console.warn('[articles/[id]] Auto image generation error:', imgErr);

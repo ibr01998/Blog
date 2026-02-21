@@ -13,7 +13,8 @@ export type AgentRole =
   | 'writer'
   | 'humanizer'
   | 'seo'
-  | 'researcher';
+  | 'researcher'
+  | 'fact_checker';
 
 export type ContentTier = 'money' | 'authority' | 'trend';
 export type HookType = 'fear' | 'curiosity' | 'authority' | 'benefit' | 'story';
@@ -178,13 +179,44 @@ export interface ArticleHumanized extends ArticleDraft {
   humanization_changes: string[];         // list of changes applied
 }
 
+// ─── FactChecker Outputs ──────────────────────────────────────────────────────
+
+export interface FactCheckIssue {
+  claim: string;                           // the claim text found in the article
+  section: string;                         // which H2 section it's in
+  severity: 'error' | 'warning' | 'info';
+  issue: string;                           // what's wrong
+  suggestion: string;                      // how to fix it
+  source: 'platforms_data' | 'outdated' | 'unverifiable' | 'contradicted';
+}
+
+export interface ArticleFactChecked extends ArticleHumanized {
+  fact_check_status: 'passed' | 'flagged';
+  fact_check_issues: FactCheckIssue[];
+}
+
 // ─── SEO Agent Outputs ────────────────────────────────────────────────────────
 
-export interface ArticleOptimized extends ArticleHumanized {
+export interface FaqItem {
+  question: string;
+  answer: string;
+}
+
+export interface ArticleOptimized extends ArticleFactChecked {
   seo_changes: string[];
   keyword_density: number;                // actual achieved density (0-1)
   faq_schema_added: boolean;
+  faq_items: FaqItem[];                   // structured FAQ for JSON-LD rendering
   meta_title: string;                     // may differ from article title
+}
+
+// ─── Image Types ─────────────────────────────────────────────────────────────
+
+export interface BodyImage {
+  url: string;
+  alt: string;
+  section_heading: string;                // the H2 it was placed under
+  keyword: string;                        // keyword used in prompt
 }
 
 // ─── Orchestrator Outputs ─────────────────────────────────────────────────────

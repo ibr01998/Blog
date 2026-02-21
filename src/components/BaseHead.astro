@@ -6,11 +6,14 @@ interface Props {
 	description: string;
 	image?: string;
     type?: 'website' | 'article';
+	publishedTime?: string;
+	modifiedTime?: string;
+	author?: string;
 }
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
-const { title, description, image = '/blog-placeholder-1.jpg', type = 'website' } = Astro.props;
+const { title, description, image = '/blog-placeholder-1.jpg', type = 'website', publishedTime, modifiedTime, author } = Astro.props;
 ---
 
 <!-- Google Consent Mode v2 — must run BEFORE any gtag/GA4 scripts -->
@@ -79,6 +82,20 @@ const { title, description, image = '/blog-placeholder-1.jpg', type = 'website' 
 <meta property="twitter:title" content={title} />
 <meta property="twitter:description" content={description} />
 <meta property="twitter:image" content={new URL(image, Astro.url)} />
+
+<!-- Article-specific OG tags -->
+{type === 'article' && publishedTime && (
+<meta property="article:published_time" content={publishedTime} />
+)}
+{type === 'article' && modifiedTime && (
+<meta property="article:modified_time" content={modifiedTime} />
+)}
+{type === 'article' && author && (
+<meta property="article:author" content={author} />
+)}
+{type === 'article' && (
+<meta property="article:section" content="Crypto Trading" />
+)}
 
 <!-- sitemap -->
 <link rel="sitemap" href="/sitemap.xml" type="application/xml" />

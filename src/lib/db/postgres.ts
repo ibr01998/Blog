@@ -313,6 +313,18 @@ CREATE TABLE IF NOT EXISTS bol_performance (
 );
 CREATE INDEX IF NOT EXISTS idx_bol_perf_product ON bol_performance(product_id);
 CREATE INDEX IF NOT EXISTS idx_bol_perf_article ON bol_performance(article_id);
+
+-- Pipeline upgrade: author, reading time, body images, fact checking
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS author TEXT NOT NULL DEFAULT 'Redactie';
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS reading_time INT NOT NULL DEFAULT 6;
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS body_images JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS fact_check_status TEXT NOT NULL DEFAULT 'unchecked';
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS fact_check_issues JSONB NOT NULL DEFAULT '[]';
+
+-- Allow fact_checker role in agents table
+ALTER TABLE agents DROP CONSTRAINT IF EXISTS agents_role_check;
+ALTER TABLE agents ADD CONSTRAINT agents_role_check
+  CHECK (role IN ('analyst','strategist','editor','writer','humanizer','seo','researcher','fact_checker'));
 `;
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
@@ -402,6 +414,18 @@ export const SEED_AGENTS = [
     personality_config: {
       tone: 'analytical',
       writing_style: 'data-driven',
+      preferred_formats: [],
+    },
+    behavior_overrides: {},
+    performance_score: 0.5,
+    article_slots: 0,
+  },
+  {
+    name: 'Feiten-Checker',
+    role: 'fact_checker',
+    personality_config: {
+      tone: 'critical',
+      writing_style: 'precise',
       preferred_formats: [],
     },
     behavior_overrides: {},
