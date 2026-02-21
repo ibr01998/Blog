@@ -1,0 +1,644 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { getCollection } from 'astro:content';
+import { db, Post, AnalyticsView, AnalyticsClick } from 'astro:db';
+import { query } from '../../lib/db/postgres.ts';
+
+// Fetch all content sources in parallel
+const [filePosts, dbPosts, allViews, allClicks] = await Promise.all([
+  getCollection('blog'),
+  db.select().from(Post),
+  db.select().from(AnalyticsView),
+  db.select().from(AnalyticsClick),
+]);
+
+// Fetch Postgres metrics keyed by slug (most recent record per article)
+type PgMetric = { ctr: number | null; revenue: number | null };
+const pgMetrics = new Map<string, PgMetric>();
+try {
+  const rows = await query<{ slug: string; ctr: number | null; revenue: number | null }>(`
+    SELECT DISTINCT ON (a.slug)
+      a.slug, am.ctr, am.revenue
+    FROM articles a
+    LEFT JOIN article_metrics am ON am.article_id = a.id
+    ORDER BY a.slug, am.recorded_at DESC NULLS LAST
+  `);
+  for (const row of rows) {
+    pgMetrics.set(row.slug, { ctr: row.ctr, revenue: row.revenue });
+  }
+} catch {
+  // Postgres unavailable — continue without extended metrics
+}
+
+// Analytics helpers
+const viewsBySlug = new Map<string, number>();
+const clicksBySlug = new Map<string, number>();
+for (const v of allViews) {
+  viewsBySlug.set(v.slug, (viewsBySlug.get(v.slug) ?? 0) + 1);
+}
+for (const c of allClicks) {
+  clicksBySlug.set(c.slug, (clicksBySlug.get(c.slug) ?? 0) + 1);
+}
+
+// SEO score heuristic (0–100): title + description + keyword + image = 25 pts each
+function seoScore(data: {
+  title?: string;
+  description?: string;
+  target_keyword?: string | null;
+  heroImage?: string | null;
+}): number {
+  let score = 0;
+  if (data.title && data.title.length > 10) score += 25;
+  if (data.description && data.description.length > 50) score += 25;
+  if (data.target_keyword) score += 25;
+  if (data.heroImage) score += 25;
+  return score;
+}
+
+// Build unified article list
+interface ArticleRow {
+  slug: string;
+  source: 'file' | 'db';
+  title: string;
+  description: string;
+  status: 'published' | 'draft';
+  pubDate: Date;
+  target_keyword: string;
+  heroImage: string | null;
+  seoScore: number;
+  views: number;
+  clicks: number;
+  ctr: number | null;
+  revenue: number | null;
+  performance: 'green' | 'yellow' | 'red' | 'gray';
+}
+
+const rawArticles: Omit<ArticleRow, 'performance'>[] = [
+  ...filePosts.map((p) => {
+    const views = viewsBySlug.get(p.slug) ?? 0;
+    const clicks = clicksBySlug.get(p.slug) ?? 0;
+    return {
+      slug: p.slug,
+      source: 'file' as const,
+      title: p.data.title,
+      description: p.data.description,
+      status: 'published' as const,
+      pubDate: p.data.pubDate,
+      target_keyword: p.data.target_keyword ?? '',
+      heroImage: p.data.heroImage ?? null,
+      seoScore: seoScore(p.data),
+      views,
+      clicks,
+      ctr: views > 0 ? Math.round((clicks / views) * 1000) / 10 : null,
+      revenue: null,
+    };
+  }),
+  ...dbPosts.map((p) => {
+    const views = viewsBySlug.get(p.slug) ?? 0;
+    const clicks = clicksBySlug.get(p.slug) ?? 0;
+    const pg = pgMetrics.get(p.slug);
+    const ctr = views > 0
+      ? Math.round((clicks / views) * 1000) / 10
+      : (pg?.ctr != null ? Math.round(pg.ctr * 1000) / 10 : null);
+    return {
+      slug: p.slug,
+      source: 'db' as const,
+      title: p.title,
+      description: p.description,
+      status: (p.status ?? 'draft') as 'published' | 'draft',
+      pubDate: p.pubDate,
+      target_keyword: p.target_keyword ?? '',
+      heroImage: p.heroImage ?? null,
+      seoScore: seoScore({
+        title: p.title,
+        description: p.description,
+        target_keyword: p.target_keyword,
+        heroImage: p.heroImage,
+      }),
+      views,
+      clicks,
+      ctr,
+      revenue: pg?.revenue ?? null,
+    };
+  }),
+].sort((a, b) => b.pubDate.valueOf() - a.pubDate.valueOf());
+
+// Performance scoring: compare each article's views to the average
+const articlesWithViews = rawArticles.filter((a) => a.views > 0);
+const avgViews =
+  articlesWithViews.length > 0
+    ? articlesWithViews.reduce((s, a) => s + a.views, 0) / articlesWithViews.length
+    : 0;
+
+function perfLevel(views: number): ArticleRow['performance'] {
+  if (views === 0 || avgViews === 0) return 'gray';
+  const r = views / avgViews;
+  if (r >= 1.2) return 'green';
+  if (r >= 0.6) return 'yellow';
+  return 'red';
+}
+
+const articles: ArticleRow[] = rawArticles.map((a) => ({
+  ...a,
+  performance: perfLevel(a.views),
+}));
+
+// Summary stats
+const totalCount = articles.length;
+const publishedCount = articles.filter((a) => a.status === 'published').length;
+const draftCount = articles.filter((a) => a.status === 'draft').length;
+const totalViewsAll = rawArticles.reduce((s, a) => s + a.views, 0);
+
+// Performance counts (for legend)
+const greenCount = articles.filter((a) => a.performance === 'green').length;
+const yellowCount = articles.filter((a) => a.performance === 'yellow').length;
+const redCount = articles.filter((a) => a.performance === 'red').length;
+---
+
+<DashboardLayout title="Artikelen" activePage="articles">
+
+  <!-- Summary cards -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+    <div class="glass p-4 rounded-xl">
+      <p class="text-xs text-muted uppercase tracking-wide font-semibold mb-1">Totaal</p>
+      <p class="text-2xl font-bold text-navy">{totalCount}</p>
+    </div>
+    <div class="glass p-4 rounded-xl">
+      <p class="text-xs text-muted uppercase tracking-wide font-semibold mb-1">Live</p>
+      <p class="text-2xl font-bold text-blue-600">{publishedCount}</p>
+    </div>
+    <div class="glass p-4 rounded-xl">
+      <p class="text-xs text-muted uppercase tracking-wide font-semibold mb-1">Concept</p>
+      <p class="text-2xl font-bold text-orange-500">{draftCount}</p>
+    </div>
+    <div class="glass p-4 rounded-xl">
+      <p class="text-xs text-muted uppercase tracking-wide font-semibold mb-1">Views</p>
+      <p class="text-2xl font-bold text-emerald-600">{totalViewsAll.toLocaleString('nl-NL')}</p>
+    </div>
+  </div>
+
+  <!-- Toolbar: search + filters + new button -->
+  <div class="flex flex-col sm:flex-row gap-3 mb-4 items-start sm:items-center">
+    <!-- Search -->
+    <div class="relative flex-1 max-w-sm">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+      <input
+        id="search-input"
+        type="text"
+        placeholder="Zoek artikel..."
+        class="w-full pl-9 pr-3 py-2 text-sm bg-white/60 border border-navy/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-navy/20 text-navy placeholder:text-muted"
+      />
+    </div>
+
+    <!-- Status filter -->
+    <div class="flex gap-1 p-1 glass rounded-lg" id="status-filter">
+      <button class="filter-btn active px-3 py-1.5 text-xs font-semibold rounded-md transition-all" data-filter="all">Alles</button>
+      <button class="filter-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all" data-filter="published">Live</button>
+      <button class="filter-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all" data-filter="draft">Concept</button>
+    </div>
+
+    <!-- Performance filter -->
+    <div class="flex gap-1 p-1 glass rounded-lg" id="perf-filter">
+      <button class="perf-btn active px-3 py-1.5 text-xs font-semibold rounded-md transition-all" data-perf="all">
+        Alle
+      </button>
+      <button class="perf-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5" data-perf="green">
+        <span class="w-2 h-2 rounded-full bg-green-500 shrink-0"></span>
+        {greenCount}
+      </button>
+      <button class="perf-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5" data-perf="yellow">
+        <span class="w-2 h-2 rounded-full bg-yellow-400 shrink-0"></span>
+        {yellowCount}
+      </button>
+      <button class="perf-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5" data-perf="red">
+        <span class="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+        {redCount}
+      </button>
+    </div>
+
+    <a
+      href="/dashboard/new"
+      class="ml-auto shrink-0 bg-navy hover:bg-navy/90 text-white font-semibold py-2 px-4 rounded-lg transition-all text-sm flex items-center gap-2 shadow-sm"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </svg>
+      <span class="hidden sm:inline">Nieuw</span>
+    </a>
+  </div>
+
+  <!-- Toast notification -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 hidden">
+    <div class="glass px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2">
+      <svg id="toast-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+      </svg>
+      <span id="toast-msg"></span>
+    </div>
+  </div>
+
+  <!-- Article table -->
+  {articles.length === 0 ? (
+    <div class="glass rounded-2xl p-12 text-center border-dashed border-2 border-navy/10">
+      <div class="w-16 h-16 rounded-full bg-navy/5 mx-auto mb-4 flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-navy/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      </div>
+      <h3 class="text-navy font-semibold text-lg mb-1">Nog geen artikelen</h3>
+      <p class="text-muted text-sm mb-6">Begin met het schrijven van je eerste artikel.</p>
+      <a href="/dashboard/new" class="text-navy font-medium hover:underline">Nieuw artikel aanmaken →</a>
+    </div>
+  ) : (
+    <div class="glass rounded-2xl overflow-hidden shadow-sm">
+      <!-- Mobile: card-based, Desktop: table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm min-w-[700px]" id="articles-table">
+          <thead class="bg-navy/5 border-b border-navy/5">
+            <tr>
+              <th class="text-left text-xs font-semibold text-navy/60 uppercase tracking-wider px-4 py-3">Artikel</th>
+              <th class="text-left text-xs font-semibold text-navy/60 uppercase tracking-wider px-4 py-3">Status</th>
+              <th class="text-left text-xs font-semibold text-navy/60 uppercase tracking-wider px-4 py-3 hidden md:table-cell">Datum</th>
+              <th class="text-right text-xs font-semibold text-navy/60 uppercase tracking-wider px-4 py-3 hidden sm:table-cell">Views</th>
+              <th class="text-right text-xs font-semibold text-navy/60 uppercase tracking-wider px-4 py-3 hidden lg:table-cell">CTR</th>
+              <th class="text-right text-xs font-semibold text-navy/60 uppercase tracking-wider px-4 py-3 hidden lg:table-cell">Revenue</th>
+              <th class="text-right text-xs font-semibold text-navy/60 uppercase tracking-wider px-4 py-3 hidden xl:table-cell">SEO</th>
+              <th class="text-right text-xs font-semibold text-navy/60 uppercase tracking-wider px-4 py-3">Acties</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-navy/5" id="articles-tbody">
+            {articles.map((article) => {
+              const perfColors = {
+                green: 'bg-green-500',
+                yellow: 'bg-yellow-400',
+                red: 'bg-red-500',
+                gray: 'bg-gray-300',
+              };
+              const perfBorder = {
+                green: 'border-l-2 border-l-green-400',
+                yellow: 'border-l-2 border-l-yellow-400',
+                red: 'border-l-2 border-l-red-400',
+                gray: 'border-l-2 border-l-gray-200',
+              };
+              const seoColor =
+                article.seoScore >= 75
+                  ? 'text-green-600 bg-green-50'
+                  : article.seoScore >= 50
+                  ? 'text-yellow-600 bg-yellow-50'
+                  : 'text-red-600 bg-red-50';
+
+              return (
+                <tr
+                  class={`article-row hover:bg-navy/5 transition-colors group ${perfBorder[article.performance]}`}
+                  data-title={article.title.toLowerCase()}
+                  data-status={article.status}
+                  data-perf={article.performance}
+                >
+                  <!-- Title + meta -->
+                  <td class="px-4 py-3 max-w-[280px]">
+                    <div class="flex items-start gap-2">
+                      <span class={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${perfColors[article.performance]}`}></span>
+                      <div class="min-w-0">
+                        <p class="font-semibold text-navy truncate leading-tight">{article.title}</p>
+                        <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                          <span class="text-xs text-muted truncate max-w-[180px]">{article.slug}</span>
+                          {article.source === 'file' && (
+                            <span class="inline-flex items-center px-1.5 py-0.5 text-[10px] rounded-full bg-purple-100 text-purple-700 font-medium shrink-0">File</span>
+                          )}
+                          {article.target_keyword && (
+                            <span class="inline-flex items-center px-1.5 py-0.5 text-[10px] rounded-full bg-navy/5 text-navy/60 font-medium shrink-0 hidden md:inline-flex">{article.target_keyword}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+
+                  <!-- Status -->
+                  <td class="px-4 py-3">
+                    {article.status === 'published' ? (
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700 font-semibold">
+                        <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                        Live
+                      </span>
+                    ) : (
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600 font-semibold">
+                        <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                        Concept
+                      </span>
+                    )}
+                  </td>
+
+                  <!-- Date -->
+                  <td class="px-4 py-3 hidden md:table-cell">
+                    <span class="text-xs text-muted">
+                      {article.pubDate.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: '2-digit' })}
+                    </span>
+                  </td>
+
+                  <!-- Views -->
+                  <td class="px-4 py-3 text-right hidden sm:table-cell">
+                    <span class={`text-sm font-semibold ${article.views > 0 ? 'text-navy' : 'text-muted'}`}>
+                      {article.views > 0 ? article.views.toLocaleString('nl-NL') : '—'}
+                    </span>
+                  </td>
+
+                  <!-- CTR -->
+                  <td class="px-4 py-3 text-right hidden lg:table-cell">
+                    <span class="text-sm text-muted">
+                      {article.ctr != null ? `${article.ctr}%` : '—'}
+                    </span>
+                  </td>
+
+                  <!-- Revenue -->
+                  <td class="px-4 py-3 text-right hidden lg:table-cell">
+                    <span class={`text-sm font-medium ${article.revenue != null && article.revenue > 0 ? 'text-emerald-600' : 'text-muted'}`}>
+                      {article.revenue != null && article.revenue > 0
+                        ? `€${article.revenue.toFixed(2)}`
+                        : '—'}
+                    </span>
+                  </td>
+
+                  <!-- SEO score -->
+                  <td class="px-4 py-3 text-right hidden xl:table-cell">
+                    <span class={`text-xs font-semibold px-2 py-0.5 rounded-md ${seoColor}`}>
+                      {article.seoScore}/100
+                    </span>
+                  </td>
+
+                  <!-- Actions -->
+                  <td class="px-4 py-3">
+                    <div class="flex items-center justify-end gap-0.5 opacity-50 group-hover:opacity-100 transition-opacity">
+                      <!-- View live -->
+                      <a
+                        href={`/blog/${article.slug}`}
+                        target="_blank"
+                        class="p-1.5 text-muted hover:text-navy hover:bg-navy/10 rounded-lg transition-colors"
+                        title="Bekijk live"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+
+                      {article.source === 'db' && (
+                        <>
+                          <!-- Edit -->
+                          <a
+                            href={`/dashboard/edit?slug=${article.slug}`}
+                            class="p-1.5 text-muted hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                            title="Bewerken"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </a>
+
+                          <!-- Duplicate -->
+                          <button
+                            class="action-btn p-1.5 text-muted hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                            title="Dupliceren"
+                            data-action="duplicate"
+                            data-slug={article.slug}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                          </button>
+
+                          <!-- Publish / Unpublish -->
+                          <button
+                            class="action-btn p-1.5 rounded-lg transition-colors"
+                            class:list={[
+                              article.status === 'published'
+                                ? 'text-muted hover:text-amber-600 hover:bg-amber-50'
+                                : 'text-muted hover:text-green-600 hover:bg-green-50'
+                            ]}
+                            title={article.status === 'published' ? 'Offline halen' : 'Publiceren'}
+                            data-action="toggle-status"
+                            data-slug={article.slug}
+                            data-status={article.status}
+                          >
+                            {article.status === 'published' ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            )}
+                          </button>
+
+                          <!-- Delete -->
+                          <button
+                            class="action-btn p-1.5 text-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Verwijderen"
+                            data-action="delete"
+                            data-slug={article.slug}
+                            data-title={article.title}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty state for filtered results -->
+      <div id="no-results" class="hidden p-12 text-center">
+        <p class="text-muted text-sm">Geen artikelen gevonden voor deze filter.</p>
+      </div>
+
+      <!-- Table footer: count -->
+      <div class="px-4 py-3 border-t border-navy/5 flex items-center justify-between">
+        <p class="text-xs text-muted" id="row-count">{articles.length} artikelen</p>
+        <div class="flex items-center gap-3 text-xs text-muted">
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span>Goed</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-400"></span>Gemiddeld</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span>Laag</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-gray-300"></span>Geen data</span>
+        </div>
+      </div>
+    </div>
+  )}
+
+</DashboardLayout>
+
+<style>
+  .filter-btn {
+    color: var(--color-navy);
+    opacity: 0.5;
+  }
+  .filter-btn:hover,
+  .filter-btn.active {
+    background: rgba(27, 45, 79, 0.1);
+    opacity: 1;
+  }
+  .perf-btn {
+    color: var(--color-navy);
+    opacity: 0.5;
+  }
+  .perf-btn:hover,
+  .perf-btn.active {
+    background: rgba(27, 45, 79, 0.1);
+    opacity: 1;
+  }
+</style>
+
+<script>
+  // ─── Toast helper ─────────────────────────────────────────────────────────
+  function showToast(msg: string, ok = true) {
+    const toast = document.getElementById('toast')!;
+    const toastMsg = document.getElementById('toast-msg')!;
+    const toastIcon = document.getElementById('toast-icon')!;
+
+    toastMsg.textContent = msg;
+    toastIcon.style.color = ok ? '#16a34a' : '#dc2626';
+    toast.classList.remove('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 3000);
+  }
+
+  // ─── Filtering ────────────────────────────────────────────────────────────
+  let activeStatus = 'all';
+  let activePerf = 'all';
+  let searchQuery = '';
+
+  function applyFilters() {
+    const rows = document.querySelectorAll<HTMLTableRowElement>('.article-row');
+    let visible = 0;
+
+    rows.forEach((row) => {
+      const title = row.dataset.title ?? '';
+      const status = row.dataset.status ?? '';
+      const perf = row.dataset.perf ?? '';
+
+      const matchSearch = title.includes(searchQuery.toLowerCase());
+      const matchStatus = activeStatus === 'all' || status === activeStatus;
+      const matchPerf = activePerf === 'all' || perf === activePerf;
+
+      const show = matchSearch && matchStatus && matchPerf;
+      row.classList.toggle('hidden', !show);
+      if (show) visible++;
+    });
+
+    const noResults = document.getElementById('no-results')!;
+    noResults.classList.toggle('hidden', visible > 0);
+
+    const counter = document.getElementById('row-count');
+    if (counter) counter.textContent = `${visible} artikel${visible !== 1 ? 'en' : ''}`;
+  }
+
+  // Status filter buttons
+  document.querySelectorAll<HTMLButtonElement>('.filter-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeStatus = btn.dataset.filter ?? 'all';
+      applyFilters();
+    });
+  });
+
+  // Performance filter buttons
+  document.querySelectorAll<HTMLButtonElement>('.perf-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.perf-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      activePerf = btn.dataset.perf ?? 'all';
+      applyFilters();
+    });
+  });
+
+  // Search
+  document.getElementById('search-input')?.addEventListener('input', (e) => {
+    searchQuery = (e.target as HTMLInputElement).value;
+    applyFilters();
+  });
+
+  // ─── Action handlers ──────────────────────────────────────────────────────
+  document.querySelectorAll<HTMLButtonElement>('.action-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const action = btn.dataset.action;
+      const slug = btn.dataset.slug!;
+      const titleAttr = btn.dataset.title ?? slug;
+
+      if (action === 'delete') {
+        if (!confirm(`"${titleAttr}" verwijderen? Dit kan niet ongedaan worden gemaakt.`)) return;
+
+        btn.disabled = true;
+        try {
+          const res = await fetch(`/api/articles/${slug}`, { method: 'DELETE' });
+          if (res.ok) {
+            const row = btn.closest('tr');
+            row?.remove();
+            showToast('Artikel verwijderd');
+            applyFilters();
+          } else {
+            showToast('Fout bij verwijderen', false);
+          }
+        } catch {
+          showToast('Er ging iets mis', false);
+        } finally {
+          btn.disabled = false;
+        }
+      }
+
+      if (action === 'toggle-status') {
+        const currentStatus = btn.dataset.status!;
+        const newStatus = currentStatus === 'published' ? 'draft' : 'published';
+
+        btn.disabled = true;
+        try {
+          const res = await fetch(`/api/articles/${slug}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus }),
+          });
+          if (res.ok) {
+            showToast(newStatus === 'published' ? 'Artikel gepubliceerd' : 'Artikel offline gehaald');
+            setTimeout(() => location.reload(), 800);
+          } else {
+            showToast('Fout bij status wijzigen', false);
+          }
+        } catch {
+          showToast('Er ging iets mis', false);
+        } finally {
+          btn.disabled = false;
+        }
+      }
+
+      if (action === 'duplicate') {
+        btn.disabled = true;
+        try {
+          const res = await fetch('/api/admin/duplicate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug }),
+          });
+          const data = await res.json();
+          if (res.ok && data.slug) {
+            showToast('Artikel gedupliceerd');
+            setTimeout(() => {
+              window.location.href = `/dashboard/edit?slug=${data.slug}`;
+            }, 800);
+          } else {
+            showToast(data.error ?? 'Fout bij dupliceren', false);
+          }
+        } catch {
+          showToast('Er ging iets mis', false);
+        } finally {
+          btn.disabled = false;
+        }
+      }
+    });
+  });
+</script>
