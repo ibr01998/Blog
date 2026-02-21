@@ -77,12 +77,10 @@ const ROLE_COLORS: Record<string, string> = {
         <h2 class="text-xl font-bold text-navy">AI Agents</h2>
         <p class="text-sm text-gray-500 mt-1">Beheer agent persoonlijkheden, gedragsregels en prestatiescores.</p>
       </div>
-      {agents.length === 0 && !dbError && (
-        <a href="#" id="migrate-btn"
-           class="text-xs bg-navy text-white px-3 py-1.5 rounded-lg hover:bg-navy/90">
-          Database Initialiseren
-        </a>
-      )}
+      <a href="#" id="migrate-btn"
+         class="text-xs bg-navy text-white px-3 py-1.5 rounded-lg hover:bg-navy/90">
+        {agents.length === 0 ? 'Database Initialiseren' : 'Database Synchroniseren'}
+      </a>
     </div>
 
     {dbError && (
@@ -256,12 +254,20 @@ const ROLE_COLORS: Record<string, string> = {
   document.getElementById('migrate-btn')?.addEventListener('click', async (e) => {
     e.preventDefault();
     const btn = e.target as HTMLAnchorElement;
-    btn.textContent = 'Initialiseren...';
+    btn.textContent = 'Bezig...';
     try {
       const res = await fetch('/api/admin/migrate', { method: 'POST' });
       const data = await res.json();
-      if (data.success) window.location.reload();
-      else alert('Migratie mislukt: ' + data.error);
+      if (data.success) {
+        const seeded = data.agents_seeded || 0;
+        const details = data.agent_details?.join('\n') || '';
+        if (seeded > 0) {
+          alert(`${seeded} nieuwe agent(s) aangemaakt:\n${details}`);
+        }
+        window.location.reload();
+      } else {
+        alert('Migratie mislukt: ' + data.error);
+      }
     } catch {
       alert('Verbindingsfout');
     }

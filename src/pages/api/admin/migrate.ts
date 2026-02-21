@@ -52,25 +52,34 @@ export const POST: APIRoute = async () => {
 
     // 2. Seed agents (skip if already exist for this role+name combination)
     let agentsSeeded = 0;
+    const agentResults: string[] = [];
     for (const agent of SEED_AGENTS) {
-      const existing = await query(
-        `SELECT id FROM agents WHERE name = $1 AND role = $2 LIMIT 1`,
-        [agent.name, agent.role]
-      );
-      if (existing.length === 0) {
-        await query(
-          `INSERT INTO agents (name, role, personality_config, behavior_overrides, performance_score, article_slots)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [
-            agent.name,
-            agent.role,
-            JSON.stringify(agent.personality_config),
-            JSON.stringify(agent.behavior_overrides),
-            agent.performance_score,
-            agent.article_slots,
-          ]
+      try {
+        const existing = await query(
+          `SELECT id FROM agents WHERE name = $1 AND role = $2 LIMIT 1`,
+          [agent.name, agent.role]
         );
-        agentsSeeded++;
+        if (existing.length === 0) {
+          await query(
+            `INSERT INTO agents (name, role, personality_config, behavior_overrides, performance_score, article_slots)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              agent.name,
+              agent.role,
+              JSON.stringify(agent.personality_config),
+              JSON.stringify(agent.behavior_overrides),
+              agent.performance_score,
+              agent.article_slots,
+            ]
+          );
+          agentsSeeded++;
+          agentResults.push(`CREATED: ${agent.name} (${agent.role})`);
+        } else {
+          agentResults.push(`EXISTS: ${agent.name} (${agent.role})`);
+        }
+      } catch (agentErr) {
+        const msg = agentErr instanceof Error ? agentErr.message : String(agentErr);
+        agentResults.push(`ERROR: ${agent.name} (${agent.role}) → ${msg}`);
       }
     }
 
@@ -96,6 +105,7 @@ export const POST: APIRoute = async () => {
       message: 'Migration complete',
       tables_created: results,
       agents_seeded: agentsSeeded,
+      agent_details: agentResults,
       affiliates_seeded: affiliatesSeeded,
     }), {
       status: 200,
