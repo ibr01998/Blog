@@ -12,6 +12,8 @@
 
 import type { APIRoute } from 'astro';
 import { query, MIGRATION_SQL, SEED_AGENTS, SEED_AFFILIATE_LINKS } from '../../../lib/db/postgres.ts';
+import { db } from 'astro:db';
+import { sql as drizzleSql } from 'drizzle-orm';
 
 export const config = { maxDuration: 60 };
 
@@ -100,6 +102,28 @@ export const POST: APIRoute = async () => {
       }
     }
 
+    // 4. Astro DB (Turso) schema migrations — add columns that may be missing on the remote DB.
+    // The db/config.ts schema is the source of truth, but ALTER TABLE must be run manually
+    // when columns are added (astro db push --remote requires Astro Studio credentials).
+    const astroDbResults: string[] = [];
+    const astroDbMigrationSteps: Array<{ stmt: ReturnType<typeof drizzleSql>; label: string }> = [
+      { stmt: drizzleSql`ALTER TABLE Post ADD COLUMN author TEXT DEFAULT 'Redactie'`, label: 'Post.author' },
+      { stmt: drizzleSql`ALTER TABLE Post ADD COLUMN readingTime INTEGER DEFAULT 6`, label: 'Post.readingTime' },
+    ];
+    for (const m of astroDbMigrationSteps) {
+      try {
+        await db.run(m.stmt);
+        astroDbResults.push(`ADDED: ${m.label}`);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes('duplicate column') || msg.includes('already exists')) {
+          astroDbResults.push(`EXISTS: ${m.label}`);
+        } else {
+          astroDbResults.push(`ERROR: ${m.label} → ${msg}`);
+        }
+      }
+    }
+
     return new Response(JSON.stringify({
       success: true,
       message: 'Migration complete',
@@ -107,6 +131,7 @@ export const POST: APIRoute = async () => {
       agents_seeded: agentsSeeded,
       agent_details: agentResults,
       affiliates_seeded: affiliatesSeeded,
+      astro_db_migrations: astroDbResults,
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
