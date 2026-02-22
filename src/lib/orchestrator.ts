@@ -305,7 +305,8 @@ export async function runEditorialCycle(onProgress?: ProgressCallback): Promise<
       const readingTime = Math.ceil((optimized.word_count || 1000) / 200);
 
       // Determine review status: flagged articles need human review
-      const reviewStatus = factChecked.fact_check_status === 'flagged' ? 'flagged' : 'pending';
+      // DB constraint only allows: 'pending' | 'approved' | 'rejected'
+      const reviewStatus = 'pending';
 
       // 5g. INSERT to articles table with new pipeline fields
       await query(
