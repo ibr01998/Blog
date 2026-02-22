@@ -51,6 +51,20 @@ const FALLBACK_TOPIC_SEEDS = [
   'bybit ervaringen nl',
 ];
 
+interface HistoricalArticleRow {
+  title: string;
+  primary_keyword: string;
+  content_tier: string;
+  intent: string;
+  format_type: string;
+  created_at: string;
+  ctr: number;
+  views: number;
+}
+
+const KNOWN_PLATFORMS = ['bybit', 'binance', 'kraken', 'bitmex'];
+const ALL_INTENTS = ['comparison', 'review', 'bonus', 'trust', 'fee', 'guide'];
+
 export class StrategistAgent extends BaseAgent {
   constructor(record: AgentRecord) {
     super(record);
@@ -58,6 +72,80 @@ export class StrategistAgent extends BaseAgent {
 
   async run(report: AnalystReport): Promise<ArticleBrief[]> {
     const bestAffiliate = report.best_affiliate?.platform_name ?? 'Bybit';
+
+    // ── Fetch ALL historical articles with performance data ───────────────
+    let historicalArticles: HistoricalArticleRow[] = [];
+    try {
+      historicalArticles = await query<HistoricalArticleRow>(`
+        SELECT
+          a.title,
+          a.primary_keyword,
+          COALESCE(a.content_tier, 'money') as content_tier,
+          COALESCE(a.intent, 'comparison') as intent,
+          COALESCE(a.format_type, 'comparison') as format_type,
+          a.created_at,
+          COALESCE(m.ctr, 0)::float as ctr,
+          COALESCE(m.views, 0)::int as views
+        FROM articles a
+        LEFT JOIN article_metrics m ON m.article_id = a.id
+        ORDER BY a.created_at DESC
+      `);
+    } catch {
+      // Articles table unavailable — proceed without history
+    }
+
+    // ── Build platform × intent coverage map ─────────────────────────────
+    const coverageMap: Record<string, Record<string, number>> = {};
+    for (const article of historicalArticles) {
+      const kw = article.primary_keyword.toLowerCase();
+      const titleLower = article.title.toLowerCase();
+      for (const platform of KNOWN_PLATFORMS) {
+        if (kw.includes(platform) || titleLower.includes(platform)) {
+          if (!coverageMap[platform]) coverageMap[platform] = {};
+          const intent = article.intent || 'unknown';
+          coverageMap[platform][intent] = (coverageMap[platform][intent] || 0) + 1;
+        }
+      }
+    }
+
+    // ── Find unexplored content gaps ──────────────────────────────────────
+    const gaps: string[] = [];
+    for (const platform of KNOWN_PLATFORMS) {
+      for (const intent of ALL_INTENTS) {
+        const count = coverageMap[platform]?.[intent] ?? 0;
+        if (count === 0) gaps.push(`${platform} × ${intent} (NEVER written — high priority)`);
+        else if (count === 1) gaps.push(`${platform} × ${intent} (only once — fresh angle possible)`);
+      }
+    }
+
+    // ── Build article history context for the LLM ─────────────────────────
+    const sortedByPerf = [...historicalArticles].sort((a, b) => b.ctr - a.ctr);
+    const topPerformers = sortedByPerf.slice(0, 5).filter(a => a.ctr > 0);
+    const recentArticles = historicalArticles.slice(0, 30);
+
+    const historyContext = historicalArticles.length > 0 ? `
+FULL ARTICLE MEMORY (${historicalArticles.length} articles ever written — you MUST avoid duplicating these):
+
+Recently Written (last ${Math.min(30, historicalArticles.length)}):
+${recentArticles.map((a, i) =>
+  `${i + 1}. [${a.content_tier}/${a.intent}] "${a.title}" | keyword: "${a.primary_keyword}" | CTR: ${(a.ctr * 100).toFixed(1)}% | views: ${a.views}`
+).join('\n')}
+
+PLATFORM × INTENT COVERAGE (times each angle has been covered):
+${KNOWN_PLATFORMS.map(p => {
+  const intents = coverageMap[p] ?? {};
+  return `${p.toUpperCase()}: ${ALL_INTENTS.map(i => `${i}=${intents[i] ?? 0}`).join(', ')}`;
+}).join('\n')}
+
+${topPerformers.length > 0 ? `TOP PERFORMING ARTICLES (replicate these writing styles, NOT topics):
+${topPerformers.map((a, i) => `${i + 1}. "${a.title}" → ${(a.ctr * 100).toFixed(1)}% CTR, ${a.views} views`).join('\n')}` : ''}
+
+CONTENT GAPS — prioritize these unexplored combinations:
+${gaps.slice(0, 15).join('\n')}
+
+⚠️ CRITICAL RULE: Do NOT generate briefs that duplicate or closely resemble any article listed above.
+Each brief must be a genuinely ORIGINAL idea with a unique angle not yet covered on this blog.
+` : 'NOTE: No article history found — this is the first editorial cycle.';
 
     // ── Fetch latest market research (within 7 days) ──────────────────────
     let marketResearch: MarketResearchRow | null = null;
@@ -121,6 +209,8 @@ BEST PERFORMING AFFILIATE: ${bestAffiliate} — prioritize in money-tier content
 
 AVAILABLE PLATFORMS: BitMEX, Bybit, Binance, Kraken
 
+${historyContext}
+
 ${researchContext}
 
 TOPIC SEED IDEAS (use as creative starting points — vary and improve these):
@@ -133,6 +223,7 @@ REQUIREMENTS:
 - target_platforms: relevant exchange slugs (bitmex/bybit/binance/kraken)
 - reasoning: 1-2 sentences explaining why this brief will convert or rank
 - Spread keywords across all 4 platforms — no single platform dominating
+- MANDATORY: Each brief must target a gap in the coverage map above
 ${marketResearch ? '- PRIORITIZE ⚡ content gap opportunities over general seeds' : ''}
 `,
     });
@@ -158,13 +249,16 @@ ${marketResearch ? '- PRIORITIZE ⚡ content gap opportunities over general seed
         insights_count: report.performance_insights.length,
         research_used: marketResearch !== null,
         research_date: marketResearch?.research_date ?? null,
+        total_articles_in_memory: historicalArticles.length,
+        coverage_map: coverageMap,
+        content_gaps_found: gaps.length,
       },
       decisionSummary: {
         brief_count: briefs.length,
         tier_distribution: tierCount,
         keywords: briefs.map((b) => b.primary_keyword),
       },
-      reasoningSummary: `Generated ${briefs.length} briefs. Research data ${marketResearch ? `used (${marketResearch.research_date})` : 'not available — used fallback seeds'}. Tier: money=${tierCount.money ?? 0}, authority=${tierCount.authority ?? 0}, trend=${tierCount.trend ?? 0}. Best affiliate: ${bestAffiliate}.`,
+      reasoningSummary: `Generated ${briefs.length} briefs with full article memory (${historicalArticles.length} past articles). Research data ${marketResearch ? `used (${marketResearch.research_date})` : 'not available — used fallback seeds'}. Found ${gaps.length} content gaps. Tier: money=${tierCount.money ?? 0}, authority=${tierCount.authority ?? 0}, trend=${tierCount.trend ?? 0}. Best affiliate: ${bestAffiliate}.`,
     });
 
     return briefs;

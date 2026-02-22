@@ -79,9 +79,9 @@ export class EditorAgent extends BaseAgent {
       throw new Error('No active writer agents found. Seed agents first via /api/admin/migrate.');
     }
 
-    // 4. Pre-fetch recent article embeddings for similarity checks (last 50)
+    // 4. Pre-fetch ALL article embeddings for similarity checks (no limit — full memory)
     const existingEmbeddings = await query<ArticleEmbeddingRow>(
-      `SELECT id, title, embedding::text as embedding FROM articles WHERE embedding IS NOT NULL ORDER BY created_at DESC LIMIT 50`
+      `SELECT id, title, embedding::text as embedding FROM articles WHERE embedding IS NOT NULL ORDER BY created_at DESC`
     );
 
     const assignments: ArticleAssignment[] = [];
