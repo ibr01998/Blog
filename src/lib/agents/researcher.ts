@@ -281,7 +281,7 @@ Be specific. Surprising beats obvious. Editorial beats promotional.`,
       [
         today,
         JSON.stringify({
-          queries: DUTCH_RESEARCH_QUERIES,
+          queries: dailyQueries,
           queries_succeeded: successful.length,
           high_performing_titles: insights.high_performing_titles,
           raw: successful,
