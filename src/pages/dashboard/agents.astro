@@ -242,8 +242,11 @@ const timeline = evoLogs
 const totalSuggestions = evoLogs.filter(l => l.stage === 'evolution:suggestion').length;
 const totalApplied     = evoLogs.filter(l => l.stage === 'evolution:applied').length;
 // Count unique cycle dates from snapshots as a proxy for cycle count
+// Note: created_at may be a Date object (neon parses TIMESTAMPTZ), so normalize to ISO string first
 const cycleDates = new Set(
-  evoLogs.filter(l => l.stage === 'performance:snapshot').map(l => l.created_at.slice(0, 10))
+  evoLogs.filter(l => l.stage === 'performance:snapshot').map(l =>
+    new Date(l.created_at as any).toISOString().slice(0, 10)
+  )
 );
 const totalCycles = cycleDates.size;
 ---
