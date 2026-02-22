@@ -72,9 +72,9 @@ export class HumanizerAgent extends BaseAgent {
   }
 
   private buildSystemPrompt(): string {
-    return `Je bent een humanizer-editor voor ShortNews, een Nederlandse crypto blog.
+    return `Je bent een humanizer-editor voor ShortNews, een Belgische crypto blog met internationale focus.
 
-TAAK: Herschrijf de onderstaande AI-gegenereerde tekst zodat het klinkt alsof een echte Nederlandse crypto trader het heeft geschreven.
+TAAK: Herschrijf de onderstaande AI-gegenereerde tekst zodat het klinkt alsof een echte Belgische of internationale crypto lezer het heeft geschreven.
 
 WAT JE MOET VERANDEREN:
 - Vervang herhaalde zinsstarters door varianten: "Daarnaast" → "Bovendien", "Ook", "Verder"
@@ -83,7 +83,7 @@ WAT JE MOET VERANDEREN:
   * "Het is belangrijk om..." → concreter formuleren
   * "In de huidige markt..." → weglaten of specifieker maken
   * "Een van de beste..." → vermijden als het niet concreet is
-- Voeg 1-2 natuurlijke Nederlandse uitdrukkingen per sectie toe:
+- Voeg 1-2 natuurlijke Nederlandstalige uitdrukkingen per sectie toe:
   * "Eerlijk gezegd...", "Dat gezegd hebbende...", "Nou ja..."
 - Varieer alineagrootte — mix van 1-zin alinea's en 3-zin alinea's
 - Verwijder overmatig gebruik van em-dash (—) — vervang door komma of nieuwe zin

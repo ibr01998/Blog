@@ -27,18 +27,18 @@ const QUERY_POOL: { category: string; queries: string[] }[] = [
   {
     category: 'exchange_comparison',
     queries: [
-      'beste crypto exchange nederland 2026',
-      'bybit vs binance nederland kosten vergelijking',
-      'kraken vs coinbase nederland review',
-      'bitmex review betrouwbaar nederland 2026',
-      'crypto exchange fees vergelijking belgie nederland',
+      'beste crypto exchange belgie 2026',
+      'bybit vs binance belgie kosten vergelijking',
+      'kraken vs coinbase review 2026',
+      'bitmex review betrouwbaar 2026',
+      'crypto exchange fees vergelijking belgie',
     ],
   },
   {
     category: 'platform_deepdive',
     queries: [
-      'bybit ervaringen nederlanders 2026',
-      'binance storten kosten nederland uitleg',
+      'bybit ervaringen belgie 2026',
+      'binance storten kosten uitleg belgie',
       'kraken staking opbrengst percentage 2026',
       'bitmex leverage trading uitleg veiligheid',
       'binance proof of reserves audit 2026',
@@ -47,30 +47,30 @@ const QUERY_POOL: { category: string; queries: string[] }[] = [
   {
     category: 'trading_strategy',
     queries: [
-      'crypto leverage trading beginners nederland fouten',
+      'crypto leverage trading beginners fouten vermijden',
       'dollar cost averaging bitcoin strategie resultaten',
       'crypto trading psychologie angst hebzucht',
       'technische analyse bitcoin ethereum beginners',
-      'crypto portfolio risicospreiding strategie',
+      'crypto portfolio risicospreiding wereldwijd',
     ],
   },
   {
-    category: 'dutch_regulations',
+    category: 'belgian_regulations',
     queries: [
-      'crypto belasting nederland 2026 aangifte box3',
-      'AFM crypto regulering toezicht nieuws 2026',
-      'MiCA verordening europa crypto impact nederland',
-      'crypto witboek registratie dnb nederland',
-      'crypto fiscaal voordeel belgie vs nederland',
+      'crypto belasting belgie 2026 aangifte',
+      'FSMA crypto regulering belgie toezicht 2026',
+      'MiCA verordening europa crypto impact belgie',
+      'crypto btw belgie regelgeving uitleg',
+      'crypto fiscaal belgie meerwaardebelasting',
     ],
   },
   {
     category: 'bitcoin_economics',
     queries: [
-      'bitcoin als inflatie hedge 2026 nederland',
+      'bitcoin als inflatie hedge 2026 analyse',
       'bitcoin halving effect prijs historisch analyse',
       'institutionele bitcoin adoptie blackrock fidelity',
-      'bitcoin ETF spot goedkeuring markt impact',
+      'bitcoin ETF spot markt impact 2026',
       'bitcoin vs goud store of value vergelijking',
     ],
   },
@@ -79,19 +79,19 @@ const QUERY_POOL: { category: string; queries: string[] }[] = [
     queries: [
       'crypto regulering europa MiCA 2026 gevolgen',
       'el salvador bitcoin wet resultaten evaluatie',
-      'SEC crypto handhaving usa impact europese markt',
-      'digitale euro CBDC dnb nederland 2026',
-      'crypto politiek partijen standpunten nederland',
+      'SEC crypto handhaving usa impact globale markt',
+      'digitale euro CBDC ecb 2026 impact',
+      'crypto politiek europa standpunten 2026',
     ],
   },
   {
     category: 'demographics_behavior',
     queries: [
-      'jongeren crypto investeren nederland generatie z',
+      'jongeren crypto investeren belgie generatie z',
       'vrouwen crypto markt groeiende deelname studie',
       'pensioenfondsen bitcoin institutionele adoptie europa',
       'crypto fomo angst beslissingen psychologie onderzoek',
-      'nederlanders crypto eigendom statistieken 2026',
+      'belgen crypto eigendom statistieken 2026',
     ],
   },
   {
@@ -107,21 +107,21 @@ const QUERY_POOL: { category: string; queries: string[] }[] = [
   {
     category: 'defi_web3_innovation',
     queries: [
-      'defi yield farming nederland belasting 2026',
+      'defi yield farming belasting europa 2026',
       'ethereum layer 2 scaling uitleg kosten vergelijking',
       'crypto staking beste opbrengst vergelijking 2026',
-      'web3 adoptie nederland bedrijven projecten',
-      'NFT markt status nederland 2026 realiteit',
+      'web3 adoptie bedrijven europe projecten 2026',
+      'NFT markt status 2026 realiteit analyse',
     ],
   },
   {
     category: 'global_macro_crypto',
     queries: [
-      'bitcoin global adoption developing countries',
+      'bitcoin global adoption developing countries 2026',
       'crypto remittances internationale geldovermakingen',
       'microstrategy bitcoin bedrijfsstrategie analyse',
       'crypto venture capital investeringen trends 2026',
-      'hyperinflatie landen crypto vlucht gebruik',
+      'hyperinflatie landen crypto gebruik vlucht analyse',
     ],
   },
 ];
@@ -222,22 +222,23 @@ export class ResearchAgent extends BaseAgent {
     const insights = await this.callObject({
       schema: MarketInsightsSchema,
       model: 'gpt-4o-mini',
-      systemPrompt: `You are a senior editorial research analyst for ShortNews.tech, a Dutch crypto media publication.
+      systemPrompt: `You are a senior editorial research analyst for ShortNews.tech, a Belgian crypto media publication writing in Dutch.
 
-Your job: discover genuinely interesting, UNIQUE editorial opportunities across the full spectrum of crypto topics.
+Your job: discover genuinely interesting, UNIQUE editorial opportunities across the full spectrum of global crypto topics — told from a Belgian perspective where relevant.
 
+ShortNews primary audience: Belgian crypto readers (Flanders + Brussels). Secondary: global Dutch-speaking crypto community.
 ShortNews covers crypto holistically — not just exchange reviews. Crypto intersects with:
-- POLITICS: government regulation, central bank digital currencies, election stances on crypto, geopolitical Bitcoin adoption
-- ECONOMICS: inflation hedging, institutional flows, macro correlation, store-of-value debate, developing-world adoption
-- DEMOGRAPHICS & BEHAVIOR: generational wealth transfer into crypto, women in crypto, trading psychology, FOMO/FUD patterns, Dutch/Belgian adoption rates
-- MARKET EVENTS: halvings, bull/bear cycles, major liquidations, protocol upgrades, exchange collapses
-- TECHNOLOGY: DeFi, Layer 2, Ethereum upgrades, staking, Web3 real-world adoption
+- POLITICS: EU/Belgian regulation (FSMA, MiCA), CBDC (digital euro), global government stances, geopolitical Bitcoin adoption (El Salvador, US ETF decisions)
+- ECONOMICS: inflation hedging, institutional flows (BlackRock, pension funds), macro correlation, store-of-value debate, developing-world adoption
+- DEMOGRAPHICS & BEHAVIOR: generational trends in Belgium, women in crypto, trading psychology, FOMO/FUD patterns, Belgian adoption statistics
+- MARKET EVENTS: halvings, bull/bear cycles, major liquidations, protocol upgrades, exchange collapses (FTX lessons)
+- TECHNOLOGY: DeFi, Layer 2, Ethereum upgrades, staking, Web3 real-world adoption globally
 - EXCHANGE CONTENT: comparisons, reviews, fees, bonuses (important but NOT the only vertical)
 
-The blog monetizes via affiliate programs (Bybit, BitMEX, Binance, Kraken) BUT a trusted, authoritative editorial voice builds long-term audience that converts far better than pure promotion.
-Content goal: be the go-to Dutch crypto source that readers trust — THEN they click affiliate links.
+The blog is GLOBAL in scope — most crypto stories transcend borders. Belgian angle = local regulatory context + local tax implications + local adoption data. Everything else is universal.
+Content goal: be the go-to Belgian Dutch-language crypto source — THEN readers click affiliate links.
 
-Today's research covers ${successful.length} queries across these topics. Extract the most interesting, timely, and UNIQUE angles.`,
+Today's research covers ${successful.length} queries. Extract the most interesting, timely, globally relevant angles.`,
       userPrompt: `Analyze these ${successful.length} search queries and their results. Today's queries deliberately span exchange reviews, politics, economics, demographics, market events, and innovation.
 
 ${searchSummary}

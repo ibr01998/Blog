@@ -34,21 +34,24 @@ const strategistOutputSchema = z.object({
 
 // Dutch crypto topic seeds — fallback when no recent market_research data exists
 const FALLBACK_TOPIC_SEEDS = [
-  'bybit review 2026',
-  'binance vs kraken nederland',
-  'bitmex fees uitleg',
-  'crypto leverage trading beginners nederland',
-  'beste crypto exchange nederland 2026',
-  'bybit bonus welkomstbonus',
-  'kraken betrouwbaar',
+  'bybit review belgie 2026',
+  'binance vs kraken belgie vergelijking',
+  'bitmex fees uitleg beginners',
+  'crypto leverage trading beginners fouten',
+  'beste crypto exchange belgie 2026',
+  'bybit bonus welkomstbonus belgie',
+  'kraken betrouwbaar veilig',
   'bitcoin futures trading platform vergelijking',
-  'crypto staking vergelijking exchange',
-  'crypto portfolio voor beginners',
-  'bitmex vs bybit',
-  'binance kosten overzicht',
-  'kraken fees nl',
-  'crypto exchange veiligheid nederland',
-  'bybit ervaringen nl',
+  'crypto staking opbrengst vergelijking 2026',
+  'crypto portfolio beginners strategie',
+  'bitmex vs bybit gevorderde traders',
+  'binance kosten overzicht belgie',
+  'kraken fees uitleg belgie',
+  'crypto belasting belgie 2026 aangifte',
+  'bitcoin inflatie hedge belgie 2026',
+  'MiCA crypto regulering belgie gevolgen',
+  'crypto trading psychologie fomo vermijden',
+  'bitcoin halving 2024 effect analyse',
 ];
 
 interface HistoricalArticleRow {
@@ -209,6 +212,7 @@ ANALYST RECOMMENDATIONS:
 
 BEST CONVERTING AFFILIATE: ${bestAffiliate} — use in money-tier content where it fits naturally
 AVAILABLE PLATFORMS: BitMEX, Bybit, Binance, Kraken
+GEOGRAPHIC FOCUS: Belgium (primary) + global crypto topics (most content should be internationally relevant, not hyper-local)
 
 ${historyContext}
 
@@ -218,12 +222,14 @@ TOPIC SEED IDEAS (starting points — these are narrow, go BEYOND them):
 ${keywordSeeds.map((t, i) => `${i + 1}. ${t}`).join('\n')}
 
 CONTENT TYPE INSPIRATION (think beyond exchange reviews):
-- "Waarom koopt een 65-jarige Nederlander nu Bitcoin?" (demographics + economics angle)
-- "MiCA: wat betekent de EU crypto-wet voor jouw exchange?" (regulation explainer)
+- "Waarom koopt een 65-jarige Belg nu Bitcoin?" (demographics + economics angle)
+- "MiCA: wat betekent de EU crypto-wet concreet voor jou?" (regulation explainer — Belgian context)
 - "Bitcoin als pensioenplan: gek idee of slimme strategie?" (opinion/authority)
-- "De psychologie van crypto FOMO: hoe voorkom je slechte beslissingen?" (behavioral)
+- "De psychologie van crypto FOMO: hoe voorkom je slechte beslissingen?" (behavioral — universal)
 - "Wat een hyperinflatieland ons leert over Bitcoin" (global economics + story hook)
+- "Hoe belast België crypto anders dan de rest van Europa?" (Belgian-specific regulation)
 - "Kraken vs Bybit voor gevorderde traders: een eerlijk oordeel" (money tier, platforms)
+- "El Salvador twee jaar later: is bitcoin als nationale munt geslaagd?" (global politics)
 
 REQUIREMENTS:
 - All primary_keywords must be Dutch search queries
@@ -281,10 +287,12 @@ ${marketResearch ? '- PRIORITIZE ⚡ content gap opportunities, especially edito
 MISSION: Build the most trusted Dutch crypto publication — one that readers return to because it's genuinely interesting, honest, and covers stories no one else does. Affiliate revenue follows naturally from trust, not the other way around.
 
 BLOG CONTEXT:
-- Language: Dutch (nl)
-- Target audience: Dutch and Belgian crypto readers — traders, curious newcomers, investors, professionals
-- Monetization: affiliate programs via /go/{slug} links (BitMEX, Bybit, Binance, Kraken) — but trust-building content is equally important for long-term conversion
-- SEO focus: Dutch-language content that ranks because it's genuinely useful, not because it's keyword-stuffed
+- Language: Dutch (nl) — written for a Belgian Flemish audience
+- Primary audience: Belgian crypto readers (Flanders + Brussels) — traders, curious newcomers, investors, professionals
+- Secondary audience: global Dutch-speaking crypto community
+- Monetization: affiliate programs via /go/{slug} links (BitMEX, Bybit, Binance, Kraken) — trust-building content is equally important
+- SEO focus: Belgian Dutch-language content that ranks because it's genuinely useful
+- Content scope: GLOBAL — Belgian regulatory angle where relevant, but most crypto stories are universal
 
 WHAT CRYPTO ACTUALLY COVERS (think this broadly):
 - POLITICS: MiCA regulation, DNB/AFM oversight, EU digital euro (CBDC), government stances, election debates about crypto, geopolitical Bitcoin adoption (El Salvador, etc.)

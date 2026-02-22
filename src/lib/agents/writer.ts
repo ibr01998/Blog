@@ -117,7 +117,7 @@ OPDRACHT:
 - Voorgestelde titel: ${brief.title_suggestion}
 - Format: ${brief.format_type}
 - Hook type: ${brief.hook_type}
-- Doelgroep: crypto traders in Nederland en België
+- Doelgroep: crypto lezers in België en internationaal (Vlaamse + Brusselse primaire audience)
 - Streefaantal woorden: ${targetWords}
 - Uitgelichte platformen: ${brief.target_platforms.join(', ')}
 - Affiliate focus: ${brief.affiliate_focus}
@@ -207,7 +207,7 @@ ABSOLUTE REGELS:
     const assertive = (this.mergedConfig as any).increase_assertiveness;
     const noHype = (this.mergedConfig as any).reduce_hype;
 
-    return `Je bent "${subtype.name}", een gespecialiseerde schrijver voor ShortNews, een Nederlandse crypto affiliateblog.
+    return `Je bent "${subtype.name}", een gespecialiseerde schrijver voor ShortNews, een Belgische crypto blog met internationale focus.
 
 PERSONA: ${subtype.description}
 
@@ -219,7 +219,7 @@ ${noHype ? '- Vermijd hypetaal. Geen superlatieven, geen uitroeptekens, geen ove
 
 BLOG CONTEXT:
 - Taal: Nederlands (nl)
-- Doelgroep: crypto traders in Nederland en België
+- Doelgroep: crypto lezers in België en internationaal (Vlaamse + Brusselse primaire audience)
 - Website: ShortNews.tech
 - Monetisatie: affiliate links via /go/{slug} paden
 - Platformen: BitMEX, Bybit, Binance, Kraken

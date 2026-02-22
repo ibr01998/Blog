@@ -292,7 +292,7 @@ Based on ALL available data (Postgres + GA4):
 
 5. Determine trend_direction: are metrics improving, stable, or declining?
 
-6. Focus on Dutch crypto market: NL/BE traders, platforms BitMEX/Bybit/Binance/Kraken
+6. Focus on Belgian crypto market and global crypto topics — primary audience: Belgian Dutch-speaking readers, platforms BitMEX/Bybit/Binance/Kraken
 
 IMPORTANT: Your recommendations will directly influence agent behavior and article generation.
 Be specific and data-driven. If GA4 shows users aren't reading full articles, SAY SO explicitly.
@@ -374,7 +374,7 @@ Your role: analyze article performance metrics, content strategy data, and affil
 Tone: ${tone}.
 
 CONTEXT:
-- Blog: ShortNews.tech — Dutch-language crypto content for NL/BE market
+- Blog: ShortNews.tech — Dutch-language crypto content, primary audience: Belgium (Flanders + Brussels), global scope
 - Monetization: affiliate programs (BitMEX, Bybit, Binance, Kraken)
 - Primary KPIs: CTR (click-through rate), affiliate_clicks, avg_time_on_page, bounce_rate
 - Content tiers: money (conversion), authority (educational), trend (timely)

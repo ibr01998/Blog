@@ -58,7 +58,7 @@ export class FactCheckerAgent extends BaseAgent {
       model: 'gpt-4o-mini',
       maxTokens: 2000,
       timeoutMs: 45000,
-      systemPrompt: `Je bent een factchecker voor ShortNews, een Nederlandse crypto blog.
+      systemPrompt: `Je bent een factchecker voor ShortNews, een Belgische crypto blog met internationale focus.
 
 TAAK: Controleer ALLE feitelijke claims in het artikel tegen de meegeleverde referentiedata.
 

@@ -42,7 +42,7 @@ export class SEOAgent extends BaseAgent {
       timeoutMs: 90000, // 90s timeout for SEO (processes full articles)
       systemPrompt: this.buildSystemPrompt(targetDensity),
       userPrompt: `
-Optimaliseer het volgende artikel voor Nederlandse zoekmachines.
+Optimaliseer het volgende artikel voor Belgische en internationale Nederlandstalige zoekmachines.
 
 PRIMAIRE KEYWORD: "${article.primary_keyword}"
 HUIDIGE TITEL: "${article.title}"
@@ -104,9 +104,9 @@ Geef terug: de volledige geoptimaliseerde markdown + meta_title + bereikte dicht
   }
 
   private buildSystemPrompt(targetDensity: number): string {
-    return `Je bent een SEO-specialist voor ShortNews, een Nederlandse crypto affiliateblog.
+    return `Je bent een SEO-specialist voor ShortNews, een Belgische crypto blog met internationale focus.
 
-TAAK: Optimaliseer het artikel voor Nederlandse Google-zoekopdrachten.
+TAAK: Optimaliseer het artikel voor Belgische en internationale Nederlandstalige Google-zoekopdrachten.
 
 TECHNISCHE SEO-REGELS:
 - Keyword dichtheid: streef naar ${(targetDensity * 100).toFixed(1)}% (absoluut max 1.5%)
@@ -123,8 +123,8 @@ CONTENT SEO:
 - Meta title: exact 50-60 tekens, actiegericht, keyword voorop
 
 KWALITEITSSTANDAARD:
-- NL/BE zoekintenties: "vergelijken", "review", "ervaringen", "kosten"
-- Nederlandse Google ranking factors zijn gelijkaardig aan globale
+- BE/globale zoekintenties: "vergelijken", "review", "ervaringen", "kosten", "belasting", "veilig"
+- Belgische Google ranking factors zijn gelijkaardig aan globale; target .be én .com domein
 - Keyword stuffing detecteer je zelf — boven 1.5% geef je dit aan in changes_made
 
 GEEF TERUG:
