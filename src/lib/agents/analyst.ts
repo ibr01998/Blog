@@ -148,6 +148,21 @@ export class AnalystAgent extends BaseAgent {
         `UPDATE agents SET performance_score = $1 WHERE id = $2`,
         [score, w.writer_id]
       );
+      // Log a performance snapshot for evolution visualization (every cycle)
+      await this.log({
+        stage: 'performance:snapshot',
+        inputSummary: {
+          agent_id: w.writer_id,
+          agent_name: w.writer_name,
+          performance_score: score,
+          avg_ctr: w.avg_ctr,
+          avg_conversion_rate: w.avg_conversion_rate,
+          avg_time_on_page: w.avg_time_on_page,
+          total_articles: w.total_articles,
+        },
+        decisionSummary: { updated_score: score },
+        reasoningSummary: `Performance snapshot: CTR ${(w.avg_ctr * 100).toFixed(2)}%, Conversie ${(w.avg_conversion_rate * 100).toFixed(2)}%, Artikelen ${w.total_articles}`,
+      });
     }
 
     // 6. Fetch Google Analytics 4 data (last 30 days)
