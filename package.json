@@ -6,7 +6,9 @@
     "dev": "astro dev",
     "build": "astro build --remote",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "warmup": "node scripts/warmup.js",
+    "lighthouse": "lhci autorun"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.44",

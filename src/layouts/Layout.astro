@@ -31,6 +31,8 @@ const { title, description, image, type, publishedTime, modifiedTime, author } =
 <!doctype html>
 <html lang="nl" class="h-full antialiased">
 	<head>
+		<!-- Preload critical font -->
+		<link rel="preload" href="/fonts/outfit-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
 		<BaseHead title={title} description={description} image={image} type={type} publishedTime={publishedTime} modifiedTime={modifiedTime} author={author} />
 	</head>
 	<body class="flex flex-col min-h-screen font-outfit text-navy">
