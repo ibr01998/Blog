@@ -22,7 +22,9 @@
       "WebFetch(domain:logie.ai)",
       "Bash(git remote set-url:*)",
       "Bash(ssh-keyscan:*)",
-      "Bash(~/.ssh/known_hosts)"
+      "Bash(~/.ssh/known_hosts)",
+      "WebFetch(domain:partnerblog.bol.com)",
+      "WebFetch(domain:affiliate.bol.com)"
     ]
   }
 }
