@@ -1,0 +1,485 @@
+---
+import type { CollectionEntry } from 'astro:content';
+
+interface FilePost extends CollectionEntry<'blog'> {
+  source: 'file';
+}
+
+interface DbPost {
+  slug: string;
+  source: 'db';
+  data: {
+    title: string;
+    description: string;
+    pubDate: Date;
+    heroImage?: string | null;
+    article_type?: string | null;
+    readingTime?: number | null;
+  };
+}
+
+interface Props {
+  post: FilePost | DbPost;
+  variant?: 'default' | 'compact' | 'featured';
+  showExcerpt?: boolean;
+  'data-title'?: string;
+  'data-description'?: string;
+  'data-type'?: string;
+  'data-date'?: number;
+}
+
+const { post, variant = 'default', showExcerpt = true, ...dataAttrs } = Astro.props;
+
+const typeLabels: Record<string, string> = {
+  comparison: 'Vergelijking',
+  review: 'Review',
+  bonus: 'Bonus',
+  trust: 'Vertrouwen',
+  fee: 'Kosten',
+  'amazon-review': 'Amazon',
+  'bol-review': 'Bol.com',
+  guide: 'Gids',
+  news: 'Nieuws',
+  tutorial: 'Tutorial',
+};
+
+const typeColors: Record<string, { bg: string; text: string }> = {
+  comparison: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-800 dark:text-blue-300' },
+  review: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-800 dark:text-green-300' },
+  bonus: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-800 dark:text-amber-300' },
+  trust: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-800 dark:text-purple-300' },
+  fee: { bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-800 dark:text-rose-300' },
+  'amazon-review': { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-800 dark:text-orange-300' },
+  'bol-review': { bg: 'bg-sky-100 dark:bg-sky-900/30', text: 'text-sky-800 dark:text-sky-300' },
+  guide: { bg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-800 dark:text-indigo-300' },
+  news: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-800 dark:text-red-300' },
+  tutorial: { bg: 'bg-teal-100 dark:bg-teal-900/30', text: 'text-teal-800 dark:text-teal-300' },
+};
+
+// Calculate reading time from description if not available
+function getReadingTime(post: FilePost | DbPost): number {
+  if (post.source === 'db' && post.data.readingTime) {
+    return post.data.readingTime;
+  }
+  // Estimate: average reading speed ~200 words/minute
+  const wordCount = post.data.description?.split(/\s+/).length || 0;
+  return Math.max(1, Math.ceil(wordCount / 200));
+}
+
+// Get category from post
+function getCategory(post: FilePost | DbPost): { key: string; label: string } | null {
+  const type = (post.data as any).article_type || (post as any).articleType;
+  if (type && typeLabels[type]) {
+    return { key: type, label: typeLabels[type] };
+  }
+  return null;
+}
+
+// Format date
+function formatDate(date: Date): string {
+  const now = new Date();
+  const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (diffInDays === 0) return 'Vandaag';
+  if (diffInDays === 1) return 'Gisteren';
+  if (diffInDays < 7) return `${diffInDays} dagen geleden`;
+  if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weken geleden`;
+  
+  return date.toLocaleDateString('nl-NL', {
+    day: 'numeric',
+    month: 'short',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+  });
+}
+
+const category = getCategory(post);
+const readingTime = getReadingTime(post);
+const categoryStyle = category ? typeColors[category.key] || { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-800 dark:text-gray-300' } : null;
+---
+
+<article class={`article-card article-card--${variant} group`} {...dataAttrs}>
+  {/* Image Container */}
+  <a href={`/blog/${post.slug}/`} class="card-image-link duotone-navy" tabindex="-1" aria-hidden="true">
+    <div class="card-image-wrapper">
+      <img
+        src={post.data.heroImage || '/blog-placeholder-1.jpg'}
+        alt=""
+        class="card-image"
+        loading="lazy"
+        decoding="async"
+        width="720"
+        height="405"
+      />
+    </div>
+    
+    {/* Category badge on image */}
+    {category && variant !== 'compact' && (
+      <span class={`card-category-badge ${categoryStyle?.bg} ${categoryStyle?.text}`}>
+        {category.label}
+      </span>
+    )}
+    
+    {/* Reading time overlay */}
+    <span class="card-reading-overlay">
+      <svg class="reading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 6v6l4 2"/>
+      </svg>
+      {readingTime} min
+    </span>
+  </a>
+  
+  {/* Content */}
+  <div class="card-content">
+    {/* Meta row */}
+    <div class="card-meta">
+      {/* Compact category badge */}
+      {category && variant === 'compact' && (
+        <span class={`card-category-compact ${categoryStyle?.bg} ${categoryStyle?.text}`}>
+          {category.label}
+        </span>
+      )}
+      
+      {/* Date */}
+      <time class="card-date" datetime={post.data.pubDate.toISOString()}>
+        {formatDate(post.data.pubDate)}
+      </time>
+    </div>
+    
+    {/* Title */}
+    <h3 class={`card-title card-title--${variant}`}>
+      <a href={`/blog/${post.slug}/`} class="card-title-link">
+        {post.data.title}
+      </a>
+    </h3>
+    
+    {/* Excerpt */}
+    {showExcerpt && variant !== 'compact' && (
+      <p class="card-excerpt">
+        {post.data.description}
+      </p>
+    )}
+    
+    {/* Footer */}
+    <div class="card-footer">
+      <span class="card-reading-time">
+        <svg class="reading-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 6v6l4 2"/>
+        </svg>
+        {readingTime} min leestijd
+      </span>
+      
+      <a href={`/blog/${post.slug}/`} class="card-cta">
+        Lees meer
+        <svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+</article>
+
+<style>
+  /* Base card styles */
+  .article-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    height: 100%;
+  }
+  
+  .article-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Image section */
+  .card-image-link {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+    flex-shrink: 0;
+  }
+  
+  .card-image-wrapper {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+  
+  .card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+  }
+  
+  .article-card:hover .card-image {
+    transform: scale(1.05);
+  }
+  
+  /* Category badge on image */
+  .card-category-badge {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 3;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.35rem 0.75rem;
+    border-radius: 100px;
+    backdrop-filter: blur(8px);
+  }
+  
+  /* Reading time overlay */
+  .card-reading-overlay {
+    position: absolute;
+    bottom: 0.75rem;
+    right: 0.75rem;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: white;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    padding: 0.35rem 0.65rem;
+    border-radius: 100px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  
+  .article-card:hover .card-reading-overlay {
+    opacity: 1;
+  }
+  
+  .reading-icon {
+    width: 12px;
+    height: 12px;
+  }
+  
+  /* Content section */
+  .card-content {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    padding: 1rem;
+    gap: 0.5rem;
+  }
+  
+  @media (min-width: 768px) {
+    .card-content {
+      padding: 1.25rem;
+    }
+  }
+  
+  /* Meta row */
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  
+  .card-category-compact {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+  }
+  
+  .card-date {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  
+  /* Title */
+  .card-title {
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--color-navy);
+    margin: 0;
+  }
+  
+  .card-title--default {
+    font-size: 1.0625rem;
+  }
+  
+  .card-title--compact {
+    font-size: 0.9375rem;
+  }
+  
+  .card-title--featured {
+    font-size: 1.25rem;
+  }
+  
+  @media (min-width: 768px) {
+    .card-title--default {
+      font-size: 1.125rem;
+    }
+    
+    .card-title--featured {
+      font-size: 1.5rem;
+    }
+  }
+  
+  .card-title-link {
+    color: inherit;
+    text-decoration: none;
+    transition: opacity 0.15s;
+  }
+  
+  .card-title-link:hover {
+    opacity: 0.7;
+  }
+  
+  /* Excerpt */
+  .card-excerpt {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    flex-grow: 1;
+  }
+  
+  @media (min-width: 768px) {
+    .card-excerpt {
+      -webkit-line-clamp: 3;
+    }
+  }
+  
+  /* Footer */
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-top: 0.75rem;
+    margin-top: auto;
+    border-top: 1px solid var(--border-color);
+  }
+  
+  .card-reading-time {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  
+  .reading-icon-sm {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .card-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-navy);
+    text-decoration: none;
+    transition: gap 0.2s;
+  }
+  
+  .card-cta:hover {
+    gap: 0.5rem;
+  }
+  
+  .cta-icon {
+    width: 16px;
+    height: 16px;
+  }
+  
+  /* Compact variant */
+  .article-card--compact .card-image-link {
+    aspect-ratio: 16 / 10;
+  }
+  
+  .article-card--compact .card-content {
+    padding: 0.875rem;
+    gap: 0.375rem;
+  }
+  
+  .article-card--compact .card-footer {
+    padding-top: 0.5rem;
+    font-size: 0.75rem;
+  }
+  
+  /* Featured variant */
+  .article-card--featured {
+    border-radius: 16px;
+  }
+  
+  .article-card--featured .card-image-link {
+    aspect-ratio: 16 / 10;
+  }
+  
+  @media (min-width: 1024px) {
+    .article-card--featured .card-image-link {
+      aspect-ratio: 16 / 9;
+    }
+    
+    .article-card--featured .card-content {
+      padding: 1.5rem;
+    }
+  }
+  
+  /* Always show reading overlay on mobile (no hover) */
+  @media (hover: none) {
+    .card-reading-overlay {
+      opacity: 1;
+    }
+  }
+  
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .article-card {
+      transition: none;
+    }
+    
+    .card-image {
+      transition: none;
+    }
+    
+    .article-card:hover .card-image {
+      transform: scale(1);
+    }
+    
+    .article-card:hover {
+      transform: none;
+    }
+  }
+  
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .article-card {
+      border-width: 2px;
+    }
+    
+    .card-category-badge,
+    .card-category-compact {
+      border: 1px solid currentColor;
+    }
+  }
+</style>

@@ -1,0 +1,675 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { db, Post, eq } from 'astro:db';
+
+interface FilePost extends CollectionEntry<'blog'> {
+  source: 'file';
+}
+
+interface DbPost {
+  slug: string;
+  source: 'db';
+  data: {
+    title: string;
+    description: string;
+    pubDate: Date;
+    heroImage?: string | null;
+    article_type?: string | null;
+    readingTime?: number | null;
+  };
+}
+
+interface Props {
+  posts: (FilePost | DbPost)[];
+}
+
+const { posts } = Astro.props;
+const slideshowPosts = posts.slice(0, 5);
+
+const typeLabels: Record<string, string> = {
+  comparison: 'Vergelijking',
+  review: 'Review',
+  bonus: 'Bonus',
+  trust: 'Vertrouwen',
+  fee: 'Kosten',
+  'amazon-review': 'Amazon',
+  'bol-review': 'Bol.com',
+  guide: 'Gids',
+  news: 'Nieuws',
+  tutorial: 'Tutorial',
+};
+
+// Calculate reading time from description if not available
+function getReadingTime(post: FilePost | DbPost): number {
+  if (post.source === 'db' && post.data.readingTime) {
+    return post.data.readingTime;
+  }
+  // Estimate: average reading speed ~200 words/minute
+  const wordCount = post.data.description?.split(/\s+/).length || 0;
+  return Math.max(1, Math.ceil(wordCount / 200));
+}
+
+// Get excerpt (truncated description)
+function getExcerpt(description: string, maxLength: number = 140): string {
+  if (description.length <= maxLength) return description;
+  return description.slice(0, maxLength).trim() + '...';
+}
+
+// Get category from post
+function getCategory(post: FilePost | DbPost): string | null {
+  const type = (post.data as any).article_type || (post as any).articleType;
+  if (type && typeLabels[type]) {
+    return typeLabels[type];
+  }
+  return null;
+}
+---
+
+{slideshowPosts.length > 0 && (
+  <section class="slideshow-container" data-slideshow>
+    {/* Slides */}
+    <div class="slides-wrapper">
+      {slideshowPosts.map((post, index) => (
+        <article 
+          class="slide" 
+          data-slide-index={index}
+          style={index === 0 ? '' : 'opacity: 0; pointer-events: none; position: absolute; top: 0; left: 0; width: 100%;'}
+        >
+          {/* Background Image */}
+          <div class="slide-image-wrapper duotone-navy">
+            <img
+              src={post.data.heroImage || "/blog-placeholder-1.jpg"}
+              alt={post.data.title}
+              class="slide-image"
+              loading={index === 0 ? "eager" : "lazy"}
+              decoding="async"
+              fetchpriority={index === 0 ? "high" : "auto"}
+            />
+            {/* Gradient overlay for text readability */}
+            <div class="slide-overlay"></div>
+          </div>
+          
+          {/* Content */}
+          <div class="slide-content">
+            <div class="slide-content-inner">
+              {/* Category Badge */}
+              {getCategory(post) && (
+                <span class="category-badge">
+                  {getCategory(post)}
+                </span>
+              )}
+              
+              {/* Title */}
+              <h2 class="slide-title">
+                <a href={`/blog/${post.slug}/`} class="slide-title-link">
+                  {post.data.title}
+                </a>
+              </h2>
+              
+              {/* Excerpt */}
+              <p class="slide-excerpt">
+                {getExcerpt(post.data.description)}
+              </p>
+              
+              {/* Meta */}
+              <div class="slide-meta">
+                <span class="slide-date">
+                  {post.data.pubDate.toLocaleDateString('nl-NL', {
+                    day: 'numeric', month: 'long', year: 'numeric'
+                  })}
+                </span>
+                <span class="meta-separator">·</span>
+                <span class="slide-reading-time">
+                  <svg class="reading-time-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                  </svg>
+                  {getReadingTime(post)} min
+                </span>
+              </div>
+              
+              {/* CTA */}
+              <a href={`/blog/${post.slug}/`} class="slide-cta">
+                Lees artikel
+                <svg class="cta-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+    
+    {/* Navigation Arrows */}
+    {slideshowPosts.length > 1 && (
+      <>
+        <button 
+          class="nav-arrow nav-arrow-prev" 
+          aria-label="Vorige slide"
+          data-nav="prev"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <button 
+          class="nav-arrow nav-arrow-next" 
+          aria-label="Volgende slide"
+          data-nav="next"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </button>
+      </>
+    )}
+    
+    {/* Indicators */}
+    {slideshowPosts.length > 1 && (
+      <div class="slide-indicators">
+        {slideshowPosts.map((_, index) => (
+          <button 
+            class={`indicator ${index === 0 ? 'indicator-active' : ''}`}
+            data-indicator={index}
+            aria-label={`Ga naar slide ${index + 1}`}
+          />
+        ))}
+      </div>
+    )}
+  </section>
+)}
+
+<script>
+  class SlideshowController {
+    container: HTMLElement;
+    slides: HTMLElement[];
+    indicators: HTMLElement[];
+    prevBtn: HTMLButtonElement | null;
+    nextBtn: HTMLButtonElement | null;
+    currentIndex: number;
+    autoplayInterval: number | null;
+    touchStartX: number;
+    
+    constructor(container: HTMLElement) {
+      this.container = container;
+      this.slides = Array.from(container.querySelectorAll('[data-slide-index]'));
+      this.indicators = Array.from(container.querySelectorAll('[data-indicator]'));
+      this.prevBtn = container.querySelector('[data-nav="prev"]');
+      this.nextBtn = container.querySelector('[data-nav="next"]');
+      this.currentIndex = 0;
+      this.autoplayInterval = null;
+      this.touchStartX = 0;
+      
+      this.init();
+    }
+    
+    init() {
+      if (this.slides.length <= 1) return;
+      
+      // Navigation buttons
+      this.prevBtn?.addEventListener('click', () => this.prev());
+      this.nextBtn?.addEventListener('click', () => this.next());
+      
+      // Indicators
+      this.indicators.forEach((indicator, index) => {
+        indicator.addEventListener('click', () => this.goTo(index));
+      });
+      
+      // Keyboard navigation
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') this.prev();
+        if (e.key === 'ArrowRight') this.next();
+      });
+      
+      // Touch/swipe support
+      this.container.addEventListener('touchstart', (e) => {
+        this.touchStartX = e.touches[0].clientX;
+      }, { passive: true });
+      
+      this.container.addEventListener('touchend', (e) => {
+        const touchEndX = e.changedTouches[0].clientX;
+        const diff = this.touchStartX - touchEndX;
+        
+        if (Math.abs(diff) > 50) {
+          if (diff > 0) this.next();
+          else this.prev();
+        }
+      }, { passive: true });
+      
+      // Autoplay
+      this.startAutoplay();
+      
+      // Pause on hover
+      this.container.addEventListener('mouseenter', () => this.stopAutoplay());
+      this.container.addEventListener('mouseleave', () => this.startAutoplay());
+      
+      // Pause when not visible
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          this.stopAutoplay();
+        } else {
+          this.startAutoplay();
+        }
+      });
+    }
+    
+    goTo(index: number) {
+      if (index === this.currentIndex || index < 0 || index >= this.slides.length) return;
+      
+      const currentSlide = this.slides[this.currentIndex];
+      const nextSlide = this.slides[index];
+      
+      // Hide current
+      currentSlide.style.opacity = '0';
+      currentSlide.style.pointerEvents = 'none';
+      currentSlide.style.position = 'absolute';
+      currentSlide.style.top = '0';
+      currentSlide.style.left = '0';
+      currentSlide.style.width = '100%';
+      
+      // Show next
+      nextSlide.style.opacity = '1';
+      nextSlide.style.pointerEvents = 'auto';
+      nextSlide.style.position = 'relative';
+      nextSlide.style.top = '';
+      nextSlide.style.left = '';
+      nextSlide.style.width = '';
+      
+      // Update indicators
+      this.indicators[this.currentIndex]?.classList.remove('indicator-active');
+      this.indicators[index]?.classList.add('indicator-active');
+      
+      this.currentIndex = index;
+    }
+    
+    next() {
+      const nextIndex = (this.currentIndex + 1) % this.slides.length;
+      this.goTo(nextIndex);
+    }
+    
+    prev() {
+      const prevIndex = (this.currentIndex - 1 + this.slides.length) % this.slides.length;
+      this.goTo(prevIndex);
+    }
+    
+    startAutoplay() {
+      if (this.autoplayInterval) return;
+      this.autoplayInterval = window.setInterval(() => this.next(), 6000);
+    }
+    
+    stopAutoplay() {
+      if (this.autoplayInterval) {
+        clearInterval(this.autoplayInterval);
+        this.autoplayInterval = null;
+      }
+    }
+  }
+  
+  // Initialize all slideshows on the page
+  document.querySelectorAll('[data-slideshow]').forEach((slideshow) => {
+    new SlideshowController(slideshow as HTMLElement);
+  });
+</script>
+
+<style>
+  .slideshow-container {
+    position: relative;
+    width: 100%;
+    height: 70vh;
+    min-height: 480px;
+    max-height: 700px;
+    overflow: hidden;
+    background: var(--color-navy);
+  }
+  
+  .slides-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .slide {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: opacity 0.5s ease-in-out;
+  }
+  
+  /* Image styling */
+  .slide-image-wrapper {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+  
+  .slide-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scale(1.02);
+    transition: transform 8s ease-out;
+  }
+  
+  .slide:hover .slide-image {
+    transform: scale(1.08);
+  }
+  
+  .slide-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to top,
+      rgba(27, 45, 79, 0.95) 0%,
+      rgba(27, 45, 79, 0.7) 40%,
+      rgba(27, 45, 79, 0.3) 70%,
+      rgba(27, 45, 79, 0.1) 100%
+    );
+    z-index: 2;
+  }
+  
+  /* Content styling */
+  .slide-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    padding: 2rem 1.5rem 2.5rem;
+    color: white;
+  }
+  
+  .slide-content-inner {
+    max-width: 768px;
+    margin: 0 auto;
+  }
+  
+  @media (min-width: 768px) {
+    .slide-content {
+      padding: 3rem 2rem 3.5rem;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .slide-content {
+      padding: 4rem 2rem 4rem;
+    }
+  }
+  
+  /* Category badge */
+  .category-badge {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(8px);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.35rem 0.9rem;
+    border-radius: 100px;
+    margin-bottom: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  /* Title */
+  .slide-title {
+    font-size: clamp(1.75rem, 5vw, 3rem);
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.02em;
+  }
+  
+  .slide-title-link {
+    color: white;
+    text-decoration: none;
+    transition: opacity 0.2s;
+  }
+  
+  .slide-title-link:hover {
+    opacity: 0.8;
+  }
+  
+  /* Excerpt */
+  .slide-excerpt {
+    font-size: 1rem;
+    line-height: 1.6;
+    opacity: 0.85;
+    margin-bottom: 1.25rem;
+    max-width: 600px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  @media (min-width: 768px) {
+    .slide-excerpt {
+      font-size: 1.125rem;
+      -webkit-line-clamp: 3;
+    }
+  }
+  
+  /* Meta */
+  .slide-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    opacity: 0.7;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  
+  .slide-reading-time {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  
+  .reading-time-icon {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .meta-separator {
+    opacity: 0.5;
+  }
+  
+  /* CTA */
+  .slide-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: white;
+    color: var(--color-navy);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  }
+  
+  .slide-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  .cta-arrow {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.2s;
+  }
+  
+  .slide-cta:hover .cta-arrow {
+    transform: translateX(3px);
+  }
+  
+  /* Navigation arrows */
+  .nav-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    opacity: 0;
+  }
+  
+  .slideshow-container:hover .nav-arrow {
+    opacity: 1;
+  }
+  
+  .nav-arrow:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-50%) scale(1.05);
+  }
+  
+  .nav-arrow svg {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .nav-arrow-prev {
+    left: 1rem;
+  }
+  
+  .nav-arrow-next {
+    right: 1rem;
+  }
+  
+  @media (min-width: 768px) {
+    .nav-arrow {
+      width: 50px;
+      height: 50px;
+    }
+    
+    .nav-arrow-prev {
+      left: 1.5rem;
+    }
+    
+    .nav-arrow-next {
+      right: 1.5rem;
+    }
+  }
+  
+  /* Always show arrows on touch devices */
+  @media (hover: none) {
+    .nav-arrow {
+      opacity: 0.8;
+      width: 40px;
+      height: 40px;
+    }
+  }
+  
+  /* Indicators */
+  .slide-indicators {
+    position: absolute;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.4);
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    padding: 0;
+  }
+  
+  .indicator:hover {
+    background: rgba(255, 255, 255, 0.6);
+  }
+  
+  .indicator-active {
+    background: white;
+    width: 24px;
+    border-radius: 4px;
+  }
+  
+  @media (min-width: 768px) {
+    .slide-indicators {
+      bottom: 2rem;
+    }
+    
+    .indicator {
+      width: 10px;
+      height: 10px;
+    }
+    
+    .indicator-active {
+      width: 28px;
+    }
+  }
+  
+  /* Mobile optimizations */
+  @media (max-width: 640px) {
+    .slideshow-container {
+      height: 65vh;
+      min-height: 420px;
+    }
+    
+    .slide-content {
+      padding-bottom: 3.5rem;
+    }
+    
+    .slide-excerpt {
+      display: none;
+    }
+    
+    .slide-meta {
+      margin-bottom: 1rem;
+    }
+    
+    .slide-cta {
+      padding: 0.6rem 1.25rem;
+      font-size: 0.875rem;
+    }
+  }
+  
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .slide {
+      transition: none;
+    }
+    
+    .slide-image {
+      transition: none;
+    }
+    
+    .slide:hover .slide-image {
+      transform: scale(1.02);
+    }
+  }
+  
+  /* Dark mode adjustments */
+  html.dark .slide-cta {
+    background: var(--color-navy);
+    color: white;
+  }
+  
+  html.dark .category-badge {
+    background: rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+</style>

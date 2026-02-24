@@ -395,3 +395,182 @@ html.dark .bg-gray-50 {
 html.dark .border-gray-200 {
   border-color: rgba(255, 255, 255, 0.1) !important;
 }
+
+/* ================================================
+   MOBILE-FIRST RESPONSIVE OPTIMIZATIONS
+   ================================================ */
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Better touch targets on mobile */
+@media (pointer: coarse) {
+  /* Minimum 44px touch targets */
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Larger click areas for small buttons */
+  .chip,
+  .sort-btn,
+  .filter-chip {
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+/* Safe area insets for notched devices */
+@supports (padding: max(0px)) {
+  .site-header,
+  .mobile-menu {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+  
+  @media (min-width: 768px) {
+    .site-header,
+    .mobile-menu {
+      padding-left: max(1.5rem, env(safe-area-inset-left));
+      padding-right: max(1.5rem, env(safe-area-inset-right));
+    }
+  }
+}
+
+/* Viewport height fix for mobile browsers */
+@supports (height: 100dvh) {
+  .slideshow-container {
+    height: 70dvh;
+    min-height: 480px;
+    max-height: 700px;
+  }
+}
+
+/* Optimize images for different screen densities */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Prevent text size adjustment on orientation change */
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Better font rendering */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Focus visible styles for accessibility */
+:focus-visible {
+  outline: 2px solid var(--color-navy);
+  outline-offset: 2px;
+}
+
+html.dark :focus-visible {
+  outline-color: var(--text-main);
+}
+
+/* Hide focus outline for mouse users, show for keyboard */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Disable pull-to-refresh on mobile for fixed elements */
+.slideshow-container {
+  overscroll-behavior: none;
+}
+
+/* Prevent horizontal scroll */
+body {
+  overflow-x: hidden;
+}
+
+/* Better handling of long text */
+h1, h2, h3, h4, h5, h6 {
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Line length limits for readability */
+p {
+  overflow-wrap: break-word;
+}
+
+/* Selection colors */
+::selection {
+  background: rgba(27, 45, 79, 0.2);
+  color: var(--color-navy);
+}
+
+html.dark ::selection {
+  background: rgba(212, 224, 240, 0.3);
+  color: var(--text-main);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(27, 45, 79, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(27, 45, 79, 0.3);
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Print styles */
+@media print {
+  .site-header,
+  .mobile-menu,
+  .slideshow-container .nav-arrow,
+  .slideshow-container .slide-indicators {
+    display: none !important;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .article-card {
+    break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #ccc;
+  }
+}

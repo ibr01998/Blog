@@ -1,158 +1,468 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import CtaButton from '../components/CtaButton.astro';
+import HeroSlideshow from '../components/HeroSlideshow.astro';
+import ArticleCard from '../components/ArticleCard.astro';
 import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
 import { getCollection } from 'astro:content';
 import { db, Post, eq } from 'astro:db';
 
+// Fetch posts from both sources
 const filePosts = await getCollection('blog');
 const dbPosts = await db.select().from(Post).where(eq(Post.status, 'published'));
 
-const posts = [
-  ...filePosts.map((p) => ({ ...p, source: 'file' })),
+// Merge and normalize posts
+const allPosts = [
+  ...filePosts.map((p) => ({ 
+    ...p, 
+    source: 'file' as const,
+    data: {
+      ...p.data,
+      pubDate: p.data.pubDate,
+    }
+  })),
   ...dbPosts.map((p) => ({
     slug: p.slug,
-    source: 'db',
+    source: 'db' as const,
     data: {
       title: p.title,
       description: p.description,
-      pubDate: p.pubDate,
+      pubDate: p.pubDate instanceof Date ? p.pubDate : new Date(String(p.pubDate)),
       heroImage: p.heroImage,
+      article_type: p.article_type,
+      readingTime: p.readingTime,
     },
   })),
 ].sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
-const featuredPost = posts[0];
-const otherPosts = posts.slice(1);
+// Get posts for slideshow (first 5) and remaining for grid
+const slideshowPosts = allPosts.slice(0, 5);
+const remainingPosts = allPosts.slice(5);
+
+// Get featured categories for quick navigation
+const typeLabels: Record<string, string> = {
+  comparison: 'Vergelijkingen',
+  review: 'Reviews',
+  bonus: 'Bonussen',
+  trust: 'Vertrouwen',
+  fee: 'Kosten',
+  guide: 'Gidsen',
+};
+
+const availableTypes = [...new Set(allPosts.map(p => (p.data as any).article_type).filter(Boolean))] as string[];
 ---
 
 <Layout title={SITE_TITLE} description={SITE_DESCRIPTION}>
+  {/* Hero Slideshow with latest 5 articles */}
+  <HeroSlideshow posts={slideshowPosts} />
 
-    <!-- Hero: Featured Article -->
-    {featuredPost && (
-    <section class="relative">
-        <!-- Halftone hero image -->
-        <div class="relative w-full h-[420px] md:h-[520px] overflow-hidden duotone-navy halftone-bg">
-            <img
-                src={featuredPost.data.heroImage || "/blog-placeholder-1.jpg"}
-                alt={featuredPost.data.title}
-                class="w-full h-full object-cover"
-                loading="eager"
-                decoding="async"
-                fetchpriority="high"
-            />
+  {/* Main Content Area */}
+  <div class="homepage-content">
+    {/* Section Header */}
+    <section class="section-header">
+      <div class="section-header-inner">
+        <div class="section-title-wrapper">
+          <span class="section-badge">Meer artikelen</span>
+          <h2 class="section-title">Ontdek meer</h2>
+          <p class="section-subtitle">
+            {allPosts.length} artikelen over crypto trading, platforms en strategieën
+          </p>
         </div>
         
-        <!-- Title overlay -->
-        <div class="glass relative z-10 -mt-6 mx-4 md:mx-auto max-w-4xl p-8 md:p-12 rounded-lg">
-            <span class="date-badge mb-4 inline-block">
-                {featuredPost.data.pubDate.toLocaleDateString('nl-NL', {
-                    day: 'numeric', month: 'long', year: 'numeric'
-                })}
-            </span>
-            <h1 class="text-3xl md:text-5xl font-extrabold text-navy leading-tight tracking-tight mb-4">
-                <a href={`/blog/${featuredPost.slug}/`} class="hover:opacity-70 transition-opacity">
-                    {featuredPost.data.title}
-                </a>
-            </h1>
-            <p class="text-base md:text-lg text-muted leading-relaxed max-w-2xl mb-6">
-                {featuredPost.data.description}
-            </p>
-            <a href={`/blog/${featuredPost.slug}/`} class="inline-flex items-center gap-2 text-sm font-bold text-navy border-b-2 border-navy pb-1 hover:opacity-70 transition-opacity">
-                Lees verder &rarr;
+        {/* Quick category filters */}
+        {availableTypes.length > 0 && (
+          <div class="category-filters">
+            <a href="/blog" class="filter-chip filter-chip--active">
+              Alles
             </a>
-        </div>
-    </section>
-    )}
-
-    <!-- Latest Articles Grid -->
-    <section class="py-16 md:py-24 px-4">
-        <div class="container mx-auto max-w-7xl">
-            <div class="flex items-center justify-between mb-10 gap-4">
-                <div class="glass px-6 py-3 rounded-lg">
-                    <h2 class="text-2xl md:text-3xl font-bold text-navy tracking-tight">Laatste artikelen</h2>
-                </div>
-                <div class="glass px-4 py-2 rounded-lg hidden md:block">
-                    <span class="text-sm text-muted font-medium">{posts.length} artikelen</span>
-                </div>
-            </div>
-
-            <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                {
-                    otherPosts.map((post) => (
-                    <article class="group flex flex-col glass rounded-lg overflow-hidden">
-                        <a href={`/blog/${post.slug}/`} class="block overflow-hidden duotone-navy">
-                            <img
-                                width={720} height={360}
-                                src={post.data.heroImage || "/blog-placeholder-1.jpg"}
-                                alt={post.data.title}
-                                loading="lazy"
-                                decoding="async"
-                                class="w-full aspect-[16/9] object-cover group-hover:scale-105 transition-transform duration-500"
-                            />
-                        </a>
-                        <div class="flex flex-col flex-grow p-5">
-                            <span class="date-badge mb-3 self-start">
-                                {post.data.pubDate.toLocaleDateString('nl-NL', {
-                                    day: 'numeric', month: 'short', year: 'numeric'
-                                })}
-                            </span>
-                            <h3 class="text-xl font-bold text-navy mb-2 leading-snug group-hover:opacity-70 transition-opacity">
-                                <a href={`/blog/${post.slug}/`}>{post.data.title}</a>
-                            </h3>
-                            <p class="text-muted text-sm leading-relaxed line-clamp-3 mb-4 flex-grow">
-                                {post.data.description}
-                            </p>
-                            <a href={`/blog/${post.slug}/`} class="inline-flex items-center text-sm font-bold text-navy hover:opacity-70 mt-auto border-b border-navy pb-0.5 self-start">
-                                Lees meer &rarr;
-                            </a>
-                        </div>
-                    </article>
-                    ))
-                }
-            </div>
-
-            <!-- See all -->
-            <div class="flex justify-center mt-10">
-                <a href="/blog" class="see-all-link">
-                    Bekijk alle artikelen &rarr;
-                </a>
-            </div>
-        </div>
+            {availableTypes.slice(0, 4).map(type => (
+              <a href={`/blog?type=${type}`} class="filter-chip">
+                {typeLabels[type] || type}
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
     </section>
 
-    <!-- Trust / Methodology -->
-    <section class="py-16 px-4 bg-navy text-cream">
-        <div class="container mx-auto text-center max-w-3xl">
-            <h3 class="text-xs font-bold uppercase tracking-[0.2em] opacity-60 mb-4">Onze methodologie</h3>
-            <p class="text-lg md:text-xl leading-relaxed opacity-80 font-light">
-                Wij testen elk platform met echt kapitaal. Onze reviews zijn onafhankelijk, data-driven, en gemaakt voor serieuze traders die execution speed en liquiditeit waarderen boven marketing.
-            </p>
+    {/* Articles Grid */}
+    <section class="articles-section">
+      <div class="articles-container">
+        {remainingPosts.length > 0 ? (
+          <div class="articles-grid">
+            {remainingPosts.map((post) => (
+              <ArticleCard post={post} variant="default" />
+            ))}
+          </div>
+        ) : (
+          <div class="empty-state">
+            <p>Alle artikelen zijn te zien in de slideshow hierboven.</p>
+            <a href="/blog" class="empty-cta">Bekijk alle artikelen &rarr;</a>
+          </div>
+        )}
+        
+        {/* Load more CTA */}
+        <div class="load-more-wrapper">
+          <a href="/blog" class="load-more-btn">
+            <span>Bekijk alle artikelen</span>
+            <svg class="load-more-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </a>
         </div>
+      </div>
     </section>
+
+    {/* Trust Section */}
+    <section class="trust-section">
+      <div class="trust-container">
+        <div class="trust-content">
+          <span class="trust-badge">Onze methodologie</span>
+          <h3 class="trust-title">Onafhankelijk en data-driven</h3>
+          <p class="trust-description">
+            Wij testen elk platform met echt kapitaal. Onze reviews zijn onafhankelijk, 
+            data-driven, en gemaakt voor serieuze traders die execution speed en 
+            liquiditeit waarderen boven marketing.
+          </p>
+          <div class="trust-stats">
+            <div class="trust-stat">
+              <span class="stat-number">{allPosts.length}+</span>
+              <span class="stat-label">Artikelen</span>
+            </div>
+            <div class="trust-stat">
+              <span class="stat-number">100%</span>
+              <span class="stat-label">Onafhankelijk</span>
+            </div>
+            <div class="trust-stat">
+              <span class="stat-number">NL/BE</span>
+              <span class="stat-label">Focus</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
 </Layout>
 
 <style>
-  .see-all-link {
+  /* Main content wrapper */
+  .homepage-content {
+    padding-bottom: 4rem;
+  }
+  
+  /* Section Header */
+  .section-header {
+    padding: 2.5rem 1rem 1.5rem;
+  }
+  
+  .section-header-inner {
+    max-width: 80rem;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  
+  @media (min-width: 768px) {
+    .section-header {
+      padding: 3.5rem 1.5rem 2rem;
+    }
+    
+    .section-header-inner {
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+  }
+  
+  .section-title-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .section-badge {
+    display: inline-flex;
+    align-self: flex-start;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+  
+  .section-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--color-navy);
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+  
+  .section-subtitle {
+    font-size: 0.9375rem;
+    color: var(--text-muted);
+    margin: 0;
+  }
+  
+  @media (min-width: 768px) {
+    .section-title {
+      font-size: 2rem;
+    }
+  }
+  
+  /* Category filters */
+  .category-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .filter-chip {
+    display: inline-flex;
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 100px;
+    text-decoration: none;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  
+  .filter-chip:hover {
+    border-color: var(--color-navy);
+    color: var(--color-navy);
+  }
+  
+  .filter-chip--active {
+    background: var(--color-navy);
+    color: white;
+    border-color: var(--color-navy);
+  }
+  
+  /* Articles Section */
+  .articles-section {
+    padding: 0.5rem 1rem 3rem;
+  }
+  
+  .articles-container {
+    max-width: 80rem;
+    margin: 0 auto;
+  }
+  
+  @media (min-width: 768px) {
+    .articles-section {
+      padding: 0.5rem 1.5rem 4rem;
+    }
+  }
+  
+  /* Articles Grid */
+  .articles-grid {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: 1fr;
+  }
+  
+  @media (min-width: 640px) {
+    .articles-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .articles-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+  }
+  
+  @media (min-width: 1280px) {
+    .articles-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+  
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 4rem 1rem;
+    color: var(--text-muted);
+  }
+  
+  .empty-state p {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .empty-cta {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    font-size: 0.875rem;
-    font-weight: 700;
+    gap: 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
     color: var(--color-navy);
     text-decoration: none;
-    border: 1px solid var(--border-color);
-    background: var(--bg-card);
-    border-radius: 6px;
-    padding: 0.55rem 1.4rem;
-    transition: background 0.15s, border-color 0.15s, transform 0.15s;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   }
-
-  .see-all-link:hover {
+  
+  .empty-cta:hover {
+    text-decoration: underline;
+  }
+  
+  /* Load more button */
+  .load-more-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 2.5rem;
+  }
+  
+  .load-more-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.75rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--color-navy);
+    background: var(--bg-card);
+    border: 1.5px solid var(--color-navy);
+    border-radius: 10px;
+    text-decoration: none;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+  
+  .load-more-btn:hover {
     background: var(--color-navy);
-    color: var(--color-cream);
-    border-color: var(--color-navy);
-    transform: translateY(-1px);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+  
+  .load-more-icon {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.2s;
+  }
+  
+  .load-more-btn:hover .load-more-icon {
+    transform: translateX(3px);
+  }
+  
+  /* Trust Section */
+  .trust-section {
+    padding: 4rem 1rem;
+    background: var(--color-navy);
+    color: white;
+    margin-top: 2rem;
+  }
+  
+  @media (min-width: 768px) {
+    .trust-section {
+      padding: 5rem 1.5rem;
+    }
+  }
+  
+  .trust-container {
+    max-width: 48rem;
+    margin: 0 auto;
+    text-align: center;
+  }
+  
+  .trust-badge {
+    display: inline-block;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    opacity: 0.6;
+    margin-bottom: 1rem;
+  }
+  
+  .trust-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    letter-spacing: -0.01em;
+  }
+  
+  @media (min-width: 768px) {
+    .trust-title {
+      font-size: 2.25rem;
+    }
+  }
+  
+  .trust-description {
+    font-size: 1.0625rem;
+    line-height: 1.7;
+    opacity: 0.8;
+    max-width: 40rem;
+    margin: 0 auto 2.5rem;
+    font-weight: 300;
+  }
+  
+  @media (min-width: 768px) {
+    .trust-description {
+      font-size: 1.125rem;
+    }
+  }
+  
+  /* Trust Stats */
+  .trust-stats {
+    display: flex;
+    justify-content: center;
+    gap: 2.5rem;
+    flex-wrap: wrap;
+  }
+  
+  @media (min-width: 768px) {
+    .trust-stats {
+      gap: 4rem;
+    }
+  }
+  
+  .trust-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  
+  .stat-number {
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  
+  @media (min-width: 768px) {
+    .stat-number {
+      font-size: 2.25rem;
+    }
+  }
+  
+  .stat-label {
+    font-size: 0.8125rem;
+    opacity: 0.6;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  /* Dark mode adjustments */
+  html.dark .section-title {
+    color: var(--text-main);
+  }
+  
+  html.dark .load-more-btn {
+    background: var(--bg-card);
+    color: var(--text-main);
+    border-color: var(--border-color);
+  }
+  
+  html.dark .load-more-btn:hover {
+    background: var(--text-main);
+    color: var(--bg-main);
+    border-color: var(--text-main);
   }
 </style>

@@ -1,18 +1,443 @@
 ---
 import { SITE_TITLE } from '../consts';
 import ThemeToggle from './ThemeToggle.astro';
+
+interface Props {
+  transparent?: boolean;
+}
+
+const { transparent = false } = Astro.props;
+
+const navLinks = [
+  { href: '/', label: 'Home' },
+  { href: '/blog', label: 'Blog' },
+  { href: '/about', label: 'Over' },
+];
+
+const currentPath = Astro.url.pathname;
 ---
 
-<header class="glass border-b border-white/30 sticky top-0 z-50">
-	<nav class="container mx-auto px-6 py-4 flex justify-between items-center max-w-7xl">
-		<a href="/" class="flex items-center gap-2 text-navy font-bold text-lg tracking-tight">
-			<span class="w-2 h-2 rounded-full bg-navy inline-block"></span>
-			{SITE_TITLE}
-		</a>
-		<div class="flex items-center gap-6 text-sm font-medium text-navy">
-			<a href="/" class="hover:opacity-60 transition-opacity hidden md:inline">Home</a>
-			<a href="/blog" class="hover:opacity-60 transition-opacity hidden md:inline">Blog</a>
-			<ThemeToggle />
-		</div>
-	</nav>
+<header class={`site-header ${transparent ? 'header-transparent' : ''}`} id="site-header">
+  <nav class="header-nav">
+    {/* Logo */}
+    <a href="/" class="header-logo" aria-label="Home">
+      <span class="logo-dot"></span>
+      <span class="logo-text">{SITE_TITLE}</span>
+    </a>
+    
+    {/* Desktop Navigation */}
+    <div class="header-nav-desktop">
+      {navLinks.map(link => (
+        <a 
+          href={link.href} 
+          class={`nav-link ${currentPath === link.href || currentPath.startsWith(link.href + '/') ? 'nav-link-active' : ''}`}
+        >
+          {link.label}
+        </a>
+      ))}
+    </div>
+    
+    {/* Right side actions */}
+    <div class="header-actions">
+      <ThemeToggle />
+      
+      {/* Mobile menu button */}
+      <button 
+        class="mobile-menu-btn" 
+        aria-label="Menu openen"
+        aria-expanded="false"
+        aria-controls="mobile-menu"
+        id="mobile-menu-btn"
+      >
+        <span class="menu-icon">
+          <span class="menu-line"></span>
+          <span class="menu-line"></span>
+          <span class="menu-line"></span>
+        </span>
+      </button>
+    </div>
+  </nav>
+  
+  {/* Mobile Navigation */}
+  <div class="mobile-menu" id="mobile-menu" aria-hidden="true">
+    <nav class="mobile-nav">
+      {navLinks.map(link => (
+        <a 
+          href={link.href} 
+          class={`mobile-nav-link ${currentPath === link.href || currentPath.startsWith(link.href + '/') ? 'mobile-nav-link-active' : ''}`}
+        >
+          {link.label}
+        </a>
+      ))}
+    </nav>
+  </div>
 </header>
+
+<script>
+  // Mobile menu toggle
+  const menuBtn = document.getElementById('mobile-menu-btn');
+  const mobileMenu = document.getElementById('mobile-menu');
+  const header = document.getElementById('site-header');
+  let isMenuOpen = false;
+  
+  function toggleMenu() {
+    isMenuOpen = !isMenuOpen;
+    
+    menuBtn?.setAttribute('aria-expanded', String(isMenuOpen));
+    mobileMenu?.setAttribute('aria-hidden', String(!isMenuOpen));
+    
+    if (isMenuOpen) {
+      mobileMenu?.classList.add('mobile-menu-open');
+      menuBtn?.classList.add('menu-btn-active');
+      document.body.style.overflow = 'hidden';
+    } else {
+      mobileMenu?.classList.remove('mobile-menu-open');
+      menuBtn?.classList.remove('menu-btn-active');
+      document.body.style.overflow = '';
+    }
+  }
+  
+  menuBtn?.addEventListener('click', toggleMenu);
+  
+  // Close menu when clicking on a link
+  mobileMenu?.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => {
+      if (isMenuOpen) toggleMenu();
+    });
+  });
+  
+  // Close menu when pressing Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isMenuOpen) {
+      toggleMenu();
+    }
+  });
+  
+  // Close menu when clicking outside
+  document.addEventListener('click', (e) => {
+    if (isMenuOpen && 
+        !mobileMenu?.contains(e.target as Node) && 
+        !menuBtn?.contains(e.target as Node)) {
+      toggleMenu();
+    }
+  });
+  
+  // Add shadow on scroll
+  let lastScroll = 0;
+  window.addEventListener('scroll', () => {
+    const currentScroll = window.pageYOffset;
+    
+    if (currentScroll > 10) {
+      header?.classList.add('header-scrolled');
+    } else {
+      header?.classList.remove('header-scrolled');
+    }
+    
+    lastScroll = currentScroll;
+  }, { passive: true });
+</script>
+
+<style>
+  /* Header base */
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(245, 240, 235, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(27, 45, 79, 0.08);
+    transition: box-shadow 0.2s, background 0.2s;
+  }
+  
+  .header-scrolled {
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+    background: rgba(245, 240, 235, 0.95);
+  }
+  
+  html.dark .site-header {
+    background: rgba(9, 12, 21, 0.85);
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  html.dark .header-scrolled {
+    background: rgba(9, 12, 21, 0.95);
+  }
+  
+  /* Navigation container */
+  .header-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 80rem;
+    margin: 0 auto;
+    padding: 0.75rem 1rem;
+    gap: 1rem;
+  }
+  
+  @media (min-width: 768px) {
+    .header-nav {
+      padding: 0.875rem 1.5rem;
+    }
+  }
+  
+  /* Logo */
+  .header-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: var(--color-navy);
+    font-weight: 800;
+    font-size: 1.125rem;
+    letter-spacing: -0.01em;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+  }
+  
+  .header-logo:hover {
+    opacity: 0.7;
+  }
+  
+  html.dark .header-logo {
+    color: var(--text-main);
+  }
+  
+  .logo-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-navy);
+    flex-shrink: 0;
+  }
+  
+  html.dark .logo-dot {
+    background: var(--text-main);
+  }
+  
+  /* Desktop Navigation */
+  .header-nav-desktop {
+    display: none;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  
+  @media (min-width: 768px) {
+    .header-nav-desktop {
+      display: flex;
+    }
+  }
+  
+  .nav-link {
+    display: inline-flex;
+    padding: 0.5rem 1rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--color-navy);
+    text-decoration: none;
+    border-radius: 8px;
+    transition: background 0.15s, color 0.15s;
+    opacity: 0.8;
+  }
+  
+  .nav-link:hover {
+    background: rgba(27, 45, 79, 0.06);
+    opacity: 1;
+  }
+  
+  .nav-link-active {
+    background: rgba(27, 45, 79, 0.1);
+    opacity: 1;
+    font-weight: 600;
+  }
+  
+  html.dark .nav-link {
+    color: var(--text-main);
+  }
+  
+  html.dark .nav-link:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  
+  html.dark .nav-link-active {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  /* Actions */
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  /* Mobile menu button */
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  
+  .mobile-menu-btn:hover {
+    background: rgba(27, 45, 79, 0.06);
+  }
+  
+  @media (min-width: 768px) {
+    .mobile-menu-btn {
+      display: none;
+    }
+  }
+  
+  .menu-icon {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 20px;
+  }
+  
+  .menu-line {
+    display: block;
+    width: 100%;
+    height: 2px;
+    background: var(--color-navy);
+    border-radius: 2px;
+    transition: transform 0.2s, opacity 0.2s;
+    transform-origin: center;
+  }
+  
+  html.dark .menu-line {
+    background: var(--text-main);
+  }
+  
+  /* Active menu button state */
+  .menu-btn-active .menu-line:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+  }
+  
+  .menu-btn-active .menu-line:nth-child(2) {
+    opacity: 0;
+  }
+  
+  .menu-btn-active .menu-line:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+  }
+  
+  /* Mobile menu */
+  .mobile-menu {
+    position: fixed;
+    top: 57px; /* header height */
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(245, 240, 235, 0.98);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 1.5rem;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    overflow-y: auto;
+    z-index: 40;
+  }
+  
+  html.dark .mobile-menu {
+    background: rgba(9, 12, 21, 0.98);
+  }
+  
+  .mobile-menu-open {
+    transform: translateX(0);
+  }
+  
+  @media (min-width: 768px) {
+    .mobile-menu {
+      display: none;
+    }
+  }
+  
+  .mobile-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .mobile-nav-link {
+    display: flex;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-navy);
+    text-decoration: none;
+    border-radius: 12px;
+    transition: background 0.15s;
+  }
+  
+  .mobile-nav-link:hover {
+    background: rgba(27, 45, 79, 0.06);
+  }
+  
+  .mobile-nav-link-active {
+    background: rgba(27, 45, 79, 0.1);
+  }
+  
+  html.dark .mobile-nav-link {
+    color: var(--text-main);
+  }
+  
+  html.dark .mobile-nav-link:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  
+  html.dark .mobile-nav-link-active {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  /* Transparent header variant */
+  .header-transparent {
+    background: transparent;
+    backdrop-filter: none;
+    border-bottom-color: transparent;
+  }
+  
+  .header-transparent.header-scrolled {
+    background: rgba(245, 240, 235, 0.95);
+    backdrop-filter: blur(12px);
+  }
+  
+  html.dark .header-transparent.header-scrolled {
+    background: rgba(9, 12, 21, 0.95);
+  }
+  
+  /* Focus visible styles */
+  .nav-link:focus-visible,
+  .mobile-nav-link:focus-visible,
+  .mobile-menu-btn:focus-visible,
+  .header-logo:focus-visible {
+    outline: 2px solid var(--color-navy);
+    outline-offset: 2px;
+  }
+  
+  html.dark .nav-link:focus-visible,
+  html.dark .mobile-nav-link:focus-visible,
+  html.dark .mobile-menu-btn:focus-visible,
+  html.dark .header-logo:focus-visible {
+    outline-color: var(--text-main);
+  }
+  
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .mobile-menu {
+      transition: none;
+    }
+    
+    .menu-line {
+      transition: none;
+    }
+  }
+</style>
