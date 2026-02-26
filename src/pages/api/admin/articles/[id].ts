@@ -143,13 +143,13 @@ export const GET: APIRoute = async ({ params, request }) => {
 
     // If preview format requested, return rendered HTML
     if (format === 'preview') {
-      // Simple markdown to HTML conversion (we'll use basic regex for now to avoid extra deps)
+      // Convert markdown to HTML with proper article styling matching the blog
       let renderedHtml = article.article_markdown
-        // Escape HTML
+        // Escape HTML first
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        // Headers
+        // Headers (H1-H3, skipping H1 as it's the title)
         .replace(/^### (.+)$/gm, '<h3>$1</h3>')
         .replace(/^## (.+)$/gm, '<h2>$1</h2>')
         .replace(/^# (.+)$/gm, '<h1>$1</h1>')
@@ -157,68 +157,290 @@ export const GET: APIRoute = async ({ params, request }) => {
         .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        // Images (keep as img tags)
-        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="article-image" />')
-        // Links
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-        // Lists (simple handling)
+        // Images - use exact blog styling
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy" decoding="async" />')
+        // Links with blog styling
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="affiliate-link">$1</a>')
+        // Lists
         .replace(/^- (.+)$/gm, '<li>$1</li>')
-        // Paragraphs
-        .split('\n\n')
-        .map((para: string) => {
-          if (para.startsWith('<h') || para.startsWith('<li') || para.startsWith('<img') || para.startsWith('<')) {
-            return para;
-          }
-          return `<p>${para}</p>`;
-        })
-        .join('\n');
+        .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+        // Blockquotes
+        .replace(/^&gt; (.+)$/gm, '<blockquote><p>$1</p></blockquote>')
+        // Code inline
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        // Tables (basic support)
+        .replace(/\|(.+)\|/g, (match: string) => {
+          if (match.includes('---')) return '';
+          const cells = match.split('|').filter((c: string) => c.trim());
+          return '<tr>' + cells.map((c: string) => `<td>${c.trim()}</td>`).join('') + '</tr>';
+        });
 
-      // Wrap lists
-      renderedHtml = renderedHtml.replace(/(<li>.+<\/li>\n?)+/g, '<ul>$&</ul>');
+      // Wrap table rows in table structure
+      renderedHtml = renderedHtml.replace(/(<tr>.+<\/tr>\n?)+/g, '<table class="data-table"><tbody>$&</tbody></table>');
+
+      // Process paragraphs (split by blank lines)
+      const lines = renderedHtml.split('\n');
+      const processedLines: string[] = [];
+      let inParagraph = false;
+      
+      for (const line of lines) {
+        const trimmed = line.trim();
+        
+        // Skip empty lines
+        if (!trimmed) {
+          if (inParagraph) {
+            processedLines.push('</p>');
+            inParagraph = false;
+          }
+          continue;
+        }
+        
+        // Skip if already wrapped in HTML tags
+        if (trimmed.startsWith('<h') || trimmed.startsWith('<li') || 
+            trimmed.startsWith('<img') || trimmed.startsWith('<') && !trimmed.startsWith('<p>')) {
+          if (inParagraph) {
+            processedLines.push('</p>');
+            inParagraph = false;
+          }
+          processedLines.push(line);
+          continue;
+        }
+        
+        // Start or continue paragraph
+        if (!inParagraph) {
+          processedLines.push('<p>' + line);
+          inParagraph = true;
+        } else {
+          processedLines.push(line);
+        }
+      }
+      
+      if (inParagraph) {
+        processedLines.push('</p>');
+      }
+      
+      renderedHtml = processedLines.join('\n');
+
+      // Wrap lists properly
+      renderedHtml = renderedHtml.replace(/(<li>.+<\/li>\n?)+/gs, '<ul>$&</ul>');
+
+      // Build the complete preview HTML with exact blog styling
+      const pubDateStr = new Date(article.created_at).toLocaleDateString('nl-NL', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
 
       const previewHtml = `
-        <div class="preview-container">
+        <div class="article-preview-wrapper" style="font-family: 'Outfit', sans-serif; background: #fff; max-width: 100%;">
+          <!-- Hero Section -->
           ${article.image_url ? `
-            <div class="preview-hero">
-              <img src="${article.image_url}" alt="${article.title}" />
+            <div class="preview-hero" style="width: 100%; height: 300px; overflow: hidden; border-radius: 12px 12px 0 0; margin-bottom: 0;">
+              <img src="${article.image_url}" alt="${article.title}" style="width: 100%; height: 100%; object-fit: cover; filter: grayscale(100%) contrast(1.1);" />
             </div>
-          ` : '<div class="preview-no-image">⚠️ Geen hero afbeelding</div>'}
+          ` : `
+            <div class="preview-no-image" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px dashed #f59e0b; border-radius: 12px; padding: 2rem; text-align: center; color: #92400e; margin-bottom: 1.5rem;">
+              <svg style="width: 48px; height: 48px; margin-bottom: 0.5rem; opacity: 0.5;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+              <p style="margin: 0; font-weight: 500;">Geen hero afbeelding</p>
+            </div>
+          `}
           
-          <header class="preview-header">
-            <h1>${article.title}</h1>
-            <div class="preview-meta">
-              <span>${article.author || 'Redactie'}</span>
-              <span>·</span>
-              <span>${new Date(article.created_at).toLocaleDateString('nl-NL')}</span>
-              <span>·</span>
+          <!-- Glass Header Card (matching blog) -->
+          <div class="preview-header-card" style="background: rgba(255,255,255,0.85); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.5); border-radius: 16px; padding: 2rem; margin: -2rem 1.5rem 2rem; position: relative; z-index: 10; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+            <!-- Breadcrumbs -->
+            <nav style="display: flex; font-size: 0.875rem; color: #6b7280; margin-bottom: 1rem;">
+              <span style="color: #1B2D4F; font-weight: 500;">Home</span>
+              <span style="margin: 0 0.5rem; opacity: 0.4;">/</span>
+              <span style="color: #1B2D4F; font-weight: 500;">Blog</span>
+              <span style="margin: 0 0.5rem; opacity: 0.4;">/</span>
+              <span style="color: #6b7280; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">${article.title}</span>
+            </nav>
+            
+            <!-- Date Badge -->
+            <span style="display: inline-block; background: #1B2D4F; color: #fff; padding: 0.375rem 1rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem;">
+              ${pubDateStr}
+            </span>
+            
+            <!-- Title -->
+            <h1 style="font-size: 2.25rem; font-weight: 800; color: #1B2D4F; line-height: 1.1; margin: 0 0 1rem; letter-spacing: -0.02em;">${article.title}</h1>
+            
+            <!-- Meta -->
+            <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.875rem; color: #6b7280; flex-wrap: wrap;">
+              <span style="font-weight: 600; color: #1B2D4F;">${article.author || 'Redactie'}</span>
+              <span style="opacity: 0.4;">·</span>
+              <time datetime="${article.created_at}">${pubDateStr}</time>
+              <span style="opacity: 0.4;">·</span>
               <span>${article.reading_time || 6} min leestijd</span>
             </div>
-            ${article.meta_description ? `<p class="preview-description">${article.meta_description}</p>` : ''}
-          </header>
-          
-          <div class="preview-content">
-            ${renderedHtml}
           </div>
           
-          <div class="preview-image-summary">
-            <h4>📸 Afbeeldingen in dit artikel</h4>
-            <div class="image-stats">
-              <span class="stat ${article.image_url ? 'ok' : 'missing'}">
+          <!-- Article Content (matching blog styling) -->
+          <div class="preview-content-wrapper" style="max-width: 65ch; margin: 0 auto; padding: 0 1.5rem 3rem;">
+            <!-- Description/Summary -->
+            ${article.meta_description ? `
+              <div style="background: #f9fafb; border-left: 4px solid #1B2D4F; padding: 1.25rem; margin-bottom: 2rem; border-radius: 0 8px 8px 0;">
+                <p style="margin: 0; font-size: 1.125rem; font-style: italic; color: #4b5563; line-height: 1.6;">${article.meta_description}</p>
+              </div>
+            ` : ''}
+            
+            <!-- Main Content -->
+            <article class="article-content" style="font-size: 1.125rem; line-height: 1.85; color: #374151;">
+              ${renderedHtml}
+            </article>
+          </div>
+          
+          <!-- Image Summary Panel -->
+          <div class="preview-image-summary" style="background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 1.5rem; margin-top: 2rem;">
+            <h4 style="margin: 0 0 1rem; font-weight: 600; color: #1B2D4F; display: flex; align-items: center; gap: 0.5rem;">
+              <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+              Afbeeldingen in dit artikel
+            </h4>
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
+              <span style="padding: 0.375rem 0.875rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; ${article.image_url ? 'background: #d1fae5; color: #065f46;' : 'background: #fee2e2; color: #991b1b;'}">
                 Hero: ${article.image_url ? '✓' : '✗'}
               </span>
-              <span class="stat ${bodyImageCount >= 2 ? 'ok' : bodyImageCount > 0 ? 'partial' : 'missing'}">
+              <span style="padding: 0.375rem 0.875rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; ${bodyImageCount >= 2 ? 'background: #d1fae5; color: #065f46;' : bodyImageCount > 0 ? 'background: #fef3c7; color: #92400e;' : 'background: #fee2e2; color: #991b1b;'}">
                 Body: ${bodyImageCount}/2
               </span>
-              <span class="stat total">
-                Totaal: ${(article.image_url ? 1 : 0) + bodyImageCount}
+              <span style="padding: 0.375rem 0.875rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; background: #e0e7ff; color: #3730a3;">
+                Totaal: ${(article.image_url ? 1 : 0) + bodyImageCount}/3
               </span>
             </div>
             ${bodyImageUrls.length > 0 ? `
-              <div class="body-image-thumbnails">
-                ${bodyImageUrls.map((url: string) => `<img src="${url}" class="thumbnail" />`).join('')}
+              <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                ${bodyImageUrls.map((url: string) => `
+                  <div style="width: 100px; height: 75px; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb;">
+                    <img src="${url}" style="width: 100%; height: 100%; object-fit: cover;" />
+                  </div>
+                `).join('')}
               </div>
             ` : ''}
           </div>
+          
+          <!-- Article Content Styles -->
+          <style>
+            .article-content h1 { 
+              font-size: 1.75rem; 
+              font-weight: 800; 
+              color: #1B2D4F; 
+              margin: 2.5rem 0 1rem; 
+              line-height: 1.2;
+              letter-spacing: -0.02em;
+            }
+            .article-content h2 { 
+              font-size: 1.5rem; 
+              font-weight: 700; 
+              color: #1B2D4F; 
+              margin: 2.5rem 0 1rem; 
+              line-height: 1.2;
+            }
+            .article-content h3 { 
+              font-size: 1.25rem; 
+              font-weight: 700; 
+              color: #1B2D4F; 
+              margin: 2rem 0 0.75rem; 
+              line-height: 1.3;
+            }
+            .article-content p { 
+              margin-bottom: 1.75rem; 
+              color: #3a4a5c;
+            }
+            .article-content p:first-of-type {
+              font-size: 1.2rem;
+              color: #1B2D4F;
+              font-weight: 500;
+            }
+            .article-content ul, .article-content ol { 
+              margin: 1.5rem 0 2rem; 
+              padding-left: 1.5rem; 
+              color: #3a4a5c;
+            }
+            .article-content ul { list-style-type: disc; }
+            .article-content ol { list-style-type: decimal; }
+            .article-content li { 
+              margin-bottom: 0.75rem; 
+              line-height: 1.75;
+            }
+            .article-content li::marker { 
+              color: #1B2D4F; 
+              font-weight: bold; 
+            }
+            .article-content strong { 
+              color: #1B2D4F; 
+              font-weight: 700; 
+            }
+            .article-content a {
+              color: #1B2D4F;
+              font-weight: 600;
+              text-decoration: underline;
+              text-underline-offset: 3px;
+              text-decoration-color: rgba(27, 45, 79, 0.3);
+            }
+            .article-content a:hover {
+              opacity: 0.6;
+            }
+            .article-content img {
+              width: 100%;
+              max-width: 100%;
+              height: auto;
+              border-radius: 8px;
+              margin: 2.5rem 0;
+              border: 1px solid #e5e7eb;
+              filter: grayscale(100%) contrast(1.05);
+            }
+            .article-content blockquote {
+              border-left: 3px solid #1B2D4F;
+              padding-left: 1.5rem;
+              margin: 2.5rem 0;
+              font-style: italic;
+              font-size: 1.125rem;
+              color: #1B2D4F;
+            }
+            .article-content blockquote p {
+              font-size: 1.125rem !important;
+              color: #1B2D4F !important;
+              margin-bottom: 0;
+            }
+            .article-content table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 2rem 0;
+              font-size: 0.95rem;
+            }
+            .article-content thead {
+              background: #1B2D4F;
+              color: #fff;
+            }
+            .article-content th {
+              text-align: left;
+              padding: 0.875rem 1rem;
+              font-weight: 700;
+              text-transform: uppercase;
+              font-size: 0.75rem;
+              letter-spacing: 0.05em;
+            }
+            .article-content td {
+              padding: 0.875rem 1rem;
+              border-bottom: 1px solid #e5e7eb;
+              color: #3a4a5c;
+            }
+            .article-content tbody tr:last-child td {
+              border-bottom: none;
+            }
+            .article-content code {
+              background: #f3f4f6;
+              padding: 0.2rem 0.4rem;
+              border-radius: 4px;
+              font-family: monospace;
+              font-size: 0.9em;
+            }
+            .article-content hr {
+              border: none;
+              height: 1px;
+              background: #e5e7eb;
+              margin: 3rem 0;
+            }
+          </style>
         </div>
       `;
 
