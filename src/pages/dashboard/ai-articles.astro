@@ -20,10 +20,22 @@ interface ArticleRow {
   status: string;
   review_status: string;
   image_url: string | null;
+  body_images: string | null; // JSON array of BodyImage
   human_notes: string | null;
   published_at: string | null;
   created_at: string;
   writer_name: string | null;
+}
+
+// Parse body_images JSON and count
+function getBodyImageCount(article: ArticleRow): number {
+  if (!article.body_images) return 0;
+  try {
+    const images = JSON.parse(article.body_images);
+    return Array.isArray(images) ? images.length : 0;
+  } catch {
+    return 0;
+  }
 }
 
 let articles: ArticleRow[] = [];
@@ -55,7 +67,7 @@ try {
   articles = await query<ArticleRow>(
     `SELECT a.id, a.title, a.slug, a.content_tier, a.primary_keyword,
             a.format_type, a.word_count, a.meta_description,
-            a.status, a.review_status, a.image_url, a.human_notes, a.published_at, a.created_at,
+            a.status, a.review_status, a.image_url, a.body_images, a.human_notes, a.published_at, a.created_at,
             ag.name as writer_name
      FROM articles a
      LEFT JOIN agents ag ON a.writer_id = ag.id
@@ -90,6 +102,17 @@ const STATUS_COLORS: Record<string, string> = {
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
+function getImageButtonText(article: ArticleRow): string {
+  const hasHero = !!article.image_url;
+  const bodyCount = getBodyImageCount(article);
+  const total = (hasHero ? 1 : 0) + bodyCount;
+  const target = 3; // 1 hero + 2 body
+  
+  if (total === 0) return '📸 Genereer Alle Afbeeldingen';
+  if (total < target) return `📸 Genereer (${total}/${target})`;
+  return '📸 Regenereer Afbeeldingen';
 }
 ---
 
@@ -202,13 +225,14 @@ function formatDate(d: string) {
                 {article.review_status === 'approved' && article.status !== 'published' && (
                   <>
                     <button
-                      class="generate-image-btn text-xs border border-navy text-navy px-3 py-1.5 rounded-lg hover:bg-navy/5"
+                      class="generate-all-images-btn text-xs border border-navy text-navy px-3 py-1.5 rounded-lg hover:bg-navy/5"
                       data-article-id={article.id}
                       data-title={article.title}
                       data-keyword={article.primary_keyword}
                       data-slug={article.slug}
+                      data-has-hero={article.image_url ? 'true' : 'false'}
                     >
-                      {article.image_url ? 'Afbeelding hergenereren' : 'Genereer Afbeelding'}
+                      {getImageButtonText(article)}
                     </button>
                     <button
                       class="publish-btn text-xs bg-navy text-white px-3 py-1.5 rounded-lg hover:bg-navy/90"
@@ -220,8 +244,38 @@ function formatDate(d: string) {
                   </>
                 )}
 
+                {/* Image Status Indicator */}
+                <div class="flex items-center gap-2 text-xs">
+                  {article.image_url ? (
+                    <span class="text-green-600 flex items-center gap-1" title="Hero afbeelding aanwezig">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                      Hero
+                    </span>
+                  ) : (
+                    <span class="text-amber-600 flex items-center gap-1" title="Hero afbeelding ontbreekt">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                      Geen hero
+                    </span>
+                  )}
+                  
+                  {(() => {
+                    const bodyCount = getBodyImageCount(article);
+                    const isComplete = bodyCount >= 2;
+                    const isPartial = bodyCount === 1;
+                    return (
+                      <span class={`flex items-center gap-1 ${isComplete ? 'text-green-600' : isPartial ? 'text-amber-600' : 'text-red-500'}`} title={`${bodyCount}/2 body afbeeldingen`}>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                        {bodyCount}/2
+                      </span>
+                    );
+                  })()}
+                </div>
+
+                {/* Thumbnail preview */}
                 {article.image_url && (
-                  <span class="text-xs text-green-600" title={article.image_url}>Afbeelding ✓</span>
+                  <div class="relative w-10 h-10 rounded overflow-hidden border border-gray-200 shrink-0">
+                    <img src={article.image_url} alt="" class="w-full h-full object-cover" />
+                  </div>
                 )}
 
                 {article.status === 'published' && (
@@ -279,43 +333,211 @@ function formatDate(d: string) {
   </div>
 
   <!-- Preview Modal -->
-  <dialog id="preview-modal" class="rounded-2xl shadow-2xl max-w-3xl w-full mx-auto p-0 backdrop:bg-black/50">
-    <div class="flex items-center justify-between p-4 border-b">
-      <h2 id="preview-title" class="text-sm font-semibold text-navy">Artikel Preview</h2>
-      <button id="close-modal" class="text-gray-400 hover:text-gray-700">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
+  <dialog id="preview-modal" class="rounded-2xl shadow-2xl max-w-5xl w-full mx-auto p-0 backdrop:bg-black/50" style="max-height: 90vh;">
+    <div class="flex items-center justify-between p-4 border-b bg-white">
+      <div class="flex items-center gap-3">
+        <h2 id="preview-title" class="text-sm font-semibold text-navy">Artikel Preview</h2>
+        <span id="preview-image-status" class="text-xs px-2 py-1 rounded-full bg-gray-100"></span>
+      </div>
+      <div class="flex items-center gap-2">
+        <a id="preview-open-article" href="#" target="_blank" class="text-xs text-navy hover:underline mr-2">Open artikel →</a>
+        <button id="close-modal" class="text-gray-400 hover:text-gray-700">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
     </div>
-    <div id="preview-content" class="p-6 overflow-y-auto max-h-[70vh] text-sm text-gray-700 prose prose-sm max-w-none">
-      <div class="text-gray-400 text-center py-4">Laden...</div>
+    <div id="preview-content" class="overflow-y-auto" style="max-height: calc(90vh - 70px);">
+      <div class="p-8">
+        <div class="text-gray-400 text-center py-4">Laden...</div>
+      </div>
     </div>
   </dialog>
+  
+  <!-- Preview Styles -->
+  <style>
+    .preview-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .preview-hero {
+      width: 100%;
+      height: 300px;
+      overflow: hidden;
+      border-radius: 12px;
+      margin-bottom: 2rem;
+    }
+    .preview-hero img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .preview-no-image {
+      background: #fef3c7;
+      border: 2px dashed #f59e0b;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      color: #92400e;
+      margin-bottom: 2rem;
+    }
+    .preview-header {
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .preview-header h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #1B2D4F;
+      margin-bottom: 1rem;
+      line-height: 1.2;
+    }
+    .preview-meta {
+      display: flex;
+      gap: 0.5rem;
+      color: #6b7280;
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+    }
+    .preview-description {
+      font-size: 1.125rem;
+      color: #4b5563;
+      font-style: italic;
+      line-height: 1.6;
+    }
+    .preview-content {
+      font-size: 1rem;
+      line-height: 1.8;
+      color: #374151;
+    }
+    .preview-content h1 { font-size: 1.75rem; font-weight: 700; color: #1B2D4F; margin: 2rem 0 1rem; }
+    .preview-content h2 { font-size: 1.5rem; font-weight: 700; color: #1B2D4F; margin: 2rem 0 1rem; }
+    .preview-content h3 { font-size: 1.25rem; font-weight: 600; color: #1B2D4F; margin: 1.5rem 0 0.75rem; }
+    .preview-content p { margin-bottom: 1.25rem; }
+    .preview-content ul { list-style: disc; padding-left: 1.5rem; margin-bottom: 1.25rem; }
+    .preview-content ol { list-style: decimal; padding-left: 1.5rem; margin-bottom: 1.25rem; }
+    .preview-content li { margin-bottom: 0.5rem; }
+    .preview-content strong { color: #1B2D4F; font-weight: 700; }
+    .preview-content a { color: #1B2D4F; text-decoration: underline; }
+    .preview-content img.article-image {
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .preview-content blockquote {
+      border-left: 4px solid #1B2D4F;
+      padding-left: 1rem;
+      margin: 1.5rem 0;
+      font-style: italic;
+      color: #4b5563;
+    }
+    .preview-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+    }
+    .preview-content th, .preview-content td {
+      border: 1px solid #e5e7eb;
+      padding: 0.75rem;
+      text-align: left;
+    }
+    .preview-content th {
+      background: #1B2D4F;
+      color: white;
+      font-weight: 600;
+    }
+    .preview-image-summary {
+      margin-top: 3rem;
+      padding: 1.5rem;
+      background: #f9fafb;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+    }
+    .preview-image-summary h4 {
+      font-weight: 600;
+      color: #1B2D4F;
+      margin-bottom: 1rem;
+    }
+    .image-stats {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .image-stats .stat {
+      padding: 0.5rem 1rem;
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    .image-stats .stat.ok { background: #d1fae5; color: #065f46; }
+    .image-stats .stat.partial { background: #fef3c7; color: #92400e; }
+    .image-stats .stat.missing { background: #fee2e2; color: #991b1b; }
+    .image-stats .stat.total { background: #e0e7ff; color: #3730a3; }
+    .body-image-thumbnails {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .body-image-thumbnails .thumbnail {
+      width: 80px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1px solid #e5e7eb;
+    }
+  </style>
 </DashboardLayout>
 
 <script>
   const modal = document.getElementById('preview-modal') as HTMLDialogElement;
   const previewTitle = document.getElementById('preview-title');
   const previewContent = document.getElementById('preview-content');
+  const previewImageStatus = document.getElementById('preview-image-status');
+  const previewOpenArticle = document.getElementById('preview-open-article') as HTMLAnchorElement;
 
   // Close modal
   document.getElementById('close-modal')?.addEventListener('click', () => modal.close());
   modal?.addEventListener('click', (e) => { if (e.target === modal) modal.close(); });
 
-  // Preview
+  // Preview with rich rendered HTML
   document.querySelectorAll<HTMLButtonElement>('.preview-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.articleId;
       modal.showModal();
-      if (previewContent) previewContent.innerHTML = '<div class="text-center text-gray-400">Laden...</div>';
+      if (previewContent) {
+        previewContent.innerHTML = '<div class="p-8 text-center text-gray-400"><div class="animate-spin inline-block w-6 h-6 border-2 border-navy border-t-transparent rounded-full mb-2"></div><p>Artikel laden...</p></div>';
+      }
 
-      const res = await fetch(`/api/admin/articles/${id}`);
-      const data = await res.json();
-      if (data.article) {
-        if (previewTitle) previewTitle.textContent = data.article.title;
+      try {
+        // Use the new preview format
+        const res = await fetch(`/api/admin/articles/${id}?format=preview`);
+        const data = await res.json();
+        
+        if (data.article && data.previewHtml) {
+          if (previewTitle) previewTitle.textContent = data.article.title;
+          if (previewImageStatus) {
+            const total = data.article.total_images;
+            const target = 3; // 1 hero + 2 body
+            previewImageStatus.textContent = `📸 ${total}/${target} afbeeldingen`;
+            previewImageStatus.className = `text-xs px-2 py-1 rounded-full ${total === target ? 'bg-green-100 text-green-700' : total > 0 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`;
+          }
+          if (previewOpenArticle) {
+            previewOpenArticle.href = `/${data.article.slug}`;
+          }
+          if (previewContent) {
+            previewContent.innerHTML = data.previewHtml;
+          }
+        } else {
+          throw new Error('Invalid response');
+        }
+      } catch (err) {
         if (previewContent) {
-          previewContent.innerHTML = `<pre class="whitespace-pre-wrap text-xs font-mono text-gray-600 bg-gray-50 p-4 rounded-lg overflow-auto">${data.article.article_markdown ?? 'Geen content'}</pre>`;
+          previewContent.innerHTML = `<div class="p-8 text-center text-red-500">Fout bij laden preview: ${err instanceof Error ? err.message : 'Unknown'}</div>`;
         }
       }
     });
@@ -423,44 +645,41 @@ function formatDate(d: string) {
     });
   });
 
-  // Generate image
-  document.querySelectorAll<HTMLButtonElement>('.generate-image-btn').forEach((btn) => {
+  // Generate ALL images (hero + 2 body images)
+  document.querySelectorAll<HTMLButtonElement>('.generate-all-images-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const articleId = btn.dataset.articleId;
-      const title = btn.dataset.title ?? '';
-      const keyword = btn.dataset.keyword ?? '';
-      const slug = btn.dataset.slug ?? '';
 
       btn.disabled = true;
-      btn.textContent = 'Genereren...';
+      const originalText = btn.textContent;
+      btn.textContent = 'Genereren... (dit kan 30-60s duren)';
 
       try {
-        // Call the existing image generation endpoint (uses Google Imagen by default — free/cheap)
-        const imgRes = await fetch('/api/generate/image', {
+        // Call the POST endpoint on the article to generate all images
+        const res = await fetch(`/api/admin/articles/${articleId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, keyword, slug, provider: 'google', style: 'halftone' }),
+          body: JSON.stringify({ forceRegenerate: false }),
         });
-        const imgData = await imgRes.json();
+        
+        const data = await res.json();
 
-        if (!imgRes.ok || !imgData.url) {
-          alert(`Afbeelding genereren mislukt: ${imgData.error ?? 'Onbekende fout'}`);
-          btn.textContent = 'Genereer Afbeelding';
+        if (!res.ok) {
+          alert(`Afbeelding genereren mislukt: ${data.error ?? 'Onbekende fout'}`);
+          btn.textContent = originalText;
           btn.disabled = false;
           return;
         }
 
-        // Save image_url to the article
-        await fetch(`/api/admin/articles/${articleId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image_url: imgData.url }),
-        });
+        // Show success message with details
+        const heroStatus = data.heroImage ? '✓ Hero' : '✗ Hero';
+        const bodyStatus = `${data.bodyCount}/2 body`;
+        alert(`Afbeeldingen gegenereerd!\n${heroStatus}\n${bodyStatus}`);
 
         window.location.reload();
       } catch (err) {
         alert(`Fout: ${err}`);
-        btn.textContent = 'Genereer Afbeelding';
+        btn.textContent = originalText;
         btn.disabled = false;
       }
     });

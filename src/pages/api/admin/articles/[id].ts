@@ -22,7 +22,7 @@
 import type { APIRoute } from 'astro';
 import { query } from '../../../../lib/db/postgres.ts';
 import { db, Post, Platform, inArray } from 'astro:db';
-import { generateAndInsertBodyImages } from '../../../../lib/images.ts';
+import { generateAndInsertBodyImages, generateHeroImage, generateAllImages } from '../../../../lib/images.ts';
 
 interface ArticleRow {
   id: string;
@@ -110,8 +110,10 @@ async function publishToPostTable(article: ArticleRow): Promise<void> {
   });
 }
 
-export const GET: APIRoute = async ({ params }) => {
+export const GET: APIRoute = async ({ params, request }) => {
   const { id } = params;
+  const url = new URL(request.url);
+  const format = url.searchParams.get('format') || 'json';
 
   try {
     const articles = await query<ArticleRow>(
@@ -129,6 +131,116 @@ export const GET: APIRoute = async ({ params }) => {
       });
     }
 
+    const article = articles[0];
+
+    // Count images in the article body
+    const bodyImageMatches = article.article_markdown.match(/!\[([^\]]*)\]\(([^)]+)\)/g) || [];
+    const bodyImageCount = bodyImageMatches.length;
+    const bodyImageUrls = bodyImageMatches.map((match: string) => {
+      const urlMatch = match.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+      return urlMatch ? urlMatch[2] : null;
+    }).filter((url): url is string => Boolean(url));
+
+    // If preview format requested, return rendered HTML
+    if (format === 'preview') {
+      // Simple markdown to HTML conversion (we'll use basic regex for now to avoid extra deps)
+      let renderedHtml = article.article_markdown
+        // Escape HTML
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        // Headers
+        .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+        .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+        .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+        // Bold and italic
+        .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        // Images (keep as img tags)
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="article-image" />')
+        // Links
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+        // Lists (simple handling)
+        .replace(/^- (.+)$/gm, '<li>$1</li>')
+        // Paragraphs
+        .split('\n\n')
+        .map((para: string) => {
+          if (para.startsWith('<h') || para.startsWith('<li') || para.startsWith('<img') || para.startsWith('<')) {
+            return para;
+          }
+          return `<p>${para}</p>`;
+        })
+        .join('\n');
+
+      // Wrap lists
+      renderedHtml = renderedHtml.replace(/(<li>.+<\/li>\n?)+/g, '<ul>$&</ul>');
+
+      const previewHtml = `
+        <div class="preview-container">
+          ${article.image_url ? `
+            <div class="preview-hero">
+              <img src="${article.image_url}" alt="${article.title}" />
+            </div>
+          ` : '<div class="preview-no-image">⚠️ Geen hero afbeelding</div>'}
+          
+          <header class="preview-header">
+            <h1>${article.title}</h1>
+            <div class="preview-meta">
+              <span>${article.author || 'Redactie'}</span>
+              <span>·</span>
+              <span>${new Date(article.created_at).toLocaleDateString('nl-NL')}</span>
+              <span>·</span>
+              <span>${article.reading_time || 6} min leestijd</span>
+            </div>
+            ${article.meta_description ? `<p class="preview-description">${article.meta_description}</p>` : ''}
+          </header>
+          
+          <div class="preview-content">
+            ${renderedHtml}
+          </div>
+          
+          <div class="preview-image-summary">
+            <h4>📸 Afbeeldingen in dit artikel</h4>
+            <div class="image-stats">
+              <span class="stat ${article.image_url ? 'ok' : 'missing'}">
+                Hero: ${article.image_url ? '✓' : '✗'}
+              </span>
+              <span class="stat ${bodyImageCount >= 2 ? 'ok' : bodyImageCount > 0 ? 'partial' : 'missing'}">
+                Body: ${bodyImageCount}/2
+              </span>
+              <span class="stat total">
+                Totaal: ${(article.image_url ? 1 : 0) + bodyImageCount}
+              </span>
+            </div>
+            ${bodyImageUrls.length > 0 ? `
+              <div class="body-image-thumbnails">
+                ${bodyImageUrls.map((url: string) => `<img src="${url}" class="thumbnail" />`).join('')}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+
+      return new Response(JSON.stringify({
+        article: {
+          id: article.id,
+          title: article.title,
+          slug: article.slug,
+          image_url: article.image_url,
+          body_image_count: bodyImageCount,
+          body_image_urls: bodyImageUrls,
+          has_hero_image: !!article.image_url,
+          total_images: bodyImageCount + (article.image_url ? 1 : 0),
+        },
+        previewHtml,
+        rawMarkdown: article.article_markdown,
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     // Get all agent logs for this article
     const logs = await query(
       `SELECT al.*, ag.name as agent_name, ag.role as agent_role
@@ -139,7 +251,15 @@ export const GET: APIRoute = async ({ params }) => {
       [id]
     );
 
-    return new Response(JSON.stringify({ article: articles[0], logs }), {
+    // Add image stats to response
+    const articleWithStats = {
+      ...article,
+      body_image_count: bodyImageCount,
+      body_image_urls: bodyImageUrls,
+      total_images: bodyImageCount + (article.image_url ? 1 : 0),
+    };
+
+    return new Response(JSON.stringify({ article: articleWithStats, logs }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -237,6 +357,7 @@ export const PATCH: APIRoute = async ({ params, request }) => {
     let updatedArticle = result[0];
 
     // Auto-generate images if publishing: hero image + body images (in parallel)
+    // PREDICTABLE: Always generates 1 hero + exactly 2 body images
     if (shouldPublish && updatedArticle) {
       const origin = new URL(request.url).origin;
 
@@ -244,36 +365,32 @@ export const PATCH: APIRoute = async ({ params, request }) => {
         // Build parallel image generation tasks
         const imagePromises: Promise<void>[] = [];
 
-        // Hero image generation (if missing)
+        // Hero image generation (if missing) - ALWAYS generates 1 hero image
         if (!updatedArticle.image_url) {
           imagePromises.push(
             (async () => {
-              const imgRes = await fetch(`${origin}/api/generate/image`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  title: updatedArticle.title,
-                  keyword: updatedArticle.primary_keyword,
-                  slug: updatedArticle.slug,
-                  provider: 'google',
-                  style: 'halftone',
-                }),
+              const heroResult = await generateHeroImage({
+                title: updatedArticle.title,
+                keyword: updatedArticle.primary_keyword,
+                slug: updatedArticle.slug,
+                origin,
+                style: 'halftone',
               });
-              const imgData = await imgRes.json() as { url?: string };
-              if (imgRes.ok && imgData.url) {
+              
+              if (heroResult.success && heroResult.url) {
                 const imgResult = await query<ArticleRow>(
                   `UPDATE articles SET image_url = $1 WHERE id = $2 RETURNING *`,
-                  [imgData.url, id]
+                  [heroResult.url, id]
                 );
                 if (imgResult[0]) updatedArticle = imgResult[0];
               } else {
-                console.warn('[articles/[id]] Auto hero image generation failed:', imgData);
+                console.warn('[articles/[id]] Auto hero image generation failed:', heroResult.error);
               }
             })()
           );
         }
 
-        // Body image generation (1-2 contextual images placed under H2 sections)
+        // Body image generation - ALWAYS generates exactly 2 contextual images under H2 sections
         imagePromises.push(
           (async () => {
             const bodyResult = await generateAndInsertBodyImages({
@@ -282,15 +399,19 @@ export const PATCH: APIRoute = async ({ params, request }) => {
               keyword: updatedArticle.primary_keyword,
               slug: updatedArticle.slug,
               origin,
-              maxImages: 2,
+              targetCount: 2, // PREDICTABLE: Always aim for 2 body images
             });
-            if (bodyResult.bodyImages.length > 0) {
-              // Update article markdown with inserted body images
-              const bodyImgResult = await query<ArticleRow>(
-                `UPDATE articles SET article_markdown = $1, body_images = $2 WHERE id = $3 RETURNING *`,
-                [bodyResult.markdown, JSON.stringify(bodyResult.bodyImages), id]
-              );
-              if (bodyImgResult[0]) updatedArticle = bodyImgResult[0];
+            
+            // Update article markdown with inserted body images
+            const bodyImgResult = await query<ArticleRow>(
+              `UPDATE articles SET article_markdown = $1, body_images = $2 WHERE id = $3 RETURNING *`,
+              [bodyResult.markdown, JSON.stringify(bodyResult.bodyImages), id]
+            );
+            if (bodyImgResult[0]) updatedArticle = bodyImgResult[0];
+            
+            // Log if we couldn't generate the full 2 images
+            if (bodyResult.count < 2) {
+              console.warn(`[articles/[id]] Only generated ${bodyResult.count}/2 body images for ${updatedArticle.slug}`);
             }
           })()
         );
@@ -337,6 +458,103 @@ export const PATCH: APIRoute = async ({ params, request }) => {
 
   } catch (error) {
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+};
+
+/**
+ * POST /api/admin/articles/[id] 
+ * Dedicated endpoint for generating all images for an article.
+ * Body: { forceRegenerate?: boolean }
+ * 
+ * Generates:
+ * - 1 Hero image (if missing or forceRegenerate)
+ * - 2 Body images (placed after H2 sections)
+ */
+export const POST: APIRoute = async ({ params, request }) => {
+  const { id } = params;
+
+  try {
+    const body = await request.json().catch(() => ({}));
+    const { forceRegenerate = false } = body;
+
+    // Fetch the article
+    const articles = await query<ArticleRow>(
+      `SELECT id, title, slug, primary_keyword, article_markdown, image_url
+       FROM articles WHERE id = $1 LIMIT 1`,
+      [id]
+    );
+
+    if (articles.length === 0) {
+      return new Response(JSON.stringify({ error: 'Article not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const article = articles[0];
+    const origin = new URL(request.url).origin;
+
+    // Use the predictable image generation
+    const result = await generateAllImages({
+      markdown: article.article_markdown,
+      title: article.title,
+      keyword: article.primary_keyword,
+      slug: article.slug,
+      origin,
+      existingHeroImage: article.image_url,
+      forceRegenerateHero: forceRegenerate,
+    });
+
+    // Update the article in database
+    const updates: string[] = [];
+    const values: unknown[] = [];
+    let paramIdx = 1;
+
+    // Update hero image if we generated one
+    if (result.heroImage && (forceRegenerate || result.heroImage !== article.image_url)) {
+      updates.push(`image_url = $${paramIdx++}`);
+      values.push(result.heroImage);
+    }
+
+    // Update markdown if body images were inserted
+    if (result.bodyImages.length > 0 && result.updatedMarkdown !== article.article_markdown) {
+      updates.push(`article_markdown = $${paramIdx++}`);
+      values.push(result.updatedMarkdown);
+      updates.push(`body_images = $${paramIdx++}`);
+      values.push(JSON.stringify(result.bodyImages));
+    }
+
+    let updatedArticle = article;
+    if (updates.length > 0) {
+      values.push(id);
+      const dbResult = await query<ArticleRow>(
+        `UPDATE articles SET ${updates.join(', ')} WHERE id = $${paramIdx} RETURNING *`,
+        values
+      );
+      if (dbResult[0]) updatedArticle = dbResult[0];
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      heroImage: result.heroImage,
+      bodyCount: result.bodyImages.length,
+      bodyImages: result.bodyImages,
+      status: result.status,
+      errors: result.errors,
+      article: updatedArticle,
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('[generate-images POST] Error:', error);
+    return new Response(JSON.stringify({ 
+      error: error instanceof Error ? error.message : String(error) 
+    }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
