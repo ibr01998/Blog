@@ -2,25 +2,24 @@
  * POST /api/admin/run-cycle
  *
  * Triggers a full autonomous editorial cycle:
- * Analyst → Strategist → Editor → Writer → Humanizer → SEO → Save drafts
+ * Analyst → Strategist Governor → Briefs → Editor → Writer → Humanizer →
+ * FactChecker (retry loop) → SEO → Images → Visual Inspector → Auto-Publish
  *
  * Streams progress via Server-Sent Events (SSE) so the dashboard can show
  * a live progress bar and log feed. Falls back to JSON for cron/Bearer callers.
  *
- * This endpoint can take 30-120 seconds — requires Vercel Pro for maxDuration=300.
+ * Manual triggers bypass the adaptive scheduling timestamp guard.
+ * Cron jobs respect the next_run_timestamp from the Strategist Governor.
  *
  * Auth: accepts EITHER
  *   - Dashboard session cookie (for manual triggers from /dashboard/system)
  *   - Authorization: Bearer <CRON_SECRET> header (for Vercel Cron Jobs)
- *
- * Protected by dashboard session cookie via middleware.ts for /api/admin/* routes.
- * The CRON_SECRET bypass is checked BEFORE middleware (see middleware.ts update).
  */
 
 import type { APIRoute } from 'astro';
 import { runEditorialCycle } from '../../../lib/orchestrator.ts';
 
-// CRITICAL: The full cycle makes ~8-15 OpenAI API calls (reduced with gpt-4o-mini).
+// CRITICAL: The full cycle makes ~10-20 AI API calls (includes fact-check retries + visual inspection).
 // Requires Vercel Pro plan (max 300s). Hobby plan limit is 60s.
 export const config = { maxDuration: 300 };
 
@@ -30,10 +29,11 @@ export const config = { maxDuration: 300 };
 async function handleCycle(request: Request): Promise<Response> {
   // Check CRON_SECRET for Vercel Cron triggers (middleware may already handle session)
   const cronSecret = (import.meta as any).env?.CRON_SECRET ?? process.env.CRON_SECRET;
+  const cookieHeader = request.headers.get('cookie');
+  const hasSession = cookieHeader?.includes('dashboard_session=');
+
   if (cronSecret) {
     const authHeader = request.headers.get('authorization');
-    const cookieHeader = request.headers.get('cookie');
-    const hasSession = cookieHeader?.includes('dashboard_session=');
 
     // If no session cookie, require Bearer token
     if (!hasSession) {
@@ -45,6 +45,10 @@ async function handleCycle(request: Request): Promise<Response> {
       }
     }
   }
+
+  // Manual triggers (dashboard session) bypass the adaptive scheduling timestamp
+  // Cron jobs should respect the Strategist Governor's next_run_timestamp
+  const isManualTrigger = !!hasSession;
 
   // Determine if caller wants SSE (browser dashboard) or plain JSON (cron job)
   const acceptHeader = request.headers.get('accept') ?? '';
@@ -62,9 +66,10 @@ async function handleCycle(request: Request): Promise<Response> {
         }
 
         try {
-          const summary = await runEditorialCycle((evt) => {
-            send('progress', evt);
-          });
+          const summary = await runEditorialCycle(
+            (evt) => { send('progress', evt); },
+            { skipTimestampGuard: isManualTrigger },
+          );
 
           send('done', {
             success: true,
@@ -97,7 +102,10 @@ async function handleCycle(request: Request): Promise<Response> {
 
   // ── JSON mode (cron jobs, API callers) ──────────────────────────────────
   try {
-    const summary = await runEditorialCycle();
+    const summary = await runEditorialCycle(
+      undefined,
+      { skipTimestampGuard: isManualTrigger },
+    );
 
     return new Response(JSON.stringify({
       success: true,
@@ -112,7 +120,6 @@ async function handleCycle(request: Request): Promise<Response> {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('[run-cycle] Error:', errorMessage);
 
-    // Return 200 with error details so the UI can display the reason
     return new Response(JSON.stringify({
       success: false,
       duration_ms: Date.now() - startTime,
@@ -127,3 +134,4 @@ async function handleCycle(request: Request): Promise<Response> {
 // Export both GET (for Vercel cron) and POST (for manual dashboard triggers)
 export const GET: APIRoute = async ({ request }) => handleCycle(request);
 export const POST: APIRoute = async ({ request }) => handleCycle(request);
+

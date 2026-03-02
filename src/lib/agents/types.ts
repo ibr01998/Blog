@@ -14,7 +14,8 @@ export type AgentRole =
   | 'humanizer'
   | 'seo'
   | 'researcher'
-  | 'fact_checker';
+  | 'fact_checker'
+  | 'visual_inspector';
 
 export type ContentTier = 'money' | 'authority' | 'trend';
 export type HookType = 'fear' | 'curiosity' | 'authority' | 'benefit' | 'story';
@@ -188,6 +189,7 @@ export interface FactCheckIssue {
   issue: string;                           // what's wrong
   suggestion: string;                      // how to fix it
   source: 'platforms_data' | 'outdated' | 'unverifiable' | 'contradicted';
+  action: 'rewrite' | 'generalize' | 'remove'; // how to fix it
 }
 
 export interface ArticleFactChecked extends ArticleHumanized {
@@ -260,4 +262,33 @@ export interface MarketResearchRow {
   recommended_keywords: string[];
   insights_summary: string;
   created_at: string;
+}
+
+// ─── Strategist Governor Outputs ──────────────────────────────────────────────
+
+export interface StrategistGovernorOutput {
+  next_run_timestamp: string;              // ISO8601 — when the next cycle should run
+  articles_this_cycle: number;             // how many articles to produce this run
+  topic_priority: string;                  // preferred cluster/topic focus
+  reasoning: string;                       // why these decisions were made
+  cadence_adjustment: 'increase' | 'maintain' | 'decrease';
+}
+
+// ─── Visual Inspector Outputs ─────────────────────────────────────────────────
+
+export interface RevisionAction {
+  target: 'writer' | 'image_generator' | 'seo';
+  issue: string;
+  section?: string;                        // which H2 section is affected
+}
+
+export interface InspectionResult {
+  status: 'APPROVED' | 'REVISE';
+  actions: RevisionAction[];
+  summary: string;                         // human-readable inspection summary
+}
+
+export interface ArticleWithImages extends ArticleOptimized {
+  hero_image_url: string | null;
+  body_images_data: BodyImage[];           // resolved body image objects
 }

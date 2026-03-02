@@ -1,18 +1,24 @@
 /**
- * StrategistAgent — generates 5 article briefs per editorial cycle.
+ * StrategistAgent — master governor + brief generator for the editorial engine.
  *
  * Responsibilities:
- *  - Take AnalystReport as input
- *  - Produce exactly 5 article briefs
- *  - Enforce 3 money / 1 authority / 1 trend distribution
- *  - Use classifyIntent() from existing templates.ts for intent classification
+ *  - Governor phase: decide next_run_timestamp and articles_this_cycle
+ *  - Brief phase: generate 5 article briefs per editorial cycle
+ *  - Enforce content tier distribution
+ *  - Analyze market research and historical performance for both phases
  *  - Log reasoning to agent_logs
  */
 
 import { z } from 'zod';
 import { BaseAgent } from './base.ts';
 import { query } from '../db/postgres.ts';
-import type { AgentRecord, AnalystReport, ArticleBrief, MarketResearchRow } from './types.ts';
+import type {
+  AgentRecord,
+  AnalystReport,
+  ArticleBrief,
+  MarketResearchRow,
+  StrategistGovernorOutput,
+} from './types.ts';
 import { classifyIntent } from '../../data/templates.ts';
 
 const briefItemSchema = z.object({
@@ -68,9 +74,138 @@ interface HistoricalArticleRow {
 const KNOWN_PLATFORMS = ['bybit', 'binance', 'kraken', 'bitmex'];
 const ALL_INTENTS = ['comparison', 'review', 'bonus', 'trust', 'fee', 'guide'];
 
+// Schema for the governor decision output
+const governorOutputSchema = z.object({
+  next_run_timestamp: z.string(),
+  articles_this_cycle: z.number().int().min(1).max(10),
+  topic_priority: z.string(),
+  reasoning: z.string(),
+  cadence_adjustment: z.enum(['increase', 'maintain', 'decrease']),
+});
+
 export class StrategistAgent extends BaseAgent {
   constructor(record: AgentRecord) {
     super(record);
+  }
+
+  /**
+   * Governor phase — decide WHEN to publish next and HOW MANY articles.
+   * Runs before brief generation. Writes scheduling decisions to system_config.
+   */
+  async runGovernor(report: AnalystReport): Promise<StrategistGovernorOutput> {
+    // Fetch recent publishing history
+    let recentPublishCount = 0;
+    let avgDaysBetweenArticles = 3.5;
+    try {
+      const countRows = await query<{ count: string }>(
+        `SELECT COUNT(*) as count FROM articles WHERE created_at >= NOW() - INTERVAL '30 days'`
+      );
+      recentPublishCount = parseInt(countRows[0]?.count ?? '0');
+
+      if (recentPublishCount > 1) {
+        const spanRows = await query<{ span_days: number }>(
+          `SELECT EXTRACT(EPOCH FROM (MAX(created_at) - MIN(created_at))) / 86400.0 as span_days
+           FROM articles WHERE created_at >= NOW() - INTERVAL '30 days'`
+        );
+        const spanDays = spanRows[0]?.span_days ?? 30;
+        avgDaysBetweenArticles = spanDays / Math.max(recentPublishCount - 1, 1);
+      }
+    } catch {
+      // DB unavailable — use defaults
+    }
+
+    // Fetch current publish frequency history
+    let frequencyHistory: unknown[] = [];
+    try {
+      const cfgRows = await query<{ publish_frequency_history: unknown }>(
+        `SELECT publish_frequency_history FROM system_config WHERE id = 1`
+      );
+      const raw = cfgRows[0]?.publish_frequency_history;
+      frequencyHistory = Array.isArray(raw) ? raw : [];
+    } catch {
+      // ignore
+    }
+
+    const result = await this.callObject({
+      schema: governorOutputSchema,
+      model: 'gpt-4o-mini',
+      maxTokens: 1000,
+      timeoutMs: 30000,
+      systemPrompt: `Je bent de strategische gouverneur van ShortNews, een Belgische crypto blog.
+
+TAAK: Bepaal het optimale publicatieschema op basis van prestaties en trends.
+
+BESLISSINGEN:
+1. next_run_timestamp: Wanneer moet de volgende publicatiecyclus worden gestart? (ISO8601 formaat)
+2. articles_this_cycle: Hoeveel artikelen moeten er deze cyclus worden geproduceerd? (1-5)
+3. cadence_adjustment: Moet het publicatietempo verhoogd, behouden of verlaagd worden?
+
+REGELS:
+- Als het verkeer GROEIT (trend_direction = "improving"): overweeg meer artikelen
+- Als het verkeer DAALT (trend_direction = "declining"): focus op kwaliteit, minder artikelen
+- Als STABIEL: behoud huidig tempo
+- Minimum interval: 24 uur tussen cycli
+- Maximum interval: 7 dagen
+- Standaard: 2-3 dagen, 2-3 artikelen per cyclus
+- Houdt rekening met weekdagen (publiceer voorkeur op Di-Do ochtend)`,
+      userPrompt: `HUIDIGE PRESTATIES:
+- Trend richting: ${report.trend_direction}
+- Top inzichten: ${report.performance_insights.slice(0, 3).join('; ')}
+- Artikelen afgelopen 30 dagen: ${recentPublishCount}
+- Gemiddeld dagen tussen artikelen: ${avgDaysBetweenArticles.toFixed(1)}
+
+HUISTIG PUBLICATIETEMPO:
+${frequencyHistory.length > 0 ? JSON.stringify(frequencyHistory.slice(-5)) : 'Geen geschiedenis beschikbaar'}
+
+Huidige datum/tijd: ${new Date().toISOString()}
+
+Bepaal het optimale schema.`,
+    });
+
+    // Write scheduling decisions to system_config
+    try {
+      // Update frequency history
+      const newEntry = {
+        timestamp: new Date().toISOString(),
+        articles: result.articles_this_cycle,
+        cadence: result.cadence_adjustment,
+        next_run: result.next_run_timestamp,
+      };
+      const updatedHistory = [...frequencyHistory.slice(-19), newEntry]; // Keep last 20
+
+      await query(
+        `UPDATE system_config
+         SET next_run_timestamp = $1,
+             articles_this_cycle = $2,
+             publish_frequency_history = $3::jsonb
+         WHERE id = 1`,
+        [
+          result.next_run_timestamp,
+          result.articles_this_cycle,
+          JSON.stringify(updatedHistory),
+        ]
+      );
+    } catch (err) {
+      console.warn('[Strategist] Failed to update system_config scheduling:', err);
+    }
+
+    await this.log({
+      stage: 'strategist:governor',
+      inputSummary: {
+        trend_direction: report.trend_direction,
+        recent_articles_30d: recentPublishCount,
+        avg_days_between: avgDaysBetweenArticles,
+      },
+      decisionSummary: {
+        next_run: result.next_run_timestamp,
+        articles_this_cycle: result.articles_this_cycle,
+        cadence: result.cadence_adjustment,
+        topic_priority: result.topic_priority,
+      },
+      reasoningSummary: result.reasoning,
+    });
+
+    return result;
   }
 
   async run(report: AnalystReport): Promise<ArticleBrief[]> {
@@ -131,14 +266,14 @@ FULL ARTICLE MEMORY (${historicalArticles.length} articles ever written — you 
 
 Recently Written (last ${Math.min(30, historicalArticles.length)}):
 ${recentArticles.map((a, i) =>
-  `${i + 1}. [${a.content_tier}/${a.intent}] "${a.title}" | keyword: "${a.primary_keyword}" | CTR: ${(a.ctr * 100).toFixed(1)}% | views: ${a.views}`
-).join('\n')}
+      `${i + 1}. [${a.content_tier}/${a.intent}] "${a.title}" | keyword: "${a.primary_keyword}" | CTR: ${(a.ctr * 100).toFixed(1)}% | views: ${a.views}`
+    ).join('\n')}
 
 PLATFORM × INTENT COVERAGE (times each angle has been covered):
 ${KNOWN_PLATFORMS.map(p => {
-  const intents = coverageMap[p] ?? {};
-  return `${p.toUpperCase()}: ${ALL_INTENTS.map(i => `${i}=${intents[i] ?? 0}`).join(', ')}`;
-}).join('\n')}
+      const intents = coverageMap[p] ?? {};
+      return `${p.toUpperCase()}: ${ALL_INTENTS.map(i => `${i}=${intents[i] ?? 0}`).join(', ')}`;
+    }).join('\n')}
 
 ${topPerformers.length > 0 ? `TOP PERFORMING ARTICLES (replicate these writing styles, NOT topics):
 ${topPerformers.map((a, i) => `${i + 1}. "${a.title}" → ${(a.ctr * 100).toFixed(1)}% CTR, ${a.views} views`).join('\n')}` : ''}
@@ -176,13 +311,13 @@ Summary: ${marketResearch.insights_summary}
 
 Trending Topics:
 ${marketResearch.trending_topics.slice(0, 5).map((t) =>
-  `- "${t.keyword}" (score: ${t.trend_score.toFixed(2)}): ${t.reason}`
-).join('\n')}
+        `- "${t.keyword}" (score: ${t.trend_score.toFixed(2)}): ${t.reason}`
+      ).join('\n')}
 
 Keyword Opportunities (content gaps marked with ⚡):
 ${marketResearch.keyword_opportunities.slice(0, 5).map((k) =>
-  `- ${k.content_gap ? '⚡' : '·'} "${k.keyword}" | angle: ${k.suggested_angle} | format: ${k.suggested_format}`
-).join('\n')}
+        `- ${k.content_gap ? '⚡' : '·'} "${k.keyword}" | angle: ${k.suggested_angle} | format: ${k.suggested_format}`
+      ).join('\n')}
 
 Competitor Patterns:
 - Title patterns: ${marketResearch.competitor_patterns.common_title_patterns?.join(', ') || 'n/a'}

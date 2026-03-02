@@ -17,6 +17,7 @@ import type {
   ArticleAssignment,
   ArticleDraft,
   ContentTier,
+  FactCheckIssue,
 } from './types.ts';
 import { getActiveAffiliates } from '../../data/affiliates.ts';
 
@@ -197,6 +198,92 @@ ABSOLUTE REGELS:
       internal_links: draft.internal_links,
       cta_blocks: draft.cta_blocks,
       estimated_reading_time_minutes: draft.estimated_reading_time_minutes,
+    };
+  }
+
+  /**
+   * Rewrite specific flagged fragments in an article.
+   * Used in the fact-checker retry loop — only the flagged sentences are sent
+   * to the model, not the entire article. Cost-efficient (gpt-4o-mini).
+   *
+   * Returns: { updatedMarkdown, modifiedFragments } — the patched article
+   * and the list of new fragment texts for efficient re-checking.
+   */
+  async rewriteFragments(
+    issues: FactCheckIssue[],
+    articleMarkdown: string,
+  ): Promise<{ updatedMarkdown: string; modifiedFragments: string[] }> {
+    if (issues.length === 0) {
+      return { updatedMarkdown: articleMarkdown, modifiedFragments: [] };
+    }
+
+    // Build a structured rewrite request for each flagged fragment
+    const fragmentRequests = issues.map((issue, i) => ({
+      index: i + 1,
+      original_claim: issue.claim,
+      section: issue.section,
+      problem: issue.issue,
+      suggestion: issue.suggestion,
+      action: issue.action,
+    }));
+
+    const rewriteResult = await this.callText({
+      model: 'gpt-4o-mini',
+      maxTokens: 3000,
+      timeoutMs: 60000,
+      systemPrompt: `Je bent een schrijver voor ShortNews, een Belgische crypto blog.
+
+TAAK: Herschrijf de geflagde zinnen in het artikel. Je krijgt een lijst met problemen en acties.
+
+REGELS PER ACTIE:
+- "rewrite": Herschrijf de zin met de correcte informatie uit de suggestie
+- "generalize": Verwijder specifieke (foute) gegevens, maak de bewering vager maar behoud de strekking
+- "remove": Verwijder de hele zin en zorg dat de alinea nog vloeiend leest
+
+ABSOLUTE REGELS:
+- Verander ALLEEN de geflagde zinnen — laat de rest van het artikel exact intact
+- Behoud alle affiliate links, koppen en structuur
+- Schrijf in het Nederlands
+- Geef het VOLLEDIGE ARTIKEL terug met de wijzigingen verwerkt`,
+      userPrompt: `GEFLAGDE FRAGMENTEN:
+${JSON.stringify(fragmentRequests, null, 2)}
+
+VOLLEDIG ARTIKEL:
+${articleMarkdown}
+
+Geef het volledige artikel terug met ALLEEN de geflagde zinnen aangepast volgens de opgegeven acties.`,
+    });
+
+    // Extract the modified fragments for re-checking
+    const modifiedFragments: string[] = [];
+    for (const issue of issues) {
+      if (issue.action === 'remove') continue;
+      // Find the section in the rewritten article that corresponds to this issue
+      const sectionMatch = rewriteResult.match(
+        new RegExp(`## ${issue.section.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?(?=\\n## |$)`)
+      );
+      if (sectionMatch) {
+        modifiedFragments.push(sectionMatch[0].substring(0, 500));
+      }
+    }
+
+    await this.log({
+      articleId: null,
+      stage: 'writer:rewrite_fragments',
+      inputSummary: {
+        fragment_count: issues.length,
+        actions: issues.map(i => i.action),
+      },
+      decisionSummary: {
+        modified_count: modifiedFragments.length,
+        removed_count: issues.filter(i => i.action === 'remove').length,
+      },
+      reasoningSummary: `Rewrote ${issues.length} flagged fragment(s): ${issues.map(i => `"${i.claim.substring(0, 50)}..." → ${i.action}`).join(', ')}.`,
+    });
+
+    return {
+      updatedMarkdown: rewriteResult,
+      modifiedFragments,
     };
   }
 

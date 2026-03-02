@@ -321,15 +321,35 @@ ALTER TABLE articles ADD COLUMN IF NOT EXISTS body_images JSONB NOT NULL DEFAULT
 ALTER TABLE articles ADD COLUMN IF NOT EXISTS fact_check_status TEXT NOT NULL DEFAULT 'unchecked';
 ALTER TABLE articles ADD COLUMN IF NOT EXISTS fact_check_issues JSONB NOT NULL DEFAULT '[]';
 
--- Allow fact_checker role in agents table
+-- Allow fact_checker + visual_inspector roles in agents table
 ALTER TABLE agents DROP CONSTRAINT IF EXISTS agents_role_check;
 ALTER TABLE agents ADD CONSTRAINT agents_role_check
-  CHECK (role IN ('analyst','strategist','editor','writer','humanizer','seo','researcher','fact_checker'));
+  CHECK (role IN ('analyst','strategist','editor','writer','humanizer','seo','researcher','fact_checker','visual_inspector'));
 
 -- Seed fact_checker agent if not present
 INSERT INTO agents (name, role, personality_config, behavior_overrides, performance_score, article_slots)
 SELECT 'Feiten-Checker', 'fact_checker', '{"tone":"critical","writing_style":"precise","preferred_formats":[]}', '{}', 0.5, 0
 WHERE NOT EXISTS (SELECT 1 FROM agents WHERE role = 'fact_checker');
+
+-- Seed visual_inspector agent if not present
+INSERT INTO agents (name, role, personality_config, behavior_overrides, performance_score, article_slots)
+SELECT 'Visuele Inspecteur', 'visual_inspector', '{"tone":"meticulous","writing_style":"structured","preferred_formats":[]}', '{}', 0.5, 0
+WHERE NOT EXISTS (SELECT 1 FROM agents WHERE role = 'visual_inspector');
+
+-- ═════════════════════════════════════════════════════════════════════════════
+-- Autonomous Engine Upgrade: adaptive scheduling + pipeline tracking
+-- ═════════════════════════════════════════════════════════════════════════════
+
+-- Adaptive scheduling columns on system_config
+ALTER TABLE system_config ADD COLUMN IF NOT EXISTS next_run_timestamp TIMESTAMPTZ;
+ALTER TABLE system_config ADD COLUMN IF NOT EXISTS articles_this_cycle INT NOT NULL DEFAULT 3;
+ALTER TABLE system_config ADD COLUMN IF NOT EXISTS publish_frequency_history JSONB NOT NULL DEFAULT '[]';
+
+-- Pipeline tracking columns on articles
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS article_revision_count INT NOT NULL DEFAULT 0;
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS fact_correction_count INT NOT NULL DEFAULT 0;
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS inspection_revision_count INT NOT NULL DEFAULT 0;
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS topic_cluster_tags TEXT[] NOT NULL DEFAULT '{}';
 `;
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
@@ -431,6 +451,18 @@ export const SEED_AGENTS = [
     personality_config: {
       tone: 'critical',
       writing_style: 'precise',
+      preferred_formats: [],
+    },
+    behavior_overrides: {},
+    performance_score: 0.5,
+    article_slots: 0,
+  },
+  {
+    name: 'Visuele Inspecteur',
+    role: 'visual_inspector',
+    personality_config: {
+      tone: 'meticulous',
+      writing_style: 'structured',
       preferred_formats: [],
     },
     behavior_overrides: {},
